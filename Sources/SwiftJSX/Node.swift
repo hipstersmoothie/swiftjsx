@@ -62,6 +62,10 @@ public final class Node: Identifiable {
         }
     }
 
+    static let interactionFeatures: Set<Feature> = [
+        .transform, .doubleTap, .longPress, .drag, .magnify, .rotate, .accessibility, .accessibilityElement,
+    ]
+
     static let featureKeys: [(String, Feature)] = [
         ("foregroundStyle", .foreground), ("onTapGesture", .tap), ("__ref", .ref),
         ("offset", .transform), ("scale", .transform), ("rotation", .transform),

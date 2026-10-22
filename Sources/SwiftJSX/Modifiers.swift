@@ -74,10 +74,8 @@ struct Modifiers: ViewModifier {
             .disabled(node.bool("disabled"))
             .transition(transition(node.string("transition")))
             .onAppear { if node.has("onAppear") { runtime?.dispatch(node.id, "onAppear") } }
-            .modifier(TransformModifier(node: node))
             .modifier(TapModifier(node: node) { runtime?.dispatch(node.id, "onTapGesture") })
-            .modifier(GestureModifiers(node: node))
-            .modifier(AccessibilityModifier(node: node))
+            .modifier(Interactions(node: node))
     }
 
     private var padding: EdgeInsets {
@@ -103,6 +101,24 @@ struct Modifiers: ViewModifier {
             return ((d["color"] as? String).flatMap(color) ?? .black.opacity(0.2), v("radius"), v("x"), v("y"))
         }
         return (.clear, 0, 0, 0)
+    }
+}
+
+/// Transforms, gestures beyond tap, and accessibility. Most decorated views use none of
+/// them; skipping the whole group with one check keeps row creation in long
+/// lists as cheap as before these existed.
+struct Interactions: ViewModifier {
+    let node: Node
+
+    func body(content: Content) -> some View {
+        if node.features.isDisjoint(with: Node.interactionFeatures) {
+            content
+        } else {
+            content
+                .modifier(TransformModifier(node: node))
+                .modifier(GestureModifiers(node: node))
+                .modifier(AccessibilityModifier(node: node))
+        }
     }
 }
 
