@@ -6,6 +6,10 @@ import { VirtualListDemo } from "./screens/VirtualListDemo";
 import { RefsDemo } from "./screens/Refs";
 import { GridDemo } from "./screens/Grid";
 import { NativeDemo } from "./screens/NativeDemo";
+import { TabsDemo } from "./screens/Tabs";
+import { SplitViewDemo } from "./screens/SplitView";
+import { GesturesDemo } from "./screens/Gestures";
+import { ImagesDemo } from "./screens/Images";
 
 type Demo = { title: string; subtitle: string; icon: string; color: any; screen: () => ReactElement };
 
@@ -15,6 +19,10 @@ const demos: Demo[] = [
   { title: "Virtual list", subtitle: "100,000 rows, ~30 rendered", icon: "list.bullet.rectangle", color: "orange", screen: () => <VirtualListDemo /> },
   { title: "Refs", subtitle: "focus(), scrollTo(), measure()", icon: "scope", color: "pink", screen: () => <RefsDemo /> },
   { title: "Lazy grid", subtitle: "LazyVGrid with adaptive columns", icon: "square.grid.3x3", color: "green", screen: () => <GridDemo /> },
+  { title: "Tabs", subtitle: "TabView, badges, a page-style pager", icon: "square.split.bottomrightquarter", color: "teal", screen: () => <TabsDemo /> },
+  { title: "Split view", subtitle: "NavigationSplitView: columns on iPad, a stack on iPhone", icon: "sidebar.left", color: "mint", screen: () => <SplitViewDemo /> },
+  { title: "Gestures", subtitle: "drag, pinch, rotate, long press, double tap", icon: "hand.draw", color: "red", screen: () => <GesturesDemo /> },
+  { title: "Images", subtitle: "Remote images: cached, decoded off main", icon: "photo.on.rectangle", color: "cyan", screen: () => <ImagesDemo /> },
   { title: "Native", subtitle: "Objective-C APIs from JS, onMain()", icon: "cpu", color: "indigo", screen: () => <NativeDemo /> },
 ];
 

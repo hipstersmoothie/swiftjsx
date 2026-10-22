@@ -44,9 +44,25 @@ state. The absolute path comes from the `SWIFTJSX_DEV_BUNDLE` build setting
 Info.plist as `SwiftJSXDevBundlePath`. Nothing is hardcoded in source.
 
 Device and Release builds load the `app.js` that the **Copy app.js bundle**
-pre-build phase copies into the app. That phase fails with a clear error if
-`build/app.js` doesn't exist. So run `npm run build` before archiving: the app
-ships whatever the bundle contained at build time.
+pre-build phase copies into the app: `build/app.js` for Debug, and
+`build/app.production.js` (React's production build, minified) for Release. That phase
+fails with a clear error if the bundle doesn't exist. `npm run dev` only rebuilds the
+development bundle, so run `npm run build` before a Release build: the app ships
+whatever the bundle contained at build time.
+
+## UI tests
+
+`SwiftJSXDemoUITests` drives the gallery in the simulator with XCUITest: typing into a
+field that rejects edits, tabs, gestures (double tap, long press, drag), the split view,
+and remote images (needs network):
+
+```sh
+xcodebuild test -project SwiftJSXDemo.xcodeproj -scheme SwiftJSXDemo \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath build
+```
+
+The tests find views by `accessibilityIdentifier` / `accessibilityLabel` props set in
+`examples/`.
 
 ## Native backend (optional)
 
@@ -66,15 +82,17 @@ xcodebuild -project SwiftJSXDemo.xcodeproj -scheme SwiftJSXDemo -configuration R
 xcrun devicectl device install app --device <udid> build/Build/Products/Release-iphoneos/SwiftJSXDemo.app
 ```
 
-Release builds embed `app.js` (no hot reload); run `npm run build` first.
+Release builds embed the production bundle (no hot reload); run `npm run build` first.
 
 ## Scroll benchmark
 
 `ScrollBenchmark.swift` scrolls the tallest scroll view on screen at constant speeds
 with a display link and prints frame pacing, hitches (with timestamps and React commit
 counts), blank virtual-list rows, and commit counts. Point `build/app.js` at the screen
-to measure (e.g. an entry rendering `<VirtualListDemo />`), build Release, and launch
-with `SWIFTJSX_SCROLL_BENCH=1`:
+to measure (e.g. `node scripts/build.mjs bench.tsx` with an entry rendering
+`<VirtualListDemo />`; it writes both bundles), build Release, and launch with
+`SWIFTJSX_SCROLL_BENCH=1`, or `=here` to start from where the screen put you (e.g. after a
+`scrollTo`) instead of the top:
 
 ```sh
 DEVICECTL_CHILD_SWIFTJSX_SCROLL_BENCH=1 xcrun devicectl device process launch --console \

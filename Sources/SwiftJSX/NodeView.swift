@@ -102,6 +102,12 @@ struct NodeView: View {
         case "NavigationStack":
             NavigationStackHost(node: node)
 
+        case "NavigationSplitView":
+            SplitViewHost(node: node)
+
+        case "TabView":
+            TabViewHost(node: node)
+
         case "Screen":
             ScreenHost(node: node)
 
@@ -121,11 +127,15 @@ struct NodeView: View {
             }
 
         case "Image":
-            let image = Image(systemName: node.string("systemName") ?? "questionmark")
-            if node.bool("resizable") {
-                image.resizable().aspectRatio(contentMode: .fit)
+            if node.has("src") {
+                RemoteImage(node: node)
             } else {
-                image.imageScale(parseImageScale(node.string("scale")))
+                let image = node.string("name").map { Image($0) } ?? Image(systemName: node.string("systemName") ?? "questionmark")
+                if node.bool("resizable") || node.has("name") {
+                    image.resizable().aspectRatio(contentMode: node.string("contentMode") == "fill" ? .fill : .fit)
+                } else {
+                    image.imageScale(parseImageScale(node.string("imageScale")))
+                }
             }
 
         case "Label":

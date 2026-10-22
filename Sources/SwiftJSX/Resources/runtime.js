@@ -17041,6 +17041,8 @@
     LazyVStack: () => LazyVStack,
     List: () => List,
     NavigationPage: () => NavigationPage,
+    NavigationSplitView: () => NavigationSplitView,
+    NavigationSplitViewHost: () => NavigationSplitViewHost,
     NavigationStack: () => NavigationStack,
     Navigator: () => Navigator,
     Picker: () => Picker,
@@ -17051,7 +17053,10 @@
     Sheet: () => Sheet,
     Slider: () => Slider,
     Spacer: () => Spacer,
+    SplitColumn: () => SplitColumn,
     Stepper: () => Stepper,
+    Tab: () => Tab,
+    TabView: () => TabView,
     Text: () => Text,
     TextField: () => TextField,
     Toggle: () => Toggle,
@@ -17438,7 +17443,11 @@ ${e.stack}` : String(e);
   var LazyHStack = host("LazyHStack");
   var LazyVGrid = host("LazyVGrid");
   var NavigationStack = host("NavigationStack");
+  var TabView = host("TabView");
+  var Tab = host("Tab");
   var NavigationPage = host("NavigationPage");
+  var SplitColumn = host("SplitColumn");
+  var NavigationSplitViewHost = host("NavigationSplitView");
   var Screen = host("Screen");
   var ToolbarItem = host("ToolbarItem");
   var Sheet = host("Sheet");
@@ -17452,11 +17461,11 @@ ${e.stack}` : String(e);
   var NavigationContext = (0, import_react2.createContext)(null);
   function Navigator(t0) {
     const $ = (0, import_compiler_runtime.c)(22);
-    if ($[0] !== "851770a10302bb97c3fa6e725da8d8d688178a1210cc146c444e11e4198b11fc") {
+    if ($[0] !== "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c") {
       for (let $i = 0; $i < 22; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "851770a10302bb97c3fa6e725da8d8d688178a1210cc146c444e11e4198b11fc";
+      $[0] = "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c";
     }
     let children;
     let modifiers;
@@ -17571,17 +17580,105 @@ ${e.stack}` : String(e);
   }
   function useNavigation() {
     const $ = (0, import_compiler_runtime.c)(1);
-    if ($[0] !== "851770a10302bb97c3fa6e725da8d8d688178a1210cc146c444e11e4198b11fc") {
+    if ($[0] !== "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "851770a10302bb97c3fa6e725da8d8d688178a1210cc146c444e11e4198b11fc";
+      $[0] = "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c";
     }
     const nav = (0, import_react2.useContext)(NavigationContext);
     if (!nav) {
       throw new Error("useNavigation() must be used inside <Navigator>");
     }
     return nav;
+  }
+  function NavigationSplitView(t0) {
+    const $ = (0, import_compiler_runtime.c)(22);
+    if ($[0] !== "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c") {
+      for (let $i = 0; $i < 22; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c";
+    }
+    let content;
+    let detail;
+    let props;
+    let sidebar;
+    if ($[1] !== t0) {
+      ({
+        sidebar,
+        content,
+        detail,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = content;
+      $[3] = detail;
+      $[4] = props;
+      $[5] = sidebar;
+    } else {
+      content = $[2];
+      detail = $[3];
+      props = $[4];
+      sidebar = $[5];
+    }
+    let t1;
+    if ($[6] !== sidebar) {
+      t1 = ["sidebar", sidebar];
+      $[6] = sidebar;
+      $[7] = t1;
+    } else {
+      t1 = $[7];
+    }
+    let t2;
+    if ($[8] !== content) {
+      t2 = ["content", content];
+      $[8] = content;
+      $[9] = t2;
+    } else {
+      t2 = $[9];
+    }
+    let t3;
+    if ($[10] !== detail) {
+      t3 = ["detail", detail];
+      $[10] = detail;
+      $[11] = t3;
+    } else {
+      t3 = $[11];
+    }
+    let t4;
+    if ($[12] !== t1 || $[13] !== t2 || $[14] !== t3) {
+      t4 = [t1, t2, t3];
+      $[12] = t1;
+      $[13] = t2;
+      $[14] = t3;
+      $[15] = t4;
+    } else {
+      t4 = $[15];
+    }
+    const columns = t4;
+    let t5;
+    if ($[16] !== columns || $[17] !== content) {
+      t5 = columns.map((t62) => {
+        const [column, children] = t62;
+        return column === "content" && content === void 0 ? null : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SplitColumn, { column, children }, column);
+      });
+      $[16] = columns;
+      $[17] = content;
+      $[18] = t5;
+    } else {
+      t5 = $[18];
+    }
+    let t6;
+    if ($[19] !== props || $[20] !== t5) {
+      t6 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationSplitViewHost, { ...props, children: t5 });
+      $[19] = props;
+      $[20] = t5;
+      $[21] = t6;
+    } else {
+      t6 = $[21];
+    }
+    return t6;
   }
 
   // js/virtual-list.tsx

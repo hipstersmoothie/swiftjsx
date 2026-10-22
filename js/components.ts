@@ -39,10 +39,56 @@ export interface Modifiers {
   /** Like `key`, but for SwiftUI transitions when the view is inserted/removed. */
   transition?: "opacity" | "scale" | "slide" | "move";
   onAppear?: () => void;
+
+  // Transforms, applied after the box (background, border, shadow) like CSS.
+  /** Move the view without affecting layout, in points. */
+  offset?: { x?: number; y?: number };
+  scale?: number;
+  /** Degrees, clockwise. */
+  rotation?: number;
+
+  // Gestures. Handlers run on the JS thread; state you set re-renders as usual.
   onTapGesture?: () => void;
+  onDoubleTap?: () => void;
+  onLongPress?: () => void;
+  /** Seconds before `onLongPress` fires (default 0.5). */
+  longPressDuration?: number;
+  /** While dragging. Inside a ScrollView a drag takes over scrolling. */
+  onDrag?: (event: DragEvent) => void;
+  onDragEnd?: (event: DragEvent) => void;
+  /** Points the finger moves before a drag starts (default 10). */
+  dragMinimumDistance?: number;
+  /** Pinch; `scale` is relative to the start of the gesture. */
+  onMagnify?: (event: { scale: number }) => void;
+  onMagnifyEnd?: (event: { scale: number }) => void;
+  /** Two-finger rotation, in degrees since the start of the gesture. */
+  onRotate?: (event: { degrees: number }) => void;
+  onRotateEnd?: (event: { degrees: number }) => void;
+
+  // Accessibility (VoiceOver, Voice Control, UI tests).
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  accessibilityValue?: string;
+  accessibilityHidden?: boolean;
+  /** For UI tests (XCUITest), like `testID` in React Native. */
+  accessibilityIdentifier?: string;
+  accessibilityTraits?: AccessibilityTrait | AccessibilityTrait[];
+  /** Higher is read first. */
+  accessibilitySortPriority?: number;
+  /** "combine": read the children as one element; "ignore": hide them (set a label); "contain": a container. */
+  accessibilityElement?: "combine" | "ignore" | "contain";
+
   /** Imperative handle: `focus()`, `blur()`, `scrollTo()`, `measure()`. */
   ref?: Ref<HostInstance>;
 }
+
+type Point = { x: number; y: number };
+/** Positions are in window coordinates; `translation` is from where the drag started. */
+export type DragEvent = { translation: Point; location: Point; startLocation: Point; velocity: Point; predictedEndTranslation: Point };
+
+export type AccessibilityTrait =
+  | "button" | "header" | "link" | "image" | "selected" | "staticText" | "searchField" | "summaryElement"
+  | "updatesFrequently" | "toggle" | "modal" | "playsSound" | "startsMediaSession" | "allowsDirectInteraction";
 
 type Alignment = "leading" | "center" | "trailing" | "top" | "bottom" | "topLeading" | "topTrailing" | "bottomLeading" | "bottomTrailing";
 
@@ -58,7 +104,22 @@ export const Form = host<Modifiers & WithChildren>("Form");
 export const Section = host<Modifiers & WithChildren & { header?: string; footer?: string }>("Section");
 
 export const Text = host<Modifiers & WithChildren & { strikethrough?: boolean; italic?: boolean; monospacedDigit?: boolean }>("Text");
-export const Image = host<Modifiers & { systemName: string; resizable?: boolean; scale?: "small" | "medium" | "large" }>("Image");
+type ImageSource =
+  /** An SF Symbol. Sized like text unless `resizable`. */
+  | { systemName: string; resizable?: boolean; imageScale?: "small" | "medium" | "large"; contentMode?: "fit" | "fill" }
+  /** An image from the app's asset catalog; resizable. */
+  | { name: string; contentMode?: "fit" | "fill" }
+  /**
+   * A URL (https:, file:, data:), loaded with a memory cache and decoded off
+   * the main thread; resizable. Give it a `frame`. Shows a placeholder while loading.
+   */
+  | {
+      src: string;
+      contentMode?: "fit" | "fill";
+      onLoad?: (size: { width: number; height: number }) => void;
+      onError?: (error: { message: string }) => void;
+    };
+export const Image = host<Modifiers & ImageSource>("Image");
 export const Label = host<Modifiers & { title: string; systemImage: string }>("Label");
 export const Spacer = host<Modifiers & { minLength?: number }>("Spacer");
 export const Divider = host<Modifiers>("Divider");
@@ -107,8 +168,44 @@ export const LazyVGrid = host<Modifiers & WithChildren & { columns: number | { m
  */
 export const NavigationStack = host<Modifiers & WithChildren & { onPathChange?: (depth: number) => void }>("NavigationStack");
 
+/**
+ * Tabs. Each `<Tab>` child is a tab; its `value` (default: its position as a
+ * string) is what `selection` / `onSelectionChange` use. Leave out `selection`
+ * for an uncontrolled tab view. `tabViewStyle="page"` makes a swipeable pager.
+ */
+export const TabView = host<
+  Modifiers & WithChildren & {
+    selection?: string;
+    onSelectionChange?: (value: string) => void;
+    tabViewStyle?: "automatic" | "sidebarAdaptable" | "page";
+  }
+>("TabView");
+
+/** One tab of a TabView. Put a `<Navigator>` inside for a stack per tab. */
+export const Tab = host<
+  WithChildren & {
+    title?: string;
+    systemImage?: string;
+    value?: string | number;
+    /** A number (0 hides it) or a short string. */
+    badge?: number | string;
+    /** "search": the separate search tab of iOS 26. */
+    role?: "search";
+  }
+>("Tab");
+
 /** One screen in a NavigationStack (groups a component's output into one page). */
 export const NavigationPage = host<WithChildren>("NavigationPage");
+
+/** A column of a NavigationSplitView (see `NavigationSplitView` in navigation.tsx). */
+export const SplitColumn = host<WithChildren & { column: "sidebar" | "content" | "detail" }>("SplitColumn");
+export const NavigationSplitViewHost = host<
+  Modifiers & WithChildren & {
+    preferredCompactColumn?: "sidebar" | "content" | "detail";
+    onPreferredCompactColumnChange?: (column: "sidebar" | "content" | "detail") => void;
+    navigationSplitViewStyle?: "automatic" | "balanced" | "prominentDetail";
+  }
+>("NavigationSplitView");
 
 /** Sets the navigation title and toolbar for whatever screen it's rendered in. */
 export const Screen = host<Modifiers & WithChildren & { title?: string; titleDisplayMode?: "automatic" | "inline" | "large" }>("Screen");

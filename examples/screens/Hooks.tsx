@@ -67,6 +67,7 @@ function TodoRow({ todo, dispatch }: { todo: Todo; dispatch: (a: Action) => void
 export function HooksDemo() {
   const [name, setName] = useState("");
   const [draft, setDraft] = useState("");
+  const [zip, setZip] = useState("");
   const [items, dispatch] = useReducer(todos, [
     { id: 1, title: "Write a React renderer", done: true },
     { id: 2, title: "Point it at SwiftUI", done: false },
@@ -95,6 +96,15 @@ export function HooksDemo() {
             </Text>
           </HStack>
           <TextField placeholder="Your name" value={name} onChange={setName} />
+          {/* Rejecting an edit (not setting state) keeps the old value, like on
+              the web. The opacity prop comes and goes without losing focus. */}
+          <TextField
+            placeholder="Zip code (digits only)"
+            value={zip}
+            onChange={(v) => /^\d{0,5}$/.test(v) && setZip(v)}
+            opacity={zip.length === 5 ? 0.6 : undefined}
+            accessibilityIdentifier="zip"
+          />
 
           <Divider />
           <Text font="headline">useState</Text>

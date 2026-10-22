@@ -29,6 +29,7 @@ function Inbox() {
 ```sh
 npm install
 npm run dev          # watches; writes build/app.js (+ the runtime and test fixtures)
+npm run build        # one-off; also writes the production runtime and build/app.production.js
 swift run Demo       # macOS window; edits apply live via React Refresh
 swift test           # headless tests driving fixtures through real React
 ```
@@ -56,9 +57,17 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   catches up, and stale echoes are dropped by sequence number (like React Native's
   `mostRecentEventCount`). `JSXRuntime(threading: .main)` runs everything synchronously
   (used by the tests).
+- **Production builds.** `npm run build` also writes `build/app.production.js`: React's
+  production build, minified, without Fast Refresh. The runtime it needs is 153 KB, against
+  918 KB for development. `JSXRuntime` picks the matching runtime from the bundle, and
+  Release builds of the iOS app ship the production bundle.
 - **Navigation.** `<Navigator>` + `useNavigation()` (`push(<Screen…/>)`, `pop`, `popToRoot`)
   on a real `NavigationStack` — swipe-back works and is reported back to React.
   `<Screen title>` + `<ToolbarItem>` set the title and toolbar.
+- **Tabs and split views.** `<TabView selection onSelectionChange>` with `<Tab title
+  systemImage badge>` children (controlled or not; `tabViewStyle="page"` for a pager).
+  `<NavigationSplitView sidebar={…} detail={…}>` shows columns on iPad and Mac and a stack
+  on iPhone, where `preferredCompactColumn` decides which column is showing.
 - **Presentations.** Declarative `<Sheet>` (detents, full-screen on iOS), `<Alert>`,
   `<ConfirmationDialog>` driven by `isPresented` / `onDismiss`. They anchor to their parent
   element: nest a `<ConfirmationDialog>` inside the button that opens it, and its popover
@@ -73,8 +82,20 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
 - **Refs.** `ref.current.focus()`, `.blur()`, `.scrollTo(ref | index | "top" | "end")`,
   `await .measure()`. `useImperativeHandle` etc. work as usual on top.
 - **Modifiers are props**, applied CSS-box-model style:
-  `padding → frame → background → cornerRadius → border → shadow → opacity`.
-  `animation="spring"` animates a node's changes; children can set `transition`.
+  `padding → frame → background → cornerRadius → border → shadow → opacity → offset/scale/rotation`.
+  `animation="spring"` animates a node's changes; children can set `transition`. Setting or
+  clearing a prop never resets a view's state: a text field keeps focus, a scroll view
+  its position.
+- **Gestures.** `onTapGesture`, `onDoubleTap`, `onLongPress`, `onDrag`/`onDragEnd`
+  (translation, location, velocity, predicted end), `onMagnify`, `onRotate`. Handlers run
+  on the JS thread like any event. Pair them with `offset`/`scale`/`rotation` state, and
+  `animation={dragging ? undefined : "spring"}` to follow the finger and spring back.
+- **Images.** `<Image systemName>` (SF Symbols), `<Image name>` (asset catalog), and
+  `<Image src="https://…" contentMode="fill">`. URL images are cached in memory, requested
+  once even when several views want them, and decoded off the main thread. They fire
+  `onLoad`/`onError`.
+- **Accessibility.** `accessibilityLabel`, `Hint`, `Value`, `Hidden`, `Identifier` (for UI
+  tests, like `testID`), `Traits`, `SortPriority`, and `accessibilityElement="combine"`.
 
 ## Native APIs
 
@@ -150,11 +171,12 @@ function Battery() {
 | `Sources/SwiftJSX/JSXRuntime.swift` | public API, hot reload, ref commands |
 | `Sources/SwiftJSX/Node.swift` | `Node` / `NodeTree`, applies ops |
 | `Sources/SwiftJSX/NodeView.swift`, `Modifiers.swift` | tag → SwiftUI view, modifier props |
+| `Sources/SwiftJSX/Gestures.swift`, `RemoteImage.swift`, `Containers.swift` | gestures, transforms, accessibility; URL images; tabs and split views |
 | `Sources/SwiftJSX/Controlled.swift` | controlled inputs across threads |
 | `Sources/SwiftJSX/Navigation.swift`, `Lists.swift` | stack, screens, presentations; scroll views, virtual list |
 | `examples/` | gallery app (one screen per feature) |
 | `Tests/Fixtures/*.tsx`, `Tests/SwiftJSXTests/` | test apps and the Swift tests that drive them |
-| `Apps/iOS/` | iOS sample app (XcodeGen) |
+| `Apps/iOS/` | iOS sample app (XcodeGen) and its UI tests |
 
 Adding a component = one `case` in `NodeView.swift` + one line in `components.ts`.
 
@@ -162,14 +184,14 @@ Adding a component = one `case` in `NodeView.swift` + one line in `components.ts
 
 - The compiler uses Babel 7 (`babel-plugin-react-compiler` 1.0 is built against Babel 7's
   AST; under Babel 8 it rejects some valid code, e.g. destructuring defaults).
-- The shipped runtime is React's development build (needed for Fast Refresh); no
-  production/minified runtime yet.
-- Modifiers wrap a view only when a modifier prop is present, so toggling a prop between
-  set and unset changes SwiftUI view identity (e.g. a text field can lose focus).
-- A controlled input whose `onChange` *rejects* a value (doesn't re-render) keeps showing
-  the typed text.
-- No `NavigationSplitView`, tab bars, gestures beyond tap, images from URLs, or
-  accessibility props yet.
+- `foregroundStyle`, gestures, transforms, accessibility props and refs are attached the
+  first time a view uses them and then stay (always-on, idle gestures doubled scroll hitches
+  in long lists). So the *first* time one of them appears on a view that's already mounted,
+  that view's SwiftUI state resets once. Props present from mount (the usual case) never
+  reset it.
+- Gesture updates go to React and back: a drag tracks the finger with about a frame of
+  latency. There's no native-driven animation (like Reanimated worklets) yet.
+- No `Canvas`, maps, video, or custom fonts yet.
 - Native backend: NativeScript's runtime is an alpha; its metadata generator (LLVM 17)
   misses some declarations in current SDKs (e.g. `NSProcessInfo.lowPowerModeEnabled` on
   macOS). Long synchronous JS still delays main-thread native callbacks: keep work sliced.

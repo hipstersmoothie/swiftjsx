@@ -22,6 +22,8 @@ public final class Node: Identifiable {
     var scrollRequest: ScrollRequest?
     /// Last laid-out frame in window coordinates, for `ref.current.measure()`.
     @ObservationIgnored var frame: CGRect = .zero
+    /// `<Image src>`: the URL whose `onLoad`/`onError` was last reported.
+    @ObservationIgnored var reportedImageURL: URL?
     /// Controlled inputs: sequence number of the last value sent to JS…
     @ObservationIgnored var sentSeq = 0
     /// …and of the last event JS had processed when it rendered these props.
@@ -42,7 +44,11 @@ public final class Node: Identifiable {
     /// VirtualList on an iPhone 15 Pro Max.
     private(set) var features: Set<Feature> = []
 
-    enum Feature { case foreground, tap, ref }
+    enum Feature {
+        case foreground, tap, ref, transform
+        case doubleTap, longPress, drag, magnify, rotate
+        case accessibility, accessibilityElement
+    }
 
     /// Called after props or children change.
     func updateDecorated() {
@@ -56,13 +62,24 @@ public final class Node: Identifiable {
         }
     }
 
-    static let featureKeys: [(String, Feature)] = [("foregroundStyle", .foreground), ("onTapGesture", .tap), ("__ref", .ref)]
+    static let featureKeys: [(String, Feature)] = [
+        ("foregroundStyle", .foreground), ("onTapGesture", .tap), ("__ref", .ref),
+        ("offset", .transform), ("scale", .transform), ("rotation", .transform),
+        ("onDoubleTap", .doubleTap), ("onLongPress", .longPress),
+        ("onDrag", .drag), ("onDragEnd", .drag), ("onMagnify", .magnify), ("onMagnifyEnd", .magnify),
+        ("onRotate", .rotate), ("onRotateEnd", .rotate),
+        ("accessibilityLabel", .accessibility), ("accessibilityHint", .accessibility),
+        ("accessibilityValue", .accessibility), ("accessibilityHidden", .accessibility),
+        ("accessibilityIdentifier", .accessibility), ("accessibilityTraits", .accessibility),
+        ("accessibilitySortPriority", .accessibility),
+        ("accessibilityElement", .accessibility), ("accessibilityElement", .accessibilityElement),
+    ]
 
-    static let modifierKeys: Set<String> = [
+    static let modifierKeys: Set<String> = Set([
         "padding", "frame", "background", "foregroundStyle", "font", "fontWeight", "fontDesign",
         "cornerRadius", "border", "shadow", "opacity", "disabled", "transition", "onAppear",
         "onTapGesture", "hidden",
-    ]
+    ]).union(featureKeys.map(\.0)).subtracting(["__ref"])
 
     /// Views with state of their own get the wrapper from the start, so even
     /// the first modifier prop doesn't reset them.
@@ -164,7 +181,11 @@ public final class NodeTree {
             case "update":
                 guard let node = nodes[id] else { continue }
                 let changes = op["props"] as? [String: Any] ?? [:]
-                animating(node) {
+                // An update that changes `animation` too is animated (or not)
+                // by the new value: `animation={dragging ? undefined : "spring"}`
+                // follows the finger, then springs back on release.
+                let animation: String?? = changes.keys.contains("animation") ? .some(changes["animation"] as? String) : nil
+                animating(node, animation) {
                     for (key, value) in changes {
                         node.props[key] = value is NSNull ? nil : value
                     }
@@ -186,8 +207,8 @@ public final class NodeTree {
 
     /// Mutations to a node that has an `animation` prop (or whose parent does)
     /// run inside `withAnimation`, so `transition` and implicit animations work.
-    private func animating(_ node: Node, _ body: () -> Void) {
-        let name = node.string("animation") ?? node.parent?.string("animation")
+    private func animating(_ node: Node, _ override: String?? = nil, _ body: () -> Void) {
+        let name = override ?? node.string("animation") ?? node.parent?.string("animation")
         if let animation = name.map(Self.animation) {
             withAnimation(animation, body)
         } else {

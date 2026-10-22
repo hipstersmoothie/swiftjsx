@@ -44,7 +44,8 @@ struct FrameTracker: ViewModifier {
 }
 
 /// Applies modifier props in a fixed, CSS-like order:
-/// padding → frame → background → cornerRadius → border → shadow → opacity.
+/// padding → frame → background → cornerRadius → border → shadow → opacity →
+/// transforms (offset, scale, rotation) → gestures → accessibility.
 struct Modifiers: ViewModifier {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
@@ -73,7 +74,10 @@ struct Modifiers: ViewModifier {
             .disabled(node.bool("disabled"))
             .transition(transition(node.string("transition")))
             .onAppear { if node.has("onAppear") { runtime?.dispatch(node.id, "onAppear") } }
+            .modifier(TransformModifier(node: node))
             .modifier(TapModifier(node: node) { runtime?.dispatch(node.id, "onTapGesture") })
+            .modifier(GestureModifiers(node: node))
+            .modifier(AccessibilityModifier(node: node))
     }
 
     private var padding: EdgeInsets {

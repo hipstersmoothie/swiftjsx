@@ -92,6 +92,21 @@ targets:
             codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none "$DEST"
           fi
 
+  # End-to-end tests of the gallery (simulator):
+  #   xcodebuild test -project SwiftJSXDemo.xcodeproj -scheme SwiftJSXDemo \
+  #     -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+  SwiftJSXDemoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: SwiftJSXDemoUITests
+    dependencies:
+      - target: SwiftJSXDemo
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.swiftjsx.demo.uitests
+
 schemes:
   SwiftJSXDemo:
     build:
@@ -99,5 +114,9 @@ schemes:
         SwiftJSXDemo: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - SwiftJSXDemoUITests
     archive:
       config: Release
