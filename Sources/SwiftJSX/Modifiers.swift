@@ -9,7 +9,8 @@ import SwiftUI
 ///
 /// Everything below has a fixed structure: an unset prop gives a no-op
 /// modifier, never a different branch, so toggling a prop doesn't change the
-/// view's identity.
+/// view's identity. (Modifiers that cost something even as a no-op are added
+/// on first use instead; see `Node.features`.)
 struct Decorations: ViewModifier {
     let node: Node
 
@@ -25,22 +26,20 @@ struct Decorations: ViewModifier {
     }
 }
 
-/// Records the laid-out frame of nodes with a ref, for `ref.current.measure()`,
+/// For nodes with a ref: records the laid-out frame for `ref.current.measure()`,
 /// and gives the view an explicit `.id` so `scrollView.scrollTo(ref)` can find
 /// it (ScrollViewReader doesn't find views by their ForEach identity in a
-/// ScrollView). The geometry reader is a background, so attaching a ref doesn't
-/// change the view's identity, and nodes without one don't pay for it on every
-/// scroll frame.
+/// ScrollView).
 struct FrameTracker: ViewModifier {
     let node: Node
     func body(content: Content) -> some View {
-        content
-            .background {
-                if node.has("__ref") {
-                    Color.clear.onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { node.frame = $0 }
-                }
-            }
-            .id(node.id)
+        if node.features.contains(.ref) {
+            content
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { node.frame = $0 }
+                .id(node.id)
+        } else {
+            content
+        }
     }
 }
 
@@ -74,7 +73,7 @@ struct Modifiers: ViewModifier {
             .disabled(node.bool("disabled"))
             .transition(transition(node.string("transition")))
             .onAppear { if node.has("onAppear") { runtime?.dispatch(node.id, "onAppear") } }
-            .modifier(TapModifier(enabled: node.has("onTapGesture")) { runtime?.dispatch(node.id, "onTapGesture") })
+            .modifier(TapModifier(node: node) { runtime?.dispatch(node.id, "onTapGesture") })
     }
 
     private var padding: EdgeInsets {
@@ -103,12 +102,12 @@ struct Modifiers: ViewModifier {
     }
 }
 
-/// `foregroundStyle` (see `Node.hasForegroundStyle`). Once attached, an unset
+/// `foregroundStyle` (see `Node.features`). Once attached, an unset
 /// prop falls back to the inherited style.
 struct ForegroundModifier: ViewModifier {
     let node: Node
     func body(content: Content) -> some View {
-        if node.hasForegroundStyle {
+        if node.features.contains(.foreground) {
             content.foregroundStyle(node.string("foregroundStyle").flatMap(color).map(AnyShapeStyle.init) ?? AnyShapeStyle(.foreground))
         } else {
             content
@@ -131,16 +130,21 @@ struct CornerClip: Shape {
     }
 }
 
-/// `onTapGesture`. Always attached (disabled while the prop is unset, which
-/// keeps subviews' gestures working) so adding a handler keeps the view's
-/// identity. The clear background makes the whole frame tappable, like a div.
+/// `onTapGesture`. Once attached it stays; without a handler the gesture is
+/// disabled (subviews' gestures keep working). The clear background makes the
+/// whole frame tappable, like a div.
 struct TapModifier: ViewModifier {
-    let enabled: Bool
+    let node: Node
     let action: () -> Void
     func body(content: Content) -> some View {
-        content
-            .background { if enabled { Color.clear.contentShape(Rectangle()) } }
-            .gesture(TapGesture().onEnded(action), including: enabled ? .all : .subviews)
+        if node.features.contains(.tap) {
+            let enabled = node.has("onTapGesture")
+            content
+                .background { if enabled { Color.clear.contentShape(Rectangle()) } }
+                .gesture(TapGesture().onEnded(action), including: enabled ? .all : .subviews)
+        } else {
+            content
+        }
     }
 }
 

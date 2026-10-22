@@ -34,21 +34,29 @@ public final class Node: Identifiable {
     /// prop is unset instead.
     private(set) var decorated = false
 
-    /// Same idea for `foregroundStyle`, which has no no-op value: even
-    /// `.foregroundStyle(.foreground)` flattens the secondary styles that a
-    /// List gives its headers and footers. So it's attached the first time the
-    /// prop is used, and stays.
-    private(set) var hasForegroundStyle = false
+    /// Modifiers that aren't free when unset are attached the first time their
+    /// prop is used, and then stay (same identity reasoning as `decorated`).
+    /// `foregroundStyle` has no no-op value (even `.foreground` flattens the
+    /// secondary styles a List gives its headers); an idle tap gesture or an
+    /// explicit `.id` on every decorated view doubled scroll hitches in a 100k
+    /// VirtualList on an iPhone 15 Pro Max.
+    private(set) var features: Set<Feature> = []
+
+    enum Feature { case foreground, tap, ref }
 
     /// Called after props or children change.
     func updateDecorated() {
-        if !hasForegroundStyle && has("foregroundStyle") { hasForegroundStyle = true }
+        for (key, feature) in Self.featureKeys where !features.contains(feature) && has(key) {
+            features.insert(feature)
+        }
         guard !decorated else { return }
         if Self.alwaysDecorated.contains(type) || props.keys.contains(where: Self.modifierKeys.contains)
             || has("__ref") || children.contains(where: \.isPresentation) {
             decorated = true
         }
     }
+
+    static let featureKeys: [(String, Feature)] = [("foregroundStyle", .foreground), ("onTapGesture", .tap), ("__ref", .ref)]
 
     static let modifierKeys: Set<String> = [
         "padding", "frame", "background", "foregroundStyle", "font", "fontWeight", "fontDesign",

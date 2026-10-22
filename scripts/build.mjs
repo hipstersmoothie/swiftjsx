@@ -1,17 +1,26 @@
 // Builds:
 //
-//   Sources/SwiftJSX/Resources/runtime.js  React + renderer + components (ships in the Swift package)
-//   build/app.js                           your app, with React Refresh registration
-//   build/tests/*.js                       Tests/Fixtures/*.tsx, for `swift test`
+//   Sources/SwiftJSX/Resources/runtime.js             React (development) + renderer + components
+//   Sources/SwiftJSX/Resources/runtime.production.js  the same with React's production build, minified
+//   build/app.js                                      your app, with React Refresh registration
+//   build/app.production.js                           your app, minified, for release builds
+//   build/tests/*.js                                  Tests/Fixtures/*.tsx, for `swift test`
+//
+// Both runtimes ship in the Swift package. An app bundle says which one it
+// needs (production bundles start with PRODUCTION_BANNER), and JSXRuntime
+// loads the matching one. Development is what Fast Refresh and React's
+// warnings need; production is smaller and faster.
 //
 // Our own source goes through Babel for the React Compiler (everything) and
-// React Refresh (app code).
+// React Refresh (development app code).
 //
 // The app bundle doesn't include React: imports of react, react/jsx-runtime and
 // swiftjsx resolve to the runtime's copies. Swift re-runs only app.js on change,
 // so React Refresh can swap components and keep their state.
 //
 //   node scripts/build.mjs [entry.tsx] [--watch]
+//
+// --watch rebuilds the development bundles only.
 
 import * as esbuild from "esbuild";
 import { transformAsync } from "@babel/core";
@@ -28,6 +37,24 @@ const common = {
   define: { "process.env.NODE_ENV": '"development"' },
   logLevel: "info",
   legalComments: "none",
+};
+
+// Keep in sync with JSXRuntime.productionBanner.
+const PRODUCTION_BANNER = "/* swiftjsx:production */";
+
+const production = {
+  ...common,
+  define: { "process.env.NODE_ENV": '"production"' },
+  minify: true,
+};
+
+/** React Refresh's runtime refuses to load in production; leave it out. */
+const withoutRefresh = {
+  name: "swiftjsx-without-refresh",
+  setup(build) {
+    build.onResolve({ filter: /\/refresh-setup$/ }, () => ({ path: "refresh-setup", namespace: "swiftjsx-empty" }));
+    build.onLoad({ filter: /.*/, namespace: "swiftjsx-empty" }, () => ({ contents: "", loader: "js" }));
+  },
 };
 
 const SHARED = ["react", "react/jsx-runtime", "react/jsx-dev-runtime", "react/compiler-runtime", "swiftjsx"];
@@ -51,9 +78,9 @@ const useRuntimeModules = {
  *    useMemo/useCallback/memo by hand.
  *  - react-refresh (app code only): registers components with React Refresh.
  */
-function babel({ refresh }) {
+function babel({ refresh, dev = true }) {
   return {
-    name: refresh ? "babel-app" : "babel-runtime",
+    name: refresh ? "babel-app" : dev ? "babel-runtime" : "babel-production",
     setup(build) {
       const stats = { compiled: 0, skipped: 0 };
       build.onStart(() => {
@@ -70,7 +97,7 @@ function babel({ refresh }) {
         const options = { filename: args.path, babelrc: false, configFile: false, parserOpts: { plugins: ["jsx", "typescript"] } };
         const compiled = await transformAsync(source, {
           ...options,
-          plugins: [["babel-plugin-react-compiler", reactCompilerOptions(file, stats)]],
+          plugins: [["babel-plugin-react-compiler", reactCompilerOptions(file, stats, dev)]],
         });
         // React Refresh runs as a second pass over the compiler's *printed*
         // output. In a shared pass it reads hook arguments from source text the
@@ -91,12 +118,12 @@ function babel({ refresh }) {
   };
 }
 
-function reactCompilerOptions(file, stats) {
+function reactCompilerOptions(file, stats, dev) {
   return {
     target: "19",
     // Skip (and report) components the compiler can't prove safe; never fail the build.
     panicThreshold: "none",
-    environment: {
+    environment: !dev ? {} : {
       // Drop a component's memo cache when its source changes, so a hot update
       // never renders new code against cached JSX from the old code. React 19's
       // dev build already does this when Refresh swaps a component's function;
@@ -152,10 +179,39 @@ const fixtures = await esbuild.context({
   plugins: [useRuntimeModules, babel({ refresh: true })],
 });
 
-const contexts = [runtime, app, fixtures];
+const runtimeProduction = await esbuild.context({
+  ...production,
+  logLevel: "warning",
+  entryPoints: ["js/runtime-entry.ts"],
+  outfile: "Sources/SwiftJSX/Resources/runtime.production.js",
+  plugins: [withoutRefresh, babel({ refresh: false, dev: false })],
+});
+
+const appProduction = await esbuild.context({
+  ...production,
+  logLevel: "warning",
+  entryPoints: [entry],
+  outfile: "build/app.production.js",
+  banner: { js: PRODUCTION_BANNER },
+  jsx: "automatic",
+  plugins: [useRuntimeModules, babel({ refresh: false, dev: false })],
+});
+
+// One fixture in production mode, to test the production runtime.
+const fixturesProduction = await esbuild.context({
+  ...production,
+  logLevel: "warning",
+  entryPoints: { "Hooks.production": "Tests/Fixtures/Hooks.tsx" },
+  outdir: "build/tests",
+  banner: { js: PRODUCTION_BANNER },
+  jsx: "automatic",
+  plugins: [useRuntimeModules, babel({ refresh: false, dev: false })],
+});
+
 if (watch) {
-  await Promise.all(contexts.map((c) => c.watch()));
+  await Promise.all([runtime, app, fixtures].map((c) => c.watch()));
 } else {
+  const contexts = [runtime, app, fixtures, runtimeProduction, appProduction, fixturesProduction];
   await Promise.all(contexts.map((c) => c.rebuild()));
   await Promise.all(contexts.map((c) => c.dispose()));
 }

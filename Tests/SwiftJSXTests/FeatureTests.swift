@@ -187,7 +187,22 @@ struct CompilerTests {
 
     @Test func bundlesAreCompiled() throws {
         #expect(try fixtureSource("Compiler").contains("import_compiler_runtime.c)("))
-        let runtime = try #require(JSXRuntime.runtimeScript)
+        let runtime = try #require(JSXRuntime.runtimeScript("runtime"))
         #expect(runtime.contains("import_compiler_runtime.c)("))
+    }
+
+    @Test func productionBundlesUseTheProductionRuntime() async throws {
+        let runtime = try fixture("Hooks.production")
+        #expect(runtime.isProduction)
+        #expect(runtime.error == nil)
+        #expect(runtime.texts().contains("Hello!"))
+        runtime.press("+")
+        runtime.press("+")
+        #expect(runtime.texts().contains("2"))
+
+        let dev = try #require(JSXRuntime.runtimeScript("runtime"))
+        let prod = try #require(JSXRuntime.runtimeScript("runtime.production"))
+        #expect(prod.count < dev.count / 2)
+        #expect(!prod.contains("react-refresh"))
     }
 }

@@ -8,7 +8,7 @@ let package = Package(
         .library(name: "SwiftJSX", targets: ["SwiftJSX"]),
     ],
     targets: [
-        .target(name: "SwiftJSX", dependencies: ["SwiftJSXNodeAPI"], resources: [.copy("Resources/runtime.js")]),
+        .target(name: "SwiftJSX", dependencies: ["SwiftJSXNodeAPI"], resources: [.copy("Resources/runtime.js"), .copy("Resources/runtime.production.js")]),
         // Node-API on JavaScriptCore (from NativeScript/napi-ios, patched) and the
         // glue that loads NativeScript for the optional `native` backend.
         .target(name: "SwiftJSXNodeAPI", linkerSettings: [.linkedFramework("JavaScriptCore")]),

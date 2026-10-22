@@ -53,8 +53,11 @@ targets:
         outputFiles:
           - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/app.js
         script: |
+          # Release builds get the production bundle (React's production build,
+          # minified); Debug builds the development one (Fast Refresh, warnings).
           set -euo pipefail
           SRC="${SRCROOT}/../../build/app.js"
+          if [ "$CONFIGURATION" = "Release" ]; then SRC="${SRCROOT}/../../build/app.production.js"; fi
           DEST_DIR="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
           if [ ! -f "$SRC" ]; then
             echo "error: SwiftJSX bundle not found at $SRC. Run 'npm install && npm run build' at the repo root first."

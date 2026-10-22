@@ -14,12 +14,21 @@ public final class JSXRuntime {
     @ObservationIgnored private var bundleURL: URL?
     @ObservationIgnored private var watcher: Timer?
     @ObservationIgnored private var lastModified: Date?
+    @ObservationIgnored private var loadStarted: ContinuousClock.Instant?
 
     /// - Parameter native: enable the `native` backend (direct Objective-C / C
     ///   access from JS via NativeScript). `nil` (the default) leaves it off.
     public init(threading: JSThreading = .background, native: NativeOptions? = nil) {
         engine = JSEngine(threading: threading, native: native, callbacks: EngineCallbacks(
-            commit: { [weak self] ops in self?.tree.apply(ops) },
+            commit: { [weak self] ops in
+                guard let self else { return }
+                tree.apply(ops)
+                if let started = loadStarted {
+                    loadStarted = nil
+                    print(String(format: "[swiftjsx] first render %.0f ms after load (%@ runtime)",
+                                 started.duration(to: .now) / .milliseconds(1), isProduction ? "production" : "development"))
+                }
+            },
             command: { [weak self] id, name, args, callback in self?.handleCommand(id, name, args, callback) },
             fatal: { [weak self] message in self?.report(message) }
         ))
@@ -41,14 +50,23 @@ public final class JSXRuntime {
     }
 
     /// Mount an app bundle from scratch (fresh JS context, empty tree).
+    ///
+    /// Production bundles (`build/app.production.js`) run on React's production
+    /// build; others on the development build, which Fast Refresh needs.
     public func load(app: String, sourceURL: URL? = nil) {
         tree.reset()
         error = nil
-        guard let runtime = Self.runtimeScript else {
-            return report("SwiftJSX: runtime.js is missing from the package resources. Run `npm run build`.")
+        isProduction = app.hasPrefix(Self.productionBanner)
+        loadStarted = .now
+        let name = isProduction ? "runtime.production" : "runtime"
+        guard let runtime = Self.runtimeScript(name) else {
+            return report("SwiftJSX: \(name).js is missing from the package resources. Run `npm run build`.")
         }
         engine.start(runtime: runtime, app: app, appURL: sourceURL)
     }
+
+    /// Whether the loaded bundle is a production build.
+    public private(set) var isProduction = false
 
     /// Full reload from disk: state is lost. (Saving a file hot-updates instead.)
     public func reload() {
@@ -116,6 +134,10 @@ public final class JSXRuntime {
 
     /// Re-run an app bundle in the live context; React Refresh keeps state.
     func hotUpdate(app: String, sourceURL: URL? = nil) {
+        // React Refresh only exists in the development runtime; reload instead.
+        if isProduction || app.hasPrefix(Self.productionBanner) {
+            return load(app: app, sourceURL: sourceURL)
+        }
         error = nil
         engine.hotUpdate(app: app, appURL: sourceURL)
     }
@@ -124,8 +146,17 @@ public final class JSXRuntime {
         (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
     }
 
-    static let runtimeScript: String? = Bundle.module.url(forResource: "runtime", withExtension: "js")
-        .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+    /// First line of production app bundles (keep in sync with scripts/build.mjs).
+    static let productionBanner = "/* swiftjsx:production */"
+
+    static func runtimeScript(_ name: String) -> String? {
+        if let cached = runtimeScripts[name] { return cached }
+        let script = Bundle.module.url(forResource: name, withExtension: "js")
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+        runtimeScripts[name] = script
+        return script
+    }
+    private static var runtimeScripts: [String: String] = [:]
 }
 
 private func unitPoint(_ name: String?) -> UnitPoint? {
