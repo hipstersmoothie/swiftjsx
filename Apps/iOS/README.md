@@ -1,6 +1,6 @@
 # SwiftJSX iOS demo
 
-A minimal iOS 17+ app that mounts the React bundle (`build/app.js`) with
+A minimal iOS 18+ app that mounts the React bundle (`build/app.js`) with
 `ReactView`. The Xcode project is generated from `project.yml` by
 [XcodeGen](https://github.com/yonaskolb/XcodeGen) and isn't committed.
 

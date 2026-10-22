@@ -81,3 +81,46 @@ struct BackgroundThreadTests {
         #expect(runtime.texts().contains("Hello, Ada!"))
     }
 }
+
+@MainActor
+@Suite struct InputTests {
+    @Test func rejectedEditsAreAcknowledged() async throws {
+        let runtime = try fixture("Inputs", threading: .background)
+        #expect(await eventually { runtime.find("TextField") != nil })
+        let field = try #require(runtime.find("TextField") { $0.string("placeholder") == "Digits" })
+
+        field.sentSeq = 1
+        runtime.dispatch(field.id, "onChange", "12a", seq: 1)
+        // Nothing re-renders, but Swift still hears that JS saw the edit, so the
+        // field drops its local "12a" and shows the value prop again.
+        #expect(await eventually { field.ackSeq == 1 })
+        #expect(field.string("value") == "12")
+
+        field.sentSeq = 2
+        runtime.dispatch(field.id, "onChange", "123", seq: 2)
+        #expect(await eventually { field.ackSeq == 2 })
+        #expect(field.string("value") == "123")
+    }
+
+    @Test func modifierWrappersAreSticky() async throws {
+        let runtime = try fixture("Inputs")
+        let dimmedField = try #require(runtime.find("TextField") { $0.string("placeholder") == "Dimmed" })
+        let plain = try #require(runtime.find("Text") { $0.textContent == "Plain" })
+        let padded = try #require(runtime.find("Text") { $0.textContent == "Padded" })
+        // Inputs are wrapped from the start; a plain Text isn't wrapped at all.
+        #expect(dimmedField.decorated)
+        #expect(!plain.decorated)
+        #expect(!padded.decorated)
+
+        runtime.press("Dim")
+        #expect(padded.has("padding"))
+        #expect(padded.decorated)
+
+        // Removing the prop (here: setting it to undefined) keeps the wrapper,
+        // and so the view's identity.
+        runtime.press("Dim")
+        #expect(!padded.has("padding"))
+        #expect(!dimmedField.has("opacity"))
+        #expect(padded.decorated)
+    }
+}

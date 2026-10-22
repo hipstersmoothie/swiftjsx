@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "SwiftJSX",
-    platforms: [.macOS(.v14), .iOS(.v17)],
+    platforms: [.macOS(.v15), .iOS(.v18)],
     products: [
         .library(name: "SwiftJSX", targets: ["SwiftJSX"]),
     ],

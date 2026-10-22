@@ -17121,6 +17121,7 @@
     for (const key in props) {
       if (key === "children" || key === "key" || key === "ref") continue;
       const v = props[key];
+      if (v === void 0) continue;
       out[key] = typeof v === "function" ? true : v;
     }
     if (props.ref != null) out.__ref = true;
@@ -17144,7 +17145,8 @@
     for (const key in newProps) {
       if (key === "children" || key === "ref") continue;
       if (!same(oldProps[key], newProps[key])) {
-        changed[key] = typeof newProps[key] === "function" ? true : newProps[key];
+        const v = newProps[key];
+        changed[key] = typeof v === "function" ? true : v === void 0 ? null : v;
         any = true;
       }
     }
@@ -17253,7 +17255,7 @@
       inst.props = newProps;
       const diff = shallowDiff(oldProps, newProps);
       if (!diff) return;
-      if (inst.eventSeq !== void 0) diff.__seq = inst.eventSeq;
+      if (inst.eventSeq !== void 0) diff.__seq = inst.ackedSeq = inst.eventSeq;
       pending.push({
         op: "update",
         id: inst.id,
@@ -17354,7 +17356,10 @@
   globalThis.__dispatch = (id, event, payload, seq) => {
     const inst = instances.get(id);
     const handler = inst?.props[event];
-    if (seq != null && inst) inst.eventSeq = seq;
+    if (seq != null && inst) {
+      inst.eventSeq = seq;
+      acknowledgeLater(inst, seq);
+    }
     if (typeof handler !== "function") return;
     const prev = currentPriority;
     currentPriority = import_constants.DiscreteEventPriority;
@@ -17364,6 +17369,19 @@
       currentPriority = prev;
     }
   };
+  function acknowledgeLater(inst, seq) {
+    Promise.resolve().then(() => {
+      if (!instances.has(inst.id) || inst.eventSeq !== seq || (inst.ackedSeq ?? 0) >= seq) return;
+      inst.ackedSeq = seq;
+      __native.commit([{
+        op: "update",
+        id: inst.id,
+        props: {
+          __seq: seq
+        }
+      }]);
+    });
+  }
   globalThis.__resolveCommand = (cb, value) => {
     callbacks.get(cb)?.(value);
     callbacks.delete(cb);

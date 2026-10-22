@@ -45,8 +45,10 @@ export type ScrollOptions = { animated?: boolean; anchor?: "top" | "center" | "b
  * forwarded to the SwiftUI view.
  */
 export class HostInstance {
-  /** Sequence number of the last native event delivered to this node. */
+  /** Sequence number of the last native event delivered to this node… */
   eventSeq: number | undefined;
+  /** …and the last one Swift has been told about. */
+  ackedSeq: number | undefined;
   constructor(readonly id: number, readonly type: string, public props: Props) {}
 
   /** Focus a TextField. */
@@ -87,6 +89,7 @@ function serialize(props: Props): Props {
   for (const key in props) {
     if (key === "children" || key === "key" || key === "ref") continue;
     const v = props[key];
+    if (v === undefined) continue;
     out[key] = typeof v === "function" ? true : v;
   }
   // Swift only tracks layout (for measure()) on nodes that have a ref.
@@ -115,7 +118,9 @@ function shallowDiff(oldProps: Props, newProps: Props): Props | null {
   for (const key in newProps) {
     if (key === "children" || key === "ref") continue;
     if (!same(oldProps[key], newProps[key])) {
-      changed[key] = typeof newProps[key] === "function" ? true : newProps[key];
+      // `undefined` doesn't survive the bridge; null tells Swift to drop the prop.
+      const v = newProps[key];
+      changed[key] = typeof v === "function" ? true : v === undefined ? null : v;
       any = true;
     }
   }
@@ -186,7 +191,7 @@ const hostConfig: any = {
     const diff = shallowDiff(oldProps, newProps);
     if (!diff) return;
     // Lets controlled native inputs ignore stale echoes (see Controlled.swift).
-    if (inst.eventSeq !== undefined) diff.__seq = inst.eventSeq;
+    if (inst.eventSeq !== undefined) diff.__seq = inst.ackedSeq = inst.eventSeq;
     pending.push({ op: "update", id: inst.id, props: diff });
   },
   commitTextUpdate(inst: TextInstance, _old: string, text: string) {
@@ -263,7 +268,10 @@ const reconciler = Reconciler(hostConfig);
 (globalThis as any).__dispatch = (id: number, event: string, payload: unknown, seq?: number) => {
   const inst = instances.get(id);
   const handler = inst?.props[event];
-  if (seq != null && inst) inst.eventSeq = seq;
+  if (seq != null && inst) {
+    inst.eventSeq = seq;
+    acknowledgeLater(inst, seq);
+  }
   if (typeof handler !== "function") return;
   const prev = currentPriority;
   currentPriority = DiscreteEventPriority;
@@ -273,6 +281,19 @@ const reconciler = Reconciler(hostConfig);
     currentPriority = prev;
   }
 };
+
+// A controlled input's edit is acknowledged by the commit that renders it
+// (`__seq` above). If the handler rejects the edit (no state change, or the
+// same value), nothing commits, so acknowledge it on its own: the input then
+// goes back to showing its `value` prop, like a controlled input in React DOM.
+// Runs after React's microtask that flushes the event's synchronous updates.
+function acknowledgeLater(inst: HostInstance, seq: number) {
+  Promise.resolve().then(() => {
+    if (!instances.has(inst.id) || inst.eventSeq !== seq || (inst.ackedSeq ?? 0) >= seq) return;
+    inst.ackedSeq = seq;
+    __native.commit([{ op: "update", id: inst.id, props: { __seq: seq } }]);
+  });
+}
 
 (globalThis as any).__resolveCommand = (cb: number, value: unknown) => {
   callbacks.get(cb)?.(value);

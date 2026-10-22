@@ -27,6 +27,41 @@ public final class Node: Identifiable {
     /// …and of the last event JS had processed when it rendered these props.
     var ackSeq: Int { (props["__seq"] as? NSNumber)?.intValue ?? 0 }
 
+    /// Whether `NodeView` wraps this node in modifiers. Once true it stays true:
+    /// adding or removing the wrapper changes the view's identity, and SwiftUI
+    /// resets the state of a view whose identity changes (a text field loses
+    /// focus, a scroll view its position). Each modifier is a no-op while its
+    /// prop is unset instead.
+    private(set) var decorated = false
+
+    /// Same idea for `foregroundStyle`, which has no no-op value: even
+    /// `.foregroundStyle(.foreground)` flattens the secondary styles that a
+    /// List gives its headers and footers. So it's attached the first time the
+    /// prop is used, and stays.
+    private(set) var hasForegroundStyle = false
+
+    /// Called after props or children change.
+    func updateDecorated() {
+        if !hasForegroundStyle && has("foregroundStyle") { hasForegroundStyle = true }
+        guard !decorated else { return }
+        if Self.alwaysDecorated.contains(type) || props.keys.contains(where: Self.modifierKeys.contains)
+            || has("__ref") || children.contains(where: \.isPresentation) {
+            decorated = true
+        }
+    }
+
+    static let modifierKeys: Set<String> = [
+        "padding", "frame", "background", "foregroundStyle", "font", "fontWeight", "fontDesign",
+        "cornerRadius", "border", "shadow", "opacity", "disabled", "transition", "onAppear",
+        "onTapGesture", "hidden",
+    ]
+
+    /// Views with state of their own get the wrapper from the start, so even
+    /// the first modifier prop doesn't reset them.
+    static let alwaysDecorated: Set<String> = [
+        "TextField", "Toggle", "Slider", "Stepper", "Picker", "ScrollView", "VirtualList", "List", "Form",
+    ]
+
     /// Sheets and alerts aren't laid out; their parent presents them.
     var isPresentation: Bool { Self.presentationTypes.contains(type) }
     static let presentationTypes: Set<String> = ["Sheet", "Alert", "ConfirmationDialog"]
@@ -94,7 +129,9 @@ public final class NodeTree {
             let id = (op["id"] as? NSNumber)?.intValue ?? -1
             switch kind {
             case "create":
-                nodes[id] = Node(id: id, type: op["type"] as? String ?? "?", props: clean(op["props"]))
+                let node = Node(id: id, type: op["type"] as? String ?? "?", props: clean(op["props"]))
+                node.updateDecorated()
+                nodes[id] = node
             case "text":
                 nodes[id] = Node(id: id, type: "#text", text: op["text"] as? String ?? "")
             case "append", "insert", "remove":
@@ -115,6 +152,7 @@ public final class NodeTree {
                         child.parent = parent
                     }
                 }
+                if child.isPresentation { parent.updateDecorated() }
             case "update":
                 guard let node = nodes[id] else { continue }
                 let changes = op["props"] as? [String: Any] ?? [:]
@@ -123,6 +161,7 @@ public final class NodeTree {
                         node.props[key] = value is NSNull ? nil : value
                     }
                 }
+                node.updateDecorated()
             case "setText":
                 guard let node = nodes[id] else { continue }
                 animating(node.parent ?? node) { node.text = op["text"] as? String ?? "" }

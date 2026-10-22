@@ -2,57 +2,45 @@ import SwiftUI
 
 // MARK: - Modifier props
 
-/// Wraps a node in modifiers only when it has modifier props, sheets to
-/// present, or a ref. Undecorated nodes pass through untouched, which matters
-/// for structural views: a `Section` wrapped in `.padding(0)` would stop being
-/// a section as far as its `List` is concerned.
+/// Wraps a node in modifiers once it has modifier props, sheets to present, or
+/// a ref (see `Node.decorated`). Undecorated nodes pass through untouched,
+/// which matters for structural views: a `Section` wrapped in `.padding(0)`
+/// would stop being a section as far as its `List` is concerned.
+///
+/// Everything below has a fixed structure: an unset prop gives a no-op
+/// modifier, never a different branch, so toggling a prop doesn't change the
+/// view's identity.
 struct Decorations: ViewModifier {
     let node: Node
 
     func body(content: Content) -> some View {
-        let decorated = node.props.keys.contains(where: Self.modifierKeys.contains)
-        let presents = node.children.contains(where: \.isPresentation)
-        let measured = node.has("__ref")
-        if decorated || presents || measured {
+        if node.decorated {
             content
-                .modifier(PropModifiers(node: node, enabled: decorated))
-                .background { if presents { Presenters(node: node) } }
-                .modifier(FrameTracker(node: node, enabled: measured))
+                .modifier(Modifiers(node: node))
+                .background { Presenters(node: node) }
+                .modifier(FrameTracker(node: node))
         } else {
             content
         }
     }
-
-    static let modifierKeys: Set<String> = [
-        "padding", "frame", "background", "foregroundStyle", "font", "fontWeight", "fontDesign",
-        "cornerRadius", "border", "shadow", "opacity", "disabled", "transition", "onAppear",
-        "onTapGesture", "hidden",
-    ]
 }
 
-struct PropModifiers: ViewModifier {
-    let node: Node
-    let enabled: Bool
-    func body(content: Content) -> some View {
-        if enabled { content.modifier(Modifiers(node: node)) } else { content }
-    }
-}
-
-/// For nodes with a ref: records the laid-out frame for `ref.current.measure()`,
+/// Records the laid-out frame of nodes with a ref, for `ref.current.measure()`,
 /// and gives the view an explicit `.id` so `scrollView.scrollTo(ref)` can find
 /// it (ScrollViewReader doesn't find views by their ForEach identity in a
-/// ScrollView).
+/// ScrollView). The geometry reader is a background, so attaching a ref doesn't
+/// change the view's identity, and nodes without one don't pay for it on every
+/// scroll frame.
 struct FrameTracker: ViewModifier {
     let node: Node
-    let enabled: Bool
     func body(content: Content) -> some View {
-        if enabled {
-            content
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { node.frame = $0 }
-                .id(node.id)
-        } else {
-            content
-        }
+        content
+            .background {
+                if node.has("__ref") {
+                    Color.clear.onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { node.frame = $0 }
+                }
+            }
+            .id(node.id)
     }
 }
 
@@ -69,11 +57,11 @@ struct Modifiers: ViewModifier {
             }
             .fontWeight(node.string("fontWeight").flatMap(fontWeight))
             .fontDesign(node.string("fontDesign").flatMap(fontDesign))
-            .modifier(OptionalForeground(color: node.string("foregroundStyle").flatMap(color)))
+            .modifier(ForegroundModifier(node: node))
             .padding(padding)
             .modifier(FrameModifier(frame: node.dict("frame")))
             .background(node.string("background").flatMap(color) ?? .clear)
-            .clipShape(RoundedRectangle(cornerRadius: node.cgFloat("cornerRadius") ?? 0))
+            .clipShape(CornerClip(radius: node.cgFloat("cornerRadius") ?? 0))
             .overlay {
                 if let border = node.dict("border") {
                     RoundedRectangle(cornerRadius: node.cgFloat("cornerRadius") ?? 0)
@@ -115,18 +103,44 @@ struct Modifiers: ViewModifier {
     }
 }
 
-struct OptionalForeground: ViewModifier {
-    let color: Color?
+/// `foregroundStyle` (see `Node.hasForegroundStyle`). Once attached, an unset
+/// prop falls back to the inherited style.
+struct ForegroundModifier: ViewModifier {
+    let node: Node
     func body(content: Content) -> some View {
-        if let color { content.foregroundStyle(color) } else { content }
+        if node.hasForegroundStyle {
+            content.foregroundStyle(node.string("foregroundStyle").flatMap(color).map(AnyShapeStyle.init) ?? AnyShapeStyle(.foreground))
+        } else {
+            content
+        }
     }
 }
 
+/// `cornerRadius` clip. Without a radius it clips nothing, so children's
+/// shadows and overflow still show.
+struct CornerClip: Shape {
+    var radius: CGFloat
+    var animatableData: CGFloat {
+        get { radius }
+        set { radius = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        radius > 0 ? Path(roundedRect: rect, cornerRadius: radius, style: .continuous)
+            : Path(rect.insetBy(dx: -1e6, dy: -1e6))
+    }
+}
+
+/// `onTapGesture`. Always attached (disabled while the prop is unset, which
+/// keeps subviews' gestures working) so adding a handler keeps the view's
+/// identity. The clear background makes the whole frame tappable, like a div.
 struct TapModifier: ViewModifier {
     let enabled: Bool
     let action: () -> Void
     func body(content: Content) -> some View {
-        if enabled { content.contentShape(Rectangle()).onTapGesture(perform: action) } else { content }
+        content
+            .background { if enabled { Color.clear.contentShape(Rectangle()) } }
+            .gesture(TapGesture().onEnded(action), including: enabled ? .all : .subviews)
     }
 }
 
@@ -138,16 +152,11 @@ struct FrameModifier: ViewModifier {
         return (frame?[key] as? NSNumber).map { CGFloat($0.doubleValue) }
     }
 
+    /// Both frames are always applied; with nil sizes each is a no-op.
     func body(content: Content) -> some View {
         let align = alignment(frame?["alignment"] as? String) ?? .center
-        if frame == nil {
-            content
-        } else if v("width") != nil || v("height") != nil {
-            content.frame(width: v("width"), height: v("height"), alignment: align)
-                .frame(minWidth: v("minWidth"), maxWidth: v("maxWidth"), minHeight: v("minHeight"), maxHeight: v("maxHeight"), alignment: align)
-        } else {
-            content.frame(minWidth: v("minWidth"), maxWidth: v("maxWidth"), minHeight: v("minHeight"), maxHeight: v("maxHeight"), alignment: align)
-        }
+        content.frame(width: v("width"), height: v("height"), alignment: align)
+            .frame(minWidth: v("minWidth"), maxWidth: v("maxWidth"), minHeight: v("minHeight"), maxHeight: v("maxHeight"), alignment: align)
     }
 }
 
