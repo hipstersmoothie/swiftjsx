@@ -1,0 +1,187 @@
+diff -ru a/NativeScript/napi/jsc/jsc-api.cpp b/NativeScript/napi/jsc/jsc-api.cpp
+--- a/NativeScript/napi/jsc/jsc-api.cpp	2026-10-21 14:17:02
++++ b/NativeScript/napi/jsc/jsc-api.cpp	2026-10-21 14:17:24
+@@ -730,7 +730,8 @@
+  public:
+   static const NativeType StaticType = TType;
+ 
+-  ~BaseInfoT() { JSClassRelease(_class); }
++  // _class is shared by every instance of T (see the constructor).
++  ~BaseInfoT() {}
+ 
+   napi_env Env() const { return _env; }
+ 
+@@ -744,10 +745,16 @@
+  protected:
+   BaseInfoT(napi_env env, const char* className)
+       : NativeInfo{TType}, _env{env} {
+-    JSClassDefinition definition{kJSClassDefinitionEmpty};
+-    definition.className = className;
+-    definition.finalize = Finalize;
+-    _class = JSClassCreate(&definition);
++    // One JSClass per info *type*, not per instance: JSC keeps per-class data
++    // (structure, prototype) on the global object for the context's lifetime,
++    // so creating a class for every wrapped object leaks ~2 KB per object.
++    static JSClassRef sharedClass = [className] {
++      JSClassDefinition definition{kJSClassDefinitionEmpty};
++      definition.className = className;
++      definition.finalize = Finalize;
++      return JSClassCreate(&definition);
++    }();
++    _class = sharedClass;
+   }
+ 
+   // JSObjectFinalizeCallback
+@@ -943,19 +950,69 @@
+ };
+ }  // namespace
+ 
++// Weak references.
++//
++// JSC's public C API has no weak handles. Liveness used to be tracked with a
++// finalizer on the target: until it ran, the target counted as alive. But JSC
++// runs finalizers lazily, when it *sweeps*, which can be well after the
++// collection that found the object dead. In that window a weak ref returned a
++// dead cell (and ref() would protect it, resurrecting it). Under allocation
++// churn, callers such as NativeScript's pointer cache then crashed reading it.
++//
++// Object targets are now tracked with a JS `WeakRef`, which the collector
++// clears *during* collection: deref() is undefined exactly when the target is
++// dead. As with any WeakRef, a target observed during the current synchronous
++// job is kept alive until that job ends.
++namespace {
++JSObjectRef WeakRefNew(napi_env env, JSValueRef target) {
++  if (env->weak_ref_constructor == nullptr) {
++    JSObjectRef global = JSContextGetGlobalObject(env->context);
++    JSValueRef ctor = JSObjectGetProperty(env->context, global, JSString("WeakRef"), nullptr);
++    if (ctor == nullptr || !JSValueIsObject(env->context, ctor)) return nullptr;
++    JSValueRef proto = JSObjectGetProperty(env->context, (JSObjectRef)ctor, JSString("prototype"), nullptr);
++    if (proto == nullptr || !JSValueIsObject(env->context, proto)) return nullptr;
++    JSValueRef deref = JSObjectGetProperty(env->context, (JSObjectRef)proto, JSString("deref"), nullptr);
++    if (deref == nullptr || !JSValueIsObject(env->context, deref)) return nullptr;
++    env->weak_ref_constructor = (JSObjectRef)ctor;
++    env->weak_ref_deref = (JSObjectRef)deref;
++    JSValueProtect(env->context, ctor);
++    JSValueProtect(env->context, deref);
++  }
++
++  JSValueRef exception{};
++  JSObjectRef weak = JSObjectCallAsConstructor(env->context, env->weak_ref_constructor, 1, &target, &exception);
++  if (exception != nullptr || weak == nullptr) return nullptr;
++  JSValueProtect(env->context, weak);
++  return weak;
++}
++
++// Whether the WeakRef's target is still alive.
++bool WeakRefIsAlive(napi_env env, JSObjectRef weak) {
++  JSValueRef exception{};
++  JSValueRef value = JSObjectCallAsFunction(env->context, env->weak_ref_deref, weak, 0, nullptr, &exception);
++  return exception == nullptr && value != nullptr && !JSValueIsUndefined(env->context, value);
++}
++}  // namespace
++
+ struct napi_ref__ {
+   napi_ref__(napi_value value, uint32_t count) : _value{value}, _count{count} {}
+ 
+   napi_status init(napi_env env) {
+-    // track the ref values to support weak refs
+-    auto pair{env->active_ref_values.insert(_value)};
+-    if (pair.second) {
+-      CHECK_NAPI(ReferenceInfo::Initialize(
+-          env, _value, [value = _value](ReferenceInfo* info) {
+-            info->Env()->active_ref_values.erase(value);
+-          }));
++    if (JSValueIsObject(env->context, ToJSValue(_value))) {
++      _weak = WeakRefNew(env, ToJSValue(_value));
+     }
+ 
++    if (_weak == nullptr) {
++      // Non-object values (or no WeakRef support): finalizer-based tracking.
++      auto pair{env->active_ref_values.insert(_value)};
++      if (pair.second) {
++        CHECK_NAPI(ReferenceInfo::Initialize(
++            env, _value, [value = _value](ReferenceInfo* info) {
++              info->Env()->active_ref_values.erase(value);
++            }));
++      }
++    }
++
+     if (_count != 0) {
+       protect(env);
+     }
+@@ -964,8 +1021,10 @@
+   }
+ 
+   void deinit(napi_env env) {
+-    if (_count != 0) {
+-      unprotect(env);
++    unprotect(env);
++    if (_weak != nullptr) {
++      JSValueUnprotect(env->context, _weak);
++      _weak = nullptr;
+     }
+ 
+     _value = nullptr;
+@@ -974,6 +1033,10 @@
+ 
+   void ref(napi_env env) {
+     if (_count++ == 0) {
++      // Becoming strong: only pin the target if it is still alive.
++      if (_weak != nullptr && !WeakRefIsAlive(env, _weak)) {
++        return;
++      }
+       protect(env);
+     }
+   }
+@@ -993,10 +1056,18 @@
+   uint32_t count() const { return _count; }
+ 
+   napi_value value(napi_env env) const {
+-    if (_protected || _count != 0) {
++    if (_protected) {
+       return _value;
+     }
+ 
++    if (_weak != nullptr) {
++      return WeakRefIsAlive(env, _weak) ? _value : nullptr;
++    }
++
++    if (_count != 0) {
++      return _value;
++    }
++
+     if (env->active_ref_values.find(_value) == env->active_ref_values.end()) {
+       return nullptr;
+     }
+@@ -1029,6 +1100,7 @@
+   uint32_t _count{};
+   std::list<napi_ref>::iterator _iter{};
+   bool _protected{false};
++  JSObjectRef _weak{};  // WeakRef to an object target; nullptr otherwise
+ };
+ 
+ void napi_env__::deinit_refs() {
+diff -ru a/NativeScript/napi/jsc/jsc-api.h b/NativeScript/napi/jsc/jsc-api.h
+--- a/NativeScript/napi/jsc/jsc-api.h	2026-10-21 14:17:02
++++ b/NativeScript/napi/jsc/jsc-api.h	2026-10-21 14:17:24
+@@ -36,6 +36,11 @@
+   JSValueRef reference_info_symbol{};
+   JSValueRef wrapper_info_symbol{};
+ 
++  // `WeakRef` constructor and `WeakRef.prototype.deref`, used to back weak
++  // napi_refs to objects (see napi_ref__ in jsc-api.cpp). Created on first use.
++  JSObjectRef weak_ref_constructor{};
++  JSObjectRef weak_ref_deref{};
++
+   const std::thread::id thread_id{std::this_thread::get_id()};
+ 
+   napi_env__(JSGlobalContextRef context) : context{context} {
+@@ -49,6 +54,8 @@
+ 
+   ~napi_env__() {
+     deinit_refs();
++    if (weak_ref_constructor) JSValueUnprotect(context, weak_ref_constructor);
++    if (weak_ref_deref) JSValueUnprotect(context, weak_ref_deref);
+     deinit_symbol(wrapper_info_symbol);
+     deinit_symbol(reference_info_symbol);
+     deinit_symbol(function_info_symbol);

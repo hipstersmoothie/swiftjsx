@@ -1,0 +1,247 @@
+diff -ru a/NativeScript/ffi/napi/Class.mm b/NativeScript/ffi/napi/Class.mm
+--- a/NativeScript/ffi/napi/Class.mm	2026-10-21 14:43:04
++++ b/NativeScript/ffi/napi/Class.mm	2026-10-21 14:43:46
+@@ -110,7 +110,7 @@
+ 
+     auto nativeClass = objc_getClass(runtimeName);
+     if (nativeClass != nil) {
+-      mdClassesByPointer[nativeClass] = originalOffset;
++      registerClassMetadata(nativeClass, originalOffset);
+     }
+ 
+     napi_property_descriptor prop = {
+diff -ru a/NativeScript/ffi/napi/ObjCBridge.h b/NativeScript/ffi/napi/ObjCBridge.h
+--- a/NativeScript/ffi/napi/ObjCBridge.h	2026-10-21 14:43:04
++++ b/NativeScript/ffi/napi/ObjCBridge.h	2026-10-21 14:43:46
+@@ -3,6 +3,7 @@
+ 
+ #include <CoreFoundation/CFRunLoop.h>
+ #include <dlfcn.h>
++#include <mach-o/dyld.h>
+ #include <objc/runtime.h>
+ #include <stdint.h>
+ 
+@@ -118,9 +119,16 @@
+     bridgedClass->nativeClass = runtimeClass;
+     classesByPointer[runtimeClass] = bridgedClass;
+     nativeObjectsByBridgeWrapper[bridgedClass] = (id)runtimeClass;
+-    if (bridgedClass->metadataOffset != MD_SECTION_OFFSET_NULL) {
+-      mdClassesByPointer[runtimeClass] = bridgedClass->metadataOffset;
++    registerClassMetadata(runtimeClass, bridgedClass->metadataOffset);
++  }
++
++  inline void registerClassMetadata(Class runtimeClass, MDSectionOffset metadataOffset) {
++    if (runtimeClass == nil || metadataOffset == MD_SECTION_OFFSET_NULL) {
++      return;
+     }
++
++    mdClassesByPointer[runtimeClass] = metadataOffset;
++    mdClassesByNormalizedPointer[NormalizeHandleKey((void*)runtimeClass)] = metadataOffset;
+   }
+ 
+   inline void registerProtocolMetadata(Protocol* runtimeProtocol,
+@@ -130,8 +138,46 @@
+     }
+ 
+     mdProtocolsByPointer[runtimeProtocol] = metadataOffset;
++    mdProtocolsByNormalizedPointer[NormalizeHandleKey((void*)runtimeProtocol)] = metadataOffset;
+   }
+ 
++  // Metadata offset for a (possibly tagged) class / protocol pointer, or
++  // MD_SECTION_OFFSET_NULL. Replaces linear scans over mdClassesByPointer /
++  // mdProtocolsByPointer comparing normalized keys.
++  inline MDSectionOffset classMetadataOffsetForPointer(const void* pointer) const {
++    auto it = mdClassesByNormalizedPointer.find(NormalizeHandleKey((void*)pointer));
++    return it != mdClassesByNormalizedPointer.end() ? it->second : MD_SECTION_OFFSET_NULL;
++  }
++
++  inline MDSectionOffset protocolMetadataOffsetForPointer(const void* pointer) const {
++    auto it = mdProtocolsByNormalizedPointer.find(NormalizeHandleKey((void*)pointer));
++    return it != mdProtocolsByNormalizedPointer.end() ? it->second : MD_SECTION_OFFSET_NULL;
++  }
++
++  // The runtime Protocol at this (possibly tagged) address, or nil.
++  // objc_copyProtocolList() copies every protocol in the process (thousands),
++  // so its result is indexed once and rebuilt only after new images load.
++  // Protocols registered at runtime by objc_registerProtocol() have no
++  // metadata, so callers had no use for them anyway.
++  inline Protocol* runtimeProtocolForPointer(const void* pointer) {
++    const uint32_t imageCount = _dyld_image_count();
++    if (imageCount != runtimeProtocolsImageCount) {
++      runtimeProtocolsByNormalizedPointer.clear();
++      unsigned int count = 0;
++      Protocol* __unsafe_unretained* protocols = objc_copyProtocolList(&count);
++      if (protocols != nullptr) {
++        for (unsigned int i = 0; i < count; i++) {
++          runtimeProtocolsByNormalizedPointer[NormalizeHandleKey((void*)protocols[i])] = protocols[i];
++        }
++        ::free(protocols);
++      }
++      runtimeProtocolsImageCount = imageCount;
++    }
++
++    auto it = runtimeProtocolsByNormalizedPointer.find(NormalizeHandleKey((void*)pointer));
++    return it != runtimeProtocolsByNormalizedPointer.end() ? it->second : nil;
++  }
++
+   inline void registerRuntimeProtocol(ObjCProtocol* bridgedProtocol,
+                                       Protocol* runtimeProtocol) {
+     if (bridgedProtocol == nullptr || runtimeProtocol == nil) {
+@@ -959,6 +1005,10 @@
+   std::unordered_map<Class, ObjCClass*> classesByPointer;
+   std::unordered_map<Class, MDSectionOffset> mdClassesByPointer;
+   std::unordered_map<Protocol*, MDSectionOffset> mdProtocolsByPointer;
++  std::unordered_map<uintptr_t, MDSectionOffset> mdClassesByNormalizedPointer;
++  std::unordered_map<uintptr_t, MDSectionOffset> mdProtocolsByNormalizedPointer;
++  std::unordered_map<uintptr_t, Protocol*> runtimeProtocolsByNormalizedPointer;
++  uint32_t runtimeProtocolsImageCount = 0;
+   std::unordered_map<void*, id> nativeObjectsByBridgeWrapper;
+   std::unordered_map<Class, napi_ref> constructorsByPointer;
+ 
+diff -ru a/NativeScript/ffi/napi/TypeConv.mm b/NativeScript/ffi/napi/TypeConv.mm
+--- a/NativeScript/ffi/napi/TypeConv.mm	2026-10-21 14:43:04
++++ b/NativeScript/ffi/napi/TypeConv.mm	2026-10-21 14:43:46
+@@ -1208,36 +1208,21 @@
+       return nullValue;
+     }
+ 
+-    auto normalizePtr = [](void* ptr) -> uintptr_t {
+-#if INTPTR_MAX == INT64_MAX
+-      // Objective-C pointers may carry auth/tag bits on some runtimes.
+-      // Compare using canonical lower bits for stable lookups.
+-      return reinterpret_cast<uintptr_t>(ptr) & 0x0000FFFFFFFFFFFFULL;
+-#else
+-      return reinterpret_cast<uintptr_t>(ptr);
+-#endif
+-    };
+-
+     auto bridgeState = ObjCBridgeState::InstanceData(env);
+     if (bridgeState != nullptr) {
++      // Every raw pointer return goes through these lookups, so they must
++      // be hash lookups: previously each miss scanned all class and protocol
++      // metadata and copied the runtime's whole protocol list (~1.5 ms per
++      // call on an iPhone simulator).
+       auto classIt = bridgeState->mdClassesByPointer.find((Class)raw);
+-      if (classIt != bridgeState->mdClassesByPointer.end()) {
+-        auto cls = bridgeState->getClass(env, classIt->second);
++      const MDSectionOffset classOffset = classIt != bridgeState->mdClassesByPointer.end()
++                                              ? classIt->second
++                                              : bridgeState->classMetadataOffsetForPointer(raw);
++      if (classOffset != MD_SECTION_OFFSET_NULL) {
++        auto cls = bridgeState->getClass(env, classOffset);
+         if (cls != nullptr) {
+           return get_ref_value(env, cls->constructor);
+         }
+-      } else {
+-        const uintptr_t rawNormalized = normalizePtr(raw);
+-        for (const auto& entry : bridgeState->mdClassesByPointer) {
+-          if (normalizePtr((void*)entry.first) != rawNormalized) {
+-            continue;
+-          }
+-
+-          auto cls = bridgeState->getClass(env, entry.second);
+-          if (cls != nullptr) {
+-            return get_ref_value(env, cls->constructor);
+-          }
+-        }
+       }
+ 
+       auto protocolIt = bridgeState->mdProtocolsByPointer.find((Protocol*)raw);
+@@ -1246,47 +1231,26 @@
+         if (proto != nullptr) {
+           return get_ref_value(env, proto->constructor);
+         }
+-      } else {
+-        const uintptr_t rawNormalized = normalizePtr(raw);
+-        for (const auto& entry : bridgeState->mdProtocolsByPointer) {
+-          if (normalizePtr((void*)entry.first) != rawNormalized) {
+-            continue;
+-          }
+-
+-          auto proto = bridgeState->getProtocol(env, entry.second);
+-          if (proto != nullptr) {
+-            return get_ref_value(env, proto->constructor);
+-          }
++      } else if (MDSectionOffset protocolOffset = bridgeState->protocolMetadataOffsetForPointer(raw);
++                 protocolOffset != MD_SECTION_OFFSET_NULL) {
++        auto proto = bridgeState->getProtocol(env, protocolOffset);
++        if (proto != nullptr) {
++          return get_ref_value(env, proto->constructor);
+         }
+-
++      } else if (Protocol* runtimeProto = bridgeState->runtimeProtocolForPointer(raw);
++                 runtimeProto != nil) {
+         // Some protocol pointers come from compile-time @protocol() references
+         // and don't always match objc_getProtocol() pointer identity.
+-        // Resolve them by scanning runtime protocol list and matching by address.
+-        unsigned int protocolCount = 0;
+-        Protocol** protocols = objc_copyProtocolList(&protocolCount);
+-        if (protocols != nullptr) {
+-          for (unsigned int i = 0; i < protocolCount; i++) {
+-            Protocol* runtimeProto = protocols[i];
+-            if (normalizePtr((void*)runtimeProto) != rawNormalized) {
+-              continue;
+-            }
+-
+-            const char* runtimeName = protocol_getName(runtimeProto);
+-            MDSectionOffset metadataOffset =
+-                findProtocolMetadataOffset(bridgeState->metadata, runtimeName);
+-            if (metadataOffset != MD_SECTION_OFFSET_NULL) {
+-              bridgeState->registerProtocolMetadata(runtimeProto, metadataOffset);
+-              auto proto = bridgeState->getProtocol(env, metadataOffset);
+-              bridgeState->registerRuntimeProtocol(proto, runtimeProto);
+-              if (proto != nullptr) {
+-                ::free(protocols);
+-                return get_ref_value(env, proto->constructor);
+-              }
+-            }
+-
+-            break;
++        const char* runtimeName = protocol_getName(runtimeProto);
++        MDSectionOffset metadataOffset =
++            findProtocolMetadataOffset(bridgeState->metadata, runtimeName);
++        if (metadataOffset != MD_SECTION_OFFSET_NULL) {
++          bridgeState->registerProtocolMetadata(runtimeProto, metadataOffset);
++          auto proto = bridgeState->getProtocol(env, metadataOffset);
++          bridgeState->registerRuntimeProtocol(proto, runtimeProto);
++          if (proto != nullptr) {
++            return get_ref_value(env, proto->constructor);
+           }
+-          ::free(protocols);
+         }
+       }
+     }
+@@ -2195,27 +2159,15 @@
+         }
+       }
+ 
+-      auto normalizePtr = [](void* ptr) -> uintptr_t {
+-        return normalizeRuntimePointer(reinterpret_cast<uintptr_t>(ptr));
+-      };
+-
+       auto protocolIt = bridgeState->mdProtocolsByPointer.find((Protocol*)obj);
+-      if (protocolIt != bridgeState->mdProtocolsByPointer.end()) {
+-        auto proto = bridgeState->getProtocol(env, protocolIt->second);
++      const MDSectionOffset protocolOffset =
++          protocolIt != bridgeState->mdProtocolsByPointer.end()
++              ? protocolIt->second
++              : bridgeState->protocolMetadataOffsetForPointer((void*)obj);
++      if (protocolOffset != MD_SECTION_OFFSET_NULL) {
++        auto proto = bridgeState->getProtocol(env, protocolOffset);
+         if (proto != nullptr) {
+           return get_ref_value(env, proto->constructor);
+-        }
+-      } else {
+-        const uintptr_t objNormalized = normalizePtr((void*)obj);
+-        for (const auto& entry : bridgeState->mdProtocolsByPointer) {
+-          if (normalizePtr((void*)entry.first) != objNormalized) {
+-            continue;
+-          }
+-
+-          auto proto = bridgeState->getProtocol(env, entry.second);
+-          if (proto != nullptr) {
+-            return get_ref_value(env, proto->constructor);
+-          }
+         }
+       }
+     }

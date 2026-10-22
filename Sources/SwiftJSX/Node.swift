@@ -1,0 +1,166 @@
+import Foundation
+import Observation
+import SwiftUI
+
+/// One host instance created by React (a `<VStack>`, a `<Text>`, a raw string…).
+///
+/// Nodes are `@Observable`, so a SwiftUI view that renders a node only
+/// re-evaluates when *that* node's props or children change — React decides
+/// what changed, SwiftUI only redraws what was touched.
+@MainActor @Observable
+public final class Node: Identifiable {
+    public let id: Int
+    /// The JSX tag (`"VStack"`, `"Button"`…), or `"#text"` for raw strings.
+    public let type: String
+    public internal(set) var props: [String: Any]
+    public internal(set) var text: String
+    public internal(set) var children: [Node] = []
+    @ObservationIgnored weak var parent: Node?
+
+    // Imperative requests from refs (`ref.current.focus()` / `.scrollTo()`).
+    var focusRequest = FocusRequest()
+    var scrollRequest: ScrollRequest?
+    /// Last laid-out frame in window coordinates, for `ref.current.measure()`.
+    @ObservationIgnored var frame: CGRect = .zero
+    /// Controlled inputs: sequence number of the last value sent to JS…
+    @ObservationIgnored var sentSeq = 0
+    /// …and of the last event JS had processed when it rendered these props.
+    var ackSeq: Int { (props["__seq"] as? NSNumber)?.intValue ?? 0 }
+
+    /// Sheets and alerts aren't laid out; their parent presents them.
+    var isPresentation: Bool { Self.presentationTypes.contains(type) }
+    static let presentationTypes: Set<String> = ["Sheet", "Alert", "ConfirmationDialog"]
+
+    init(id: Int, type: String, props: [String: Any] = [:], text: String = "") {
+        self.id = id
+        self.type = type
+        self.props = props
+        self.text = text
+    }
+
+    /// Concatenated text of this node and its descendants, so
+    /// `<Text>Count: {n}</Text>` (two text children) renders as one string.
+    var textContent: String {
+        type == "#text" ? text : children.map(\.textContent).joined()
+    }
+
+    // MARK: Typed prop access
+
+    func string(_ key: String) -> String? { props[key] as? String }
+    func bool(_ key: String) -> Bool { (props[key] as? Bool) ?? false }
+    func double(_ key: String) -> Double? { (props[key] as? NSNumber)?.doubleValue }
+    func cgFloat(_ key: String) -> CGFloat? { double(key).map { CGFloat($0) } }
+    func dict(_ key: String) -> [String: Any]? { props[key] as? [String: Any] }
+    func has(_ key: String) -> Bool { props[key] != nil }
+}
+
+struct FocusRequest: Equatable {
+    var seq = 0
+    var focused = false
+}
+
+struct ScrollRequest: Equatable {
+    var seq: Int
+    /// A node id, a VirtualList row index, or a `ScrollEdge`.
+    var target: AnyHashable
+    var anchor: UnitPoint?
+    var animated: Bool
+}
+
+enum ScrollEdge: Hashable { case top, end }
+
+/// The mirror of React's host tree on the Swift side. Applies the op stream
+/// produced by `js/renderer.ts`.
+@MainActor
+public final class NodeTree {
+    public let root = Node(id: 0, type: "#root")
+    private var nodes: [Int: Node] = [:]
+
+    init() { reset() }
+
+    func reset() {
+        root.children = []
+        nodes = [0: root]
+    }
+
+    public func node(_ id: Int) -> Node? { nodes[id] }
+
+    func apply(_ ops: [[String: Any]]) {
+        SwiftJSXDiagnostics.commits += 1
+        SwiftJSXDiagnostics.ops += ops.count
+        defer { SwiftJSXDiagnostics.countRenderedRows(in: root) }
+        for op in ops {
+            let kind = op["op"] as? String
+            let id = (op["id"] as? NSNumber)?.intValue ?? -1
+            switch kind {
+            case "create":
+                nodes[id] = Node(id: id, type: op["type"] as? String ?? "?", props: clean(op["props"]))
+            case "text":
+                nodes[id] = Node(id: id, type: "#text", text: op["text"] as? String ?? "")
+            case "append", "insert", "remove":
+                guard let parent = nodes[int(op["parent"])], let child = nodes[int(op["child"])] else { continue }
+                animating(parent) {
+                    // React may "move" a node by appending/inserting it again.
+                    parent.children.removeAll { $0 === child }
+                    switch kind {
+                    case "remove":
+                        child.parent = nil
+                        forget(child)
+                    case "insert":
+                        let idx = parent.children.firstIndex { $0.id == int(op["before"]) } ?? parent.children.endIndex
+                        parent.children.insert(child, at: idx)
+                        child.parent = parent
+                    default:
+                        parent.children.append(child)
+                        child.parent = parent
+                    }
+                }
+            case "update":
+                guard let node = nodes[id] else { continue }
+                let changes = op["props"] as? [String: Any] ?? [:]
+                animating(node) {
+                    for (key, value) in changes {
+                        node.props[key] = value is NSNull ? nil : value
+                    }
+                }
+            case "setText":
+                guard let node = nodes[id] else { continue }
+                animating(node.parent ?? node) { node.text = op["text"] as? String ?? "" }
+            default:
+                continue
+            }
+        }
+    }
+
+    private func forget(_ node: Node) {
+        nodes[node.id] = nil
+        node.children.forEach(forget)
+    }
+
+    /// Mutations to a node that has an `animation` prop (or whose parent does)
+    /// run inside `withAnimation`, so `transition` and implicit animations work.
+    private func animating(_ node: Node, _ body: () -> Void) {
+        let name = node.string("animation") ?? node.parent?.string("animation")
+        if let animation = name.map(Self.animation) {
+            withAnimation(animation, body)
+        } else {
+            body()
+        }
+    }
+
+    static func animation(_ name: String) -> Animation {
+        switch name {
+        case "spring": .spring
+        case "bouncy": .bouncy
+        case "easeInOut": .easeInOut
+        case "linear": .linear
+        default: .default
+        }
+    }
+
+    private func int(_ v: Any?) -> Int { (v as? NSNumber)?.intValue ?? -1 }
+
+    private func clean(_ v: Any?) -> [String: Any] {
+        (v as? [String: Any] ?? [:]).filter { !($0.value is NSNull) }
+    }
+}

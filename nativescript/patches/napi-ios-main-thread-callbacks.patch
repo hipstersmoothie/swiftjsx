@@ -1,0 +1,103 @@
+diff -ru a/NativeScript/ffi/napi/CallbackThreading.h b/NativeScript/ffi/napi/CallbackThreading.h
+--- a/NativeScript/ffi/napi/CallbackThreading.h	2026-10-21 15:25:14
++++ b/NativeScript/ffi/napi/CallbackThreading.h	2026-10-21 15:25:33
+@@ -3,6 +3,8 @@
+ 
+ #include "js_native_api.h"
+ 
++#include <pthread.h>
++
+ #include <atomic>
+ #include <memory>
+ 
+@@ -19,8 +21,38 @@
+ inline thread_local int native_caller_thread_callback_depth = 0;
+ #endif
+ 
++// Embedder policy for engines whose VM is usable from any thread under its
++// own lock (e.g. JSC via Node-API): callbacks that arrive on the main thread
++// run there directly instead of being queued to the JS thread (which made main
++// wait anyway, and made UIKit calls inside the callback run off main).
++inline std::atomic<bool> main_thread_callbacks_inline{false};
++// Optional hooks bracketing JS executed on the main thread, so the embedder can
++// give main priority over its JS thread for the VM.
++inline std::atomic<void (*)(void)> main_thread_callback_enter{nullptr};
++inline std::atomic<void (*)(void)> main_thread_callback_exit{nullptr};
++
+ }  // namespace detail
+ 
++// Brackets a callback that executes JS on the main thread (see the hooks above).
++class MainThreadCallbackScope final {
++ public:
++  MainThreadCallbackScope() : active_(pthread_main_np() != 0) {
++    if (active_) {
++      if (auto enter = detail::main_thread_callback_enter.load(std::memory_order_acquire)) enter();
++    }
++  }
++  ~MainThreadCallbackScope() {
++    if (active_) {
++      if (auto exit = detail::main_thread_callback_exit.load(std::memory_order_acquire)) exit();
++    }
++  }
++  MainThreadCallbackScope(const MainThreadCallbackScope&) = delete;
++  MainThreadCallbackScope& operator=(const MainThreadCallbackScope&) = delete;
++
++ private:
++  bool active_;
++};
++
+ inline bool isNativeCallRuntimeUnlockedForCallbacks() {
+ #if defined(ENABLE_JS_RUNTIME) && defined(TARGET_ENGINE_HERMES)
+   return detail::native_call_unlocked_runtime_count.load(
+@@ -43,7 +75,8 @@
+   return isNativeCallRuntimeUnlockedForCallbacks() ||
+          isNativeCallerThreadCallbackActive();
+ #else
+-  return false;
++  return detail::main_thread_callbacks_inline.load(std::memory_order_acquire) &&
++         pthread_main_np() != 0;
+ #endif
+ }
+ 
+diff -ru a/NativeScript/ffi/napi/Closure.mm b/NativeScript/ffi/napi/Closure.mm
+--- a/NativeScript/ffi/napi/Closure.mm	2026-10-21 15:25:14
++++ b/NativeScript/ffi/napi/Closure.mm	2026-10-21 15:25:33
+@@ -147,9 +147,20 @@
+ // Bridge calls from Objective-C to JavaScript.
+ // Opposite of what native_call.cc does - but a lot of type conversion logic
+ // is reused, just in reverse.
++// Embedder configuration: see detail::main_thread_callbacks_inline.
++extern "C" NAPI_EXPORT void nativescript_set_main_thread_callbacks(bool runInline,
++                                                                  void (*enter)(void),
++                                                                  void (*exit)(void)) {
++  detail::main_thread_callback_enter.store(enter, std::memory_order_release);
++  detail::main_thread_callback_exit.store(exit, std::memory_order_release);
++  detail::main_thread_callbacks_inline.store(runInline, std::memory_order_release);
++}
++
+ void JSMethodCallback(ffi_cif* cif, void* ret, void* args[], void* data) {
+   Closure* closure = (Closure*)data;
+   napi_env env = closure->env;
++  // Methods always run on the calling thread.
++  MainThreadCallbackScope mainThreadScope;
+ 
+ #ifdef ENABLE_JS_RUNTIME
+   NapiScope scope(env);
+@@ -261,6 +272,7 @@
+ void JSFunctionCallback(ffi_cif* cif, void* ret, void* args[], void* data) {
+   Closure* closure = (Closure*)data;
+   napi_env env = closure->env;
++  MainThreadCallbackScope mainThreadScope;
+ 
+ #ifdef ENABLE_JS_RUNTIME
+   NativeCallbackScope scope(env);
+@@ -351,6 +363,9 @@
+   ctx.useCondvar = false;
+ 
+   if (currentThreadId == closure->jsThreadId || shouldInvokeCallbackOnNativeCallerThread()) {
++    // Only here, not around the queued path below: there, main waits for the
++    // JS thread to run the callback, so asking it to yield would deadlock.
++    MainThreadCallbackScope mainThreadScope;
+ #ifdef ENABLE_JS_RUNTIME
+     NativeCallbackScope scope(env);
+ #endif

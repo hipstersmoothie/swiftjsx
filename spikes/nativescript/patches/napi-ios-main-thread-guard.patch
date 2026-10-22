@@ -1,0 +1,1092 @@
+diff --git a/NativeScript/ffi/napi/Class.h b/NativeScript/ffi/napi/Class.h
+index 88fed3b..02f1696 100644
+--- a/NativeScript/ffi/napi/Class.h
++++ b/NativeScript/ffi/napi/Class.h
+@@ -42,6 +42,9 @@ class ObjCClass {
+   Class nativeClass;
+   ObjCClass* superclass;
+   ObjCClassMemberMap members;
++  // Name of the class (this one or a superclass) whose @MainActor annotation
++  // this class inherits, or nullptr. See MainThreadGuard.h.
++  const char* mainActorSource = nullptr;
+ };
+ 
+ }  // namespace nativescript
+diff --git a/NativeScript/ffi/napi/Class.mm b/NativeScript/ffi/napi/Class.mm
+index 1f3da99..1d0cebc 100644
+--- a/NativeScript/ffi/napi/Class.mm
++++ b/NativeScript/ffi/napi/Class.mm
+@@ -2,6 +2,7 @@
+ #include "ClassBuilder.h"
+ #include "ClassMember.h"
+ #include "Interop.h"
++#include "MainThreadGuard.h"
+ #include "Metadata.h"
+ #include "MetadataReader.h"
+ #include "ObjCBridge.h"
+@@ -458,6 +459,11 @@ NAPI_FUNCTION(BridgedConstructor) {
+       }
+     }
+ 
++    if (isMainThreadGuardEnabled() && pthread_main_np() == 0 &&
++        mainThreadGuardRejectsClass(env, bridgeState, cls, kMainThreadGuardConstruct, nullptr)) {
++      return nullptr;
++    }
++
+     bool supercall = class_conformsToProtocol(cls, @protocol(ObjCBridgeClassBuilderProtocol));
+ 
+     if (supercall) {
+@@ -683,7 +689,8 @@ std::string NativeObjectName = "NativeObject";
+ 
+ void defineProtocolMembers(napi_env env, ObjCClassMemberMap& members, napi_value constructor,
+                            ObjCProtocol* protocol, ObjCClass* cls) {
+-  ObjCClassMember::defineMembers(env, members, protocol->membersOffset, constructor, cls);
++  ObjCClassMember::defineMembers(env, members, protocol->membersOffset, constructor, cls,
++                                 protocol->mainActor ? protocol->name.c_str() : nullptr);
+   for (auto protocol : protocol->protocols) {
+     defineProtocolMembers(env, members, constructor, protocol, cls);
+   }
+@@ -705,6 +712,7 @@ ObjCClass::ObjCClass(napi_env env, MDSectionOffset offset) {
+ 
+   MDSectionOffset superClassOffset = MD_SECTION_OFFSET_NULL;
+   bool hasMembers = false;
++  const char* annotatedMainActorName = nullptr;
+   std::string jsConstructorName;
+   if (isNativeObject) {
+     name = NativeObjectName;
+@@ -718,6 +726,9 @@ ObjCClass::ObjCClass(napi_env env, MDSectionOffset offset) {
+     bool hasProtocols = (nameOffset & mdSectionOffsetNext) != 0;
+     nameOffset &= ~mdSectionOffsetNext;
+     name = bridgeState->metadata->resolveString(nameOffset);
++    if (MDMetadataReader::isMainActorOffset(nameOffset)) {
++      annotatedMainActorName = bridgeState->metadata->resolveString(nameOffset);
++    }
+     const char* runtimeName = name.c_str();
+     if (runtimeNameOffset != MD_SECTION_OFFSET_NULL) {
+       runtimeName = bridgeState->metadata->resolveString(runtimeNameOffset);
+@@ -771,6 +782,11 @@ ObjCClass::ObjCClass(napi_env env, MDSectionOffset offset) {
+       napi_inherits(env, constructor, superConstructor);
+     }
+ 
++    // Isolation is inherited: UIColorWell : UIControl : UIView.
++    mainActorSource = annotatedMainActorName != nullptr
++                          ? annotatedMainActorName
++                          : (superclass != nullptr ? superclass->mainActorSource : nullptr);
++
+     for (auto protocolOffset : protocolOffsets) {
+       auto protocol =
+           bridgeState->getProtocol(env, protocolOffset + bridgeState->metadata->protocolsOffset);
+diff --git a/NativeScript/ffi/napi/ClassBuilder.mm b/NativeScript/ffi/napi/ClassBuilder.mm
+index aed65fd..988343e 100644
+--- a/NativeScript/ffi/napi/ClassBuilder.mm
++++ b/NativeScript/ffi/napi/ClassBuilder.mm
+@@ -470,6 +470,9 @@ ClassBuilder::ClassBuilder(napi_env env, napi_value constructor, Class explicitS
+     }
+   }
+ 
++  // JS subclasses inherit their native superclass's isolation.
++  mainActorSource = superclass != nullptr ? superclass->mainActorSource : nullptr;
++
+   napi_value className;
+   bool hasNativeClassName = false;
+   napi_has_named_property(env, constructor, "ObjCClassName", &hasNativeClassName);
+diff --git a/NativeScript/ffi/napi/ClassMember.h b/NativeScript/ffi/napi/ClassMember.h
+index e183116..b3e5e53 100644
+--- a/NativeScript/ffi/napi/ClassMember.h
++++ b/NativeScript/ffi/napi/ClassMember.h
+@@ -95,9 +95,12 @@ struct ObjCClassMemberOverload {
+ 
+ class ObjCClassMember {
+  public:
++  // mainActorProtocol: name of the @MainActor protocol the members come
++  // from, if any (see MainThreadGuard.h).
+   static void defineMembers(napi_env env, ObjCClassMemberMap& memberMap,
+                             MDSectionOffset offset, napi_value constructor,
+-                            ObjCClass* cls = nullptr);
++                            ObjCClass* cls = nullptr,
++                            const char* mainActorProtocol = nullptr);
+ 
+   static napi_value jsCall(napi_env env, napi_callback_info cbinfo);
+   static napi_value jsCallInit(napi_env env, napi_callback_info cbinfo);
+@@ -148,6 +151,15 @@ class ObjCClassMember {
+   bool classMethod;
+   ObjCClass* cls;
+   std::vector<ObjCClassMemberOverload> overloads;
++
++  // Main-thread guard (MainThreadGuard.h), resolved in defineMembers.
++  uint8_t mainThreadGuard = 0;  // MainThreadGuardKind
++  // For error messages: the JS member name, the class or protocol that
++  // declares it, and the annotated class/protocol that makes it @MainActor
++  // (nullptr when the member itself is annotated).
++  const char* jsName = nullptr;
++  const char* declaringName = nullptr;
++  const char* mainActorSource = nullptr;
+ };
+ 
+ }  // namespace nativescript
+diff --git a/NativeScript/ffi/napi/ClassMember.mm b/NativeScript/ffi/napi/ClassMember.mm
+index 7729012..1d4ac4d 100644
+--- a/NativeScript/ffi/napi/ClassMember.mm
++++ b/NativeScript/ffi/napi/ClassMember.mm
+@@ -17,6 +17,7 @@
+ #include "ClassBuilder.h"
+ #include "Closure.h"
+ #include "Interop.h"
++#include "MainThreadGuard.h"
+ #include "MetadataReader.h"
+ #include "ObjCBridge.h"
+ #include "SignatureDispatch.h"
+@@ -71,6 +72,14 @@ napi_value JS_NSObject_alloc(napi_env env, napi_callback_info cbinfo) {
+     return nullptr;
+   }
+ 
++  // alloc is receiver-isolated (MainThreadGuard.h rule 5). Most classes bind
++  // it without member data, so check the receiver class directly.
++  if (mainThreadGuardShouldCheck(kMainThreadGuardReceiver) &&
++      mainThreadGuardRejectsClass(env, ObjCBridgeState::InstanceData(env), (Class)self,
++                                  kMainThreadGuardCall, "alloc")) {
++    return nullptr;
++  }
++
+   bool supercall = class_conformsToProtocol((Class)self, @protocol(ObjCBridgeClassBuilderProtocol));
+ 
+   if (supercall) {
+@@ -83,11 +92,67 @@ napi_value JS_NSObject_alloc(napi_env env, napi_callback_info cbinfo) {
+   return ObjCBridgeState::InstanceData(env)->getObject(env, result, jsThis, kOwnedObject);
+ }
+ 
++namespace {
++
++// alloc/new/init are declared once, on NSObject, for every class. Whether
++// they're main-thread-only depends on the receiver (rule 5 in
++// MainThreadGuard.h).
++bool isReceiverIsolatedSelector(const char* selector, bool isStatic, bool isInit) {
++  if (isStatic) {
++    return strcmp(selector, "alloc") == 0 || strcmp(selector, "allocWithZone:") == 0 ||
++           strcmp(selector, "new") == 0;
++  }
++  return isInit || strncmp(selector, "init", 4) == 0;
++}
++
++struct MainThreadGuardResolution {
++  uint8_t kind = kMainThreadGuardNone;
++  const char* source = nullptr;
++};
++
++void applyMainThreadGuard(ObjCClassMember* member, const MainThreadGuardResolution& resolution,
++                          const char* jsName, const char* declaringName, bool merge) {
++  member->jsName = jsName;
++  if (declaringName != nullptr || !merge) {
++    member->declaringName = declaringName;
++  }
++  // Overloads of one JS name: the strictest wins (always > receiver > none).
++  if (!merge || resolution.kind == kMainThreadGuardAlways ||
++      (resolution.kind == kMainThreadGuardReceiver &&
++       member->mainThreadGuard == kMainThreadGuardNone)) {
++    member->mainThreadGuard = resolution.kind;
++    member->mainActorSource = resolution.source;
++  }
++}
++
++}  // namespace
++
+ void ObjCClassMember::defineMembers(napi_env env, ObjCClassMemberMap& memberMap,
+                                     MDSectionOffset offset, napi_value constructor,
+-                                    ObjCClass* cls) {
++                                    ObjCClass* cls, const char* mainActorProtocol) {
+   auto bridgeState = ObjCBridgeState::InstanceData(env);
+ 
++  const char* declaringName = cls != nullptr ? cls->name.c_str() : mainActorProtocol;
++  auto resolveMainThreadGuard = [&](MDSectionOffset rawNameOffset, const char* selector,
++                                    bool isStatic, bool isInit) {
++    MainThreadGuardResolution resolution;
++    if (MDMetadataReader::isNonisolatedOffset(rawNameOffset)) {
++      return resolution;
++    }
++    if (MDMetadataReader::isMainActorOffset(rawNameOffset)) {
++      resolution.kind = kMainThreadGuardAlways;
++    } else if (mainActorProtocol != nullptr) {
++      resolution.kind = kMainThreadGuardAlways;
++      resolution.source = mainActorProtocol;
++    } else if (cls != nullptr && cls->mainActorSource != nullptr) {
++      resolution.kind = kMainThreadGuardAlways;
++      resolution.source = cls->name.c_str();
++    } else if (isReceiverIsolatedSelector(selector, isStatic, isInit)) {
++      resolution.kind = kMainThreadGuardReceiver;
++    }
++    return resolution;
++  };
++
+   napi_value prototype;
+   napi_get_named_property(env, constructor, "prototype", &prototype);
+ 
+@@ -130,6 +195,7 @@ void ObjCClassMember::defineMembers(napi_env env, ObjCClassMemberMap& memberMap,
+ 
+     if ((flags & mdMemberProperty) != 0) {
+       bool readonly = (flags & mdMemberReadonly) != 0;
++      const MDSectionOffset rawNameOffset = bridgeState->metadata->getOffset(offset);
+       const char* name = bridgeState->metadata->getString(offset);
+       offset += sizeof(MDSectionOffset);  // name
+ 
+@@ -184,6 +250,10 @@ void ObjCClassMember::defineMembers(napi_env env, ObjCClassMemberMap& memberMap,
+             memberMap.emplace(ObjCClassMemberKey{name, isStaticMember}, updatedMember);
+         memberIt = inserted.first;
+       }
++      applyMainThreadGuard(&memberIt->second,
++                           resolveMainThreadGuard(rawNameOffset, getterSelector, isStaticMember,
++                                                  false),
++                           memberIt->first.name.c_str(), declaringName, false);
+ 
+       napi_property_descriptor property = {
+           .utf8name = name,
+@@ -198,6 +268,7 @@ void ObjCClassMember::defineMembers(napi_env env, ObjCClassMemberMap& memberMap,
+ 
+       napi_define_properties(env, jsObject, 1, &property);
+     } else {
++      const MDSectionOffset rawSelectorOffset = bridgeState->metadata->getOffset(offset);
+       auto selector = bridgeState->metadata->getString(offset);
+       offset += sizeof(MDSectionOffset);  // selector
+       auto signature = bridgeState->metadata->getOffset(offset);
+@@ -234,13 +305,20 @@ void ObjCClassMember::defineMembers(napi_env env, ObjCClassMemberMap& memberMap,
+       const ObjCClassMemberKey memberKey{name, isStaticMember};
+       auto memberIt = memberMap.find(memberKey);
+       ObjCClassMember* member = nullptr;
++      const MainThreadGuardResolution guardResolution = resolveMainThreadGuard(
++          rawSelectorOffset, selector, isStaticMember, (flags & mdMemberIsInit) != 0);
+       if (memberIt != memberMap.end()) {
+         if (memberIt->second.methodOrGetter.isProperty) {
+           continue;
+         }
++        // A redeclaration of the same selector (e.g. by the class after one of
++        // its protocols) replaces the isolation; another overload merges.
++        const bool sameSelector = memberIt->second.methodOrGetter.selector == methodSelector;
+         memberIt->second.addOverload(methodSelector, signatureOffset,
+                                      (flags & metagen::mdMemberReturnOwned) != 0 ? 1 : 0);
+         member = &memberIt->second;
++        applyMainThreadGuard(member, guardResolution, memberIt->first.name.c_str(),
++                             declaringName, !sameSelector);
+       } else if (inheritedProperty && superMember != nullptr &&
+                  !superMember->methodOrGetter.isProperty) {
+         const auto& inserted = memberMap.emplace(
+@@ -253,10 +331,16 @@ void ObjCClassMember::defineMembers(napi_env env, ObjCClassMemberMap& memberMap,
+         }
+         member->addOverload(methodSelector, signatureOffset,
+                             (flags & metagen::mdMemberReturnOwned) != 0 ? 1 : 0);
++        member->mainThreadGuard = superMember->mainThreadGuard;
++        member->mainActorSource = superMember->mainActorSource;
++        applyMainThreadGuard(member, guardResolution, inserted.first->first.name.c_str(),
++                             declaringName, true);
+       } else {
+         const auto& inserted = memberMap.emplace(
+             memberKey, ObjCClassMember(bridgeState, methodSelector, signatureOffset, flags));
+         member = &inserted.first->second;
++        applyMainThreadGuard(member, guardResolution, inserted.first->first.name.c_str(),
++                             declaringName, false);
+       }
+ 
+       if (member == nullptr) {
+@@ -1008,6 +1092,105 @@ inline id assertSelf(napi_env env, napi_value jsThis, ObjCClassMember* method =
+   return nullptr;
+ }
+ 
++extern "C" NAPI_EXPORT void nativescript_set_main_thread_guard(bool enabled) {
++  detail::main_thread_guard_enabled.store(enabled, std::memory_order_relaxed);
++}
++
++const char* mainActorSourceForClass(ObjCBridgeState* state, Class cls) {
++  if (state == nullptr) {
++    return nullptr;
++  }
++  for (Class current = cls; current != nil; current = class_getSuperclass(current)) {
++    auto bridged = state->classesByPointer.find(current);
++    if (bridged != state->classesByPointer.end() && bridged->second != nullptr) {
++      if (bridged->second->mainActorSource != nullptr) {
++        return bridged->second->mainActorSource;
++      }
++      if (bridged->second->metadataOffset != MD_SECTION_OFFSET_NULL) {
++        return nullptr;  // resolved over its whole superclass chain
++      }
++    }
++    auto metadataClass = state->mdClassesByPointer.find(current);
++    if (metadataClass != state->mdClassesByPointer.end()) {
++      MDSectionOffset nameOffset = state->metadata->getOffset(metadataClass->second);
++      if (MDMetadataReader::isMainActorOffset(nameOffset)) {
++        return state->metadata->resolveString(nameOffset);
++      }
++    }
++  }
++  return nullptr;
++}
++
++namespace {
++
++bool throwMainThreadGuardError(napi_env env, const std::string& expression,
++                               MainThreadGuardAccess access, const std::string& reason) {
++  const bool isAccess = access == kMainThreadGuardGet || access == kMainThreadGuardSet;
++  std::string message = expression + (isAccess ? " must be accessed" : " must be called") +
++                        " on the main thread (" + reason +
++                        "). Wrap it in onMain(() => ...).";
++  napi_throw_error(env, "ERR_NATIVESCRIPT_MAIN_THREAD", message.c_str());
++  return true;
++}
++
++std::string receiverIsolationReason(const char* receiverName, const char* source) {
++  if (strcmp(receiverName, source) == 0) {
++    return std::string(receiverName) + " is @MainActor";
++  }
++  return std::string(receiverName) + " inherits @MainActor from " + source;
++}
++
++}  // namespace
++
++bool mainThreadGuardRejects(napi_env env, ObjCClassMember* method, id self,
++                            MainThreadGuardAccess access) {
++  const bool receiverIsClass = object_isClass(self);
++  Class receiverClass = receiverIsClass ? (Class)self : object_getClass(self);
++  const char* receiverName = class_getName(receiverClass);
++
++  std::string reason;
++  if (method->mainThreadGuard == kMainThreadGuardReceiver) {
++    const char* source = mainActorSourceForClass(method->bridgeState, receiverClass);
++    if (source == nullptr) {
++      return false;
++    }
++    reason = receiverIsolationReason(receiverName, source);
++  } else if (method->mainActorSource != nullptr) {
++    reason = std::string(method->mainActorSource) + " is @MainActor";
++  } else {
++    reason = std::string(method->jsName != nullptr ? method->jsName : "it") + " is @MainActor";
++  }
++
++  // Static members and alloc/new/init read best with the receiver class the
++  // script named (UILabel.new()); instance members with their declaring class.
++  const char* owner = receiverName;
++  if (!receiverIsClass && method->mainThreadGuard != kMainThreadGuardReceiver &&
++      method->declaringName != nullptr) {
++    owner = method->declaringName;
++  }
++  std::string expression = std::string(owner) + "." + (method->jsName ? method->jsName : "?");
++  if (access == kMainThreadGuardCall) {
++    expression += "()";
++  } else if (access == kMainThreadGuardSet) {
++    expression += " = ...";
++  }
++  return throwMainThreadGuardError(env, expression, access, reason);
++}
++
++bool mainThreadGuardRejectsClass(napi_env env, ObjCBridgeState* state, Class cls,
++                                 MainThreadGuardAccess access, const char* member) {
++  const char* source = mainActorSourceForClass(state, cls);
++  if (source == nullptr) {
++    return false;
++  }
++  const char* name = class_getName(cls);
++  std::string expression = access == kMainThreadGuardConstruct
++                               ? std::string("new ") + name + "()"
++                               : std::string(name) + "." + member + "()";
++  return throwMainThreadGuardError(env, expression, access,
++                                   receiverIsolationReason(name, source));
++}
++
+ ObjCClass* resolveInitMetadataClass(napi_env env, napi_value jsThis, ObjCClassMember* method,
+                                     Class nativeClass) {
+   ObjCBridgeState* state = ObjCBridgeState::InstanceData(env);
+@@ -1303,6 +1486,11 @@ napi_value ObjCClassMember::jsCallInit(napi_env env, napi_callback_info cbinfo)
+     }
+   }
+ 
++  if (mainThreadGuardShouldCheck(method->mainThreadGuard) &&
++      mainThreadGuardRejects(env, method, self, kMainThreadGuardCall)) {
++    return nullptr;
++  }
++
+   Cif* cif = method->cif;
+   if (cif == nullptr) {
+     cif = method->cif =
+@@ -1469,6 +1657,11 @@ napi_value ObjCClassMember::jsCallDirect(napi_env env, ObjCClassMember* method,
+     return nullptr;
+   }
+ 
++  if (mainThreadGuardShouldCheck(method->mainThreadGuard) &&
++      mainThreadGuardRejects(env, method, self, kMainThreadGuardCall)) {
++    return nullptr;
++  }
++
+   const bool receiverIsClass = object_isClass(self);
+   Class receiverClass = receiverIsClass ? (Class)self : [self class];
+   auto resolveDescriptorCif = [&](MethodDescriptor* descriptor, Cif** cacheSlot) -> Cif* {
+@@ -1831,6 +2024,11 @@ napi_value ObjCClassMember::jsGetterDirect(napi_env env, ObjCClassMember* method
+     return nullptr;
+   }
+ 
++  if (mainThreadGuardShouldCheck(method->mainThreadGuard) &&
++      mainThreadGuardRejects(env, method, self, kMainThreadGuardGet)) {
++    return nullptr;
++  }
++
+   const bool receiverIsClass = object_isClass(self);
+ 
+   Cif* cif = method->cif;
+@@ -1925,6 +2123,11 @@ napi_value ObjCClassMember::jsSetterDirect(napi_env env, ObjCClassMember* method
+     return nullptr;
+   }
+ 
++  if (mainThreadGuardShouldCheck(method->mainThreadGuard) &&
++      mainThreadGuardRejects(env, method, self, kMainThreadGuardSet)) {
++    return nullptr;
++  }
++
+   const bool receiverIsClass = object_isClass(self);
+ 
+   Cif* cif = method->setterCif;
+diff --git a/NativeScript/ffi/napi/MainThreadGuard.h b/NativeScript/ffi/napi/MainThreadGuard.h
+new file mode 100644
+index 0000000..c4a6137
+--- /dev/null
++++ b/NativeScript/ffi/napi/MainThreadGuard.h
+@@ -0,0 +1,85 @@
++#ifndef NATIVESCRIPT_MAIN_THREAD_GUARD_H
++#define NATIVESCRIPT_MAIN_THREAD_GUARD_H
++
++#include <objc/runtime.h>
++#include <pthread.h>
++
++#include <atomic>
++#include <cstdint>
++
++#include "js_native_api.h"
++
++// Main-thread guard: when the embedder opts in with
++// nativescript_set_main_thread_guard(true), a JS call into a @MainActor
++// Objective-C member from a thread other than the main thread throws a JS
++// Error instead of running.
++//
++// Isolation comes from the metadata (the SDK's NS_SWIFT_UI_ACTOR /
++// NS_SWIFT_NONISOLATED annotations, see MDStringOffsetFlag) and is resolved
++// once, when a member is bound to its JS class (ObjCClassMember::defineMembers):
++//   1. the member is nonisolated                  -> not guarded
++//   2. the member itself is @MainActor            -> guarded
++//   3. it comes from a @MainActor protocol        -> guarded
++//   4. its declaring class, or any superclass of
++//      it, is @MainActor                          -> guarded
++//   5. it's alloc/allocWithZone:/new/init*, which
++//      NSObject declares for every class          -> guarded if the receiver's
++//                                                    class is @MainActor
++//                                                    (checked at call time)
++// Only JS -> native calls are checked. Native code calling JS-implemented
++// methods (the callback path) is never affected.
++
++namespace nativescript {
++
++class ObjCBridgeState;
++class ObjCClassMember;
++
++enum MainThreadGuardKind : uint8_t {
++  kMainThreadGuardNone = 0,
++  // Guarded regardless of receiver (rules 2-4).
++  kMainThreadGuardAlways = 1,
++  // Guarded if the receiver's class is @MainActor (rule 5).
++  kMainThreadGuardReceiver = 2,
++};
++
++enum MainThreadGuardAccess : uint8_t {
++  kMainThreadGuardCall,
++  kMainThreadGuardGet,
++  kMainThreadGuardSet,
++  kMainThreadGuardConstruct,
++};
++
++namespace detail {
++inline std::atomic<bool> main_thread_guard_enabled{false};
++}  // namespace detail
++
++inline bool isMainThreadGuardEnabled() {
++  return detail::main_thread_guard_enabled.load(std::memory_order_relaxed);
++}
++
++// Hot path: one byte test for unguarded members; a flag load and
++// pthread_main_np() for guarded ones.
++inline bool mainThreadGuardShouldCheck(uint8_t kind) {
++  return kind != kMainThreadGuardNone && isMainThreadGuardEnabled() &&
++         pthread_main_np() == 0;
++}
++
++// Name of the nearest class in cls's superclass chain (cls included) that is
++// annotated @MainActor, or nullptr if none is. JS subclasses resolve through
++// their native superclass.
++const char* mainActorSourceForClass(ObjCBridgeState* state, Class cls);
++
++// Slow path, off the main thread with the guard enabled. Throws and returns
++// true if `method` may not be called on `self` here.
++bool mainThreadGuardRejects(napi_env env, ObjCClassMember* method, id self,
++                            MainThreadGuardAccess access);
++
++// Slow path for `new Cls()` (access kMainThreadGuardConstruct) and
++// `Cls.alloc()` (kMainThreadGuardCall, member "alloc"). Throws and returns
++// true if Cls is @MainActor.
++bool mainThreadGuardRejectsClass(napi_env env, ObjCBridgeState* state, Class cls,
++                                 MainThreadGuardAccess access, const char* member);
++
++}  // namespace nativescript
++
++#endif  // NATIVESCRIPT_MAIN_THREAD_GUARD_H
+diff --git a/NativeScript/ffi/napi/Object.mm b/NativeScript/ffi/napi/Object.mm
+index 3c71572..f228e9d 100644
+--- a/NativeScript/ffi/napi/Object.mm
++++ b/NativeScript/ffi/napi/Object.mm
+@@ -690,7 +690,8 @@ napi_value findConstructorForObject(napi_env env, ObjCBridgeState* bridgeState,
+       napi_define_class(env, class_getName(cls), NAPI_AUTO_LENGTH, ObjCProtocol::jsConstructor,
+                         nullptr, 0, nullptr, &constructor);
+       for (auto impl : impls) {
+-        ObjCClassMember::defineMembers(env, impl->members, impl->membersOffset, constructor);
++        ObjCClassMember::defineMembers(env, impl->members, impl->membersOffset, constructor,
++                                       nullptr, impl->mainActor ? impl->name.c_str() : nullptr);
+       }
+ 
+       bridgeState->constructorsByPointer[cls] = make_ref(env, constructor);
+diff --git a/NativeScript/ffi/napi/Protocol.h b/NativeScript/ffi/napi/Protocol.h
+index ffae182..2d17c3c 100644
+--- a/NativeScript/ffi/napi/Protocol.h
++++ b/NativeScript/ffi/napi/Protocol.h
+@@ -31,6 +31,7 @@ class ObjCProtocol {
+   napi_ref constructor;
+   MDSectionOffset membersOffset;
+   ObjCClassMemberMap members;
++  bool mainActor = false;  // annotated @MainActor (MainThreadGuard.h)
+   std::unordered_set<ObjCProtocol*> protocols;
+ };
+ 
+diff --git a/NativeScript/ffi/napi/Protocol.mm b/NativeScript/ffi/napi/Protocol.mm
+index 7cb6557..cd09754 100644
+--- a/NativeScript/ffi/napi/Protocol.mm
++++ b/NativeScript/ffi/napi/Protocol.mm
+@@ -161,6 +161,7 @@ ObjCProtocol::ObjCProtocol(napi_env env, MDSectionOffset offset) {
+   offset += sizeof(MDSectionOffset);
+   bool next = (nameOffset & mdSectionOffsetNext) != 0;
+   nameOffset &= ~mdSectionOffsetNext;
++  mainActor = MDMetadataReader::isMainActorOffset(nameOffset);
+ 
+   name = bridgeState->metadata->resolveString(nameOffset);
+   bridgeState->registerRuntimeProtocol(this, resolveRuntimeProtocol(name.c_str()));
+@@ -184,12 +185,14 @@ ObjCProtocol::ObjCProtocol(napi_env env, MDSectionOffset offset) {
+     auto proto =
+         bridgeState->getProtocol(env, protocolImpl + bridgeState->metadata->protocolsOffset);
+     protocols.emplace(proto);
+-    ObjCClassMember::defineMembers(env, proto->members, proto->membersOffset, constructor);
++    ObjCClassMember::defineMembers(env, proto->members, proto->membersOffset, constructor,
++                                   nullptr, proto->mainActor ? proto->name.c_str() : nullptr);
+   }
+ 
+   membersOffset = offset;
+ 
+-  ObjCClassMember::defineMembers(env, members, membersOffset, constructor);
++  ObjCClassMember::defineMembers(env, members, membersOffset, constructor, nullptr,
++                                 mainActor ? name.c_str() : nullptr);
+ }
+ 
+ ObjCProtocol::~ObjCProtocol() {
+diff --git a/metadata-generator/include/IR.h b/metadata-generator/include/IR.h
+index eb05dc7..5c76960 100644
+--- a/metadata-generator/include/IR.h
++++ b/metadata-generator/include/IR.h
+@@ -242,6 +242,12 @@ class MemberDecl {
+   // For protocols
+   bool optional;
+ 
++  // Swift concurrency: member-level NS_SWIFT_UI_ACTOR / NS_SWIFT_NONISOLATED
++  // (or inherited from an annotated category). Class/protocol-level isolation
++  // is recorded on the container and resolved by the runtime.
++  bool isMainActor = false;
++  bool isNonisolated = false;
++
+   bool tsIgnore = false;
+ 
+   // Method overloads for TS emission (used to preserve superclass signatures).
+@@ -285,6 +291,11 @@ class ClassDecl {
+   bool tsIgnore = false;
+   bool unavailable = false;
+ 
++  // Directly annotated @MainActor (NS_SWIFT_UI_ACTOR); inheritance is
++  // resolved by the runtime. isSendable (NS_SWIFT_SENDABLE) is informational.
++  bool isMainActor = false;
++  bool isSendable = false;
++
+   MDSectionOffset mdOffset = MD_SECTION_OFFSET_NULL;
+ };
+ 
+@@ -311,6 +322,7 @@ class ProtocolDecl {
+   std::vector<ClassDecl*> implementerRefs;
+ 
+   bool tsIgnore = false;
++  bool isMainActor = false;
+ 
+   MDSectionOffset mdOffset = MD_SECTION_OFFSET_NULL;
+ };
+@@ -337,6 +349,9 @@ class CategoryDecl {
+ 
+   std::vector<MemberDecl> members;
+ 
++  // NS_SWIFT_UI_ACTOR on the category applies to each of its members.
++  bool isMainActor = false;
++
+   std::vector<std::string>* _classTypeParameters;
+ };
+ 
+diff --git a/metadata-generator/include/Metadata.h b/metadata-generator/include/Metadata.h
+index 8ebc6e9..17ccfe3 100644
+--- a/metadata-generator/include/Metadata.h
++++ b/metadata-generator/include/Metadata.h
+@@ -20,6 +20,22 @@ enum MDSectionOffsetFlag : uint32_t {
+   mdSectionOffsetNext = 1u << 31,
+ };
+ 
++// Swift concurrency isolation, stored in otherwise unused high bits of
++// string offsets (the strings section is a few MB, far below 2^29):
++// - class name offset: the class is annotated @MainActor (NS_SWIFT_UI_ACTOR);
++//   isolation inherited from superclasses is resolved by the runtime.
++// - protocol name offset: the protocol is annotated @MainActor.
++// - member's first string offset (method selector / property name): the
++//   member is annotated @MainActor, or nonisolated (NS_SWIFT_NONISOLATED).
++// MDMetadataReader::resolveString() masks these bits, so readers that only
++// resolve names are unaffected.
++enum MDStringOffsetFlag : uint32_t {
++  mdStringFlagMainActor = 1u << 30,
++  mdStringFlagNonisolated = 1u << 29,
++};
++
++#define MD_STRING_OFFSET_MASK ((MDSectionOffset)((1u << 29) - 1))
++
+ // Bits 0-1: flags (2 flags)
+ // Bits 2-7: kind (max 64 kinds)
+ enum MDTypeKind : uint8_t {
+@@ -113,7 +129,10 @@ enum MDFunctionFlag : uint8_t {
+ #define MD_HEADER_MAGIC_SIZE 4
+ #define MD_HEADER_MAGIC "NSMD"
+ #define MD_HEADER_VERSION_SIZE 2
+-#define MD_HEADER_VERSION 1
++// Version 2: isolation flags in string offsets (see MDStringOffsetFlag).
++// Readers accept version 1 (no flags) too.
++#define MD_HEADER_VERSION 2
++#define MD_HEADER_MIN_VERSION 1
+ #define MD_HEADER_SIZE (MD_HEADER_MAGIC_SIZE + MD_HEADER_VERSION_SIZE)
+ 
+ #define MD_NUM_SECTIONS 9
+diff --git a/metadata-generator/include/MetadataReader.h b/metadata-generator/include/MetadataReader.h
+index 4a75953..aba0d58 100644
+--- a/metadata-generator/include/MetadataReader.h
++++ b/metadata-generator/include/MetadataReader.h
+@@ -37,7 +37,7 @@ class MDMetadataReader {
+ 
+     uint16_t version;
+     memcpy(&version, data, MD_HEADER_VERSION_SIZE);
+-    if (version != MD_HEADER_VERSION) {
++    if (version < MD_HEADER_MIN_VERSION || version > MD_HEADER_VERSION) {
+       fprintf(stderr, "Invalid metadata header version\n");
+       exit(1);
+     }
+@@ -71,7 +71,17 @@ class MDMetadataReader {
+   }
+ 
+   inline char* resolveString(MDSectionOffset offset) {
+-    return (char*)data + stringsOffset + offset;
++    return (char*)data + stringsOffset + (offset & MD_STRING_OFFSET_MASK);
++  }
++
++  // Isolation flags of a class/protocol name or member selector/name offset
++  // (see MDStringOffsetFlag).
++  static inline bool isMainActorOffset(MDSectionOffset stringOffset) {
++    return (stringOffset & mdStringFlagMainActor) != 0;
++  }
++
++  static inline bool isNonisolatedOffset(MDSectionOffset stringOffset) {
++    return (stringOffset & mdStringFlagNonisolated) != 0;
+   }
+ 
+   inline MDSectionOffset getOffset(MDSectionOffset offset) {
+diff --git a/metadata-generator/include/MetadataWriter.h b/metadata-generator/include/MetadataWriter.h
+index 711b4d2..2e04f19 100644
+--- a/metadata-generator/include/MetadataWriter.h
++++ b/metadata-generator/include/MetadataWriter.h
+@@ -86,6 +86,11 @@ struct MDFunction {
+ struct MDMember {
+   MDMemberFlag flags;
+ 
++  // Serialized as mdStringFlag* bits of the selector (method) / name
++  // (property) offset.
++  bool mainActor = false;
++  bool nonisolated = false;
++
+   // Only for methods.
+   MDSectionOffset methodSelector;
+   MDSectionOffset signature;
+@@ -100,12 +105,14 @@ struct MDMember {
+ 
+ struct MDProtocol {
+   MDSectionOffset name;
++  bool mainActor = false;  // mdStringFlagMainActor on name
+   std::vector<MDSectionOffset> protocols;
+   std::vector<MDMember *> members;
+ };
+ 
+ struct MDClass {
+   MDSectionOffset name;
++  bool mainActor = false;  // mdStringFlagMainActor on name
+   MDSectionOffset runtimeName;
+   std::vector<MDSectionOffset> protocols;
+   MDSectionOffset superclass;
+diff --git a/metadata-generator/include/Util.h b/metadata-generator/include/Util.h
+index 84d7db1..0cce8f4 100644
+--- a/metadata-generator/include/Util.h
++++ b/metadata-generator/include/Util.h
+@@ -484,4 +484,97 @@ inline bool cursorHasReturnsRetainedAttribute(CXCursor cursor) {
+   return search.hasAttribute;
+ }
+ 
++// Swift concurrency annotations on a declaration, from the attributes Swift
++// itself imports: NS_SWIFT_UI_ACTOR / NS_SWIFT_MAIN_ACTOR expand to
++// __attribute__((swift_attr("@MainActor"))), NS_SWIFT_NONISOLATED to
++// swift_attr("nonisolated"), NS_SWIFT_SENDABLE to swift_attr("@Sendable").
++struct SwiftIsolationAttrs {
++  bool mainActor = false;
++  bool nonisolated = false;
++  bool sendable = false;
++};
++
++// libclang exposes swift_attr only as a CXCursor_UnexposedAttr child with no
++// spelling, no tokens and no pretty-printed form. Its extent, however, covers
++// the attribute as written in the header: either the macro invocation
++// ("NS_SWIFT_UI_ACTOR", "CARPLAY_TEMPLATE_UI_ACTOR", "CF_SWIFT_NONISOLATED")
++// or a literal __attribute__((swift_attr("..."))). Classify that text.
++inline void classifySwiftAttrText(const std::string& text,
++                                  SwiftIsolationAttrs& attrs) {
++  auto contains = [&](const char* needle) {
++    return text.find(needle) != std::string::npos;
++  };
++
++  if (contains("swift_attr")) {
++    if (contains("\"@MainActor\"") || contains("\"@UIActor\"")) {
++      attrs.mainActor = true;
++    }
++    if (contains("\"nonisolated")) {
++      attrs.nonisolated = true;
++    }
++    if (contains("\"@Sendable\"")) {
++      attrs.sendable = true;
++    }
++    return;
++  }
++
++  // A single macro name, e.g. NS_SWIFT_UI_ACTOR. Every SDK wrapper of the
++  // actor macros keeps MAIN_ACTOR / UI_ACTOR / NONISOLATED in its name.
++  if (text.empty() ||
++      !(std::isalpha((unsigned char)text[0]) || text[0] == '_')) {
++    return;
++  }
++  for (char c : text) {
++    if (!(std::isalnum((unsigned char)c) || c == '_')) {
++      return;
++    }
++  }
++  if (contains("MAIN_ACTOR") || contains("UI_ACTOR")) {
++    attrs.mainActor = true;
++  } else if (contains("NONISOLATED")) {
++    attrs.nonisolated = true;
++  } else if (contains("_SENDABLE") && !contains("NONSENDABLE") &&
++             !contains("SUPPRESS_SENDABLE")) {
++    attrs.sendable = true;
++  }
++}
++
++inline SwiftIsolationAttrs getSwiftIsolationAttrs(CXCursor cursor) {
++  SwiftIsolationAttrs attrs;
++  clang_visitChildren(
++      cursor,
++      [](CXCursor child, CXCursor, CXClientData clientData) {
++        if (child.kind != CXCursor_UnexposedAttr) {
++          return CXChildVisit_Continue;
++        }
++        auto* attrs = static_cast<SwiftIsolationAttrs*>(clientData);
++
++        CXSourceRange range = clang_getCursorExtent(child);
++        CXFile startFile = nullptr, endFile = nullptr;
++        unsigned start = 0, end = 0;
++        clang_getSpellingLocation(clang_getRangeStart(range), &startFile,
++                                  nullptr, nullptr, &start);
++        clang_getSpellingLocation(clang_getRangeEnd(range), &endFile, nullptr,
++                                  nullptr, &end);
++        if (startFile == nullptr || endFile == nullptr ||
++            !clang_File_isEqual(startFile, endFile) || end <= start ||
++            end - start > 512) {
++          return CXChildVisit_Continue;
++        }
++
++        size_t size = 0;
++        const char* contents = clang_getFileContents(
++            clang_Cursor_getTranslationUnit(child), startFile, &size);
++        if (contents == nullptr || end > size) {
++          return CXChildVisit_Continue;
++        }
++
++        classifySwiftAttrText(std::string(contents + start, end - start),
++                              *attrs);
++        return CXChildVisit_Continue;
++      },
++      &attrs);
++  return attrs;
++}
++
+ }  // namespace metagen
+diff --git a/metadata-generator/src/IR/Category.cpp b/metadata-generator/src/IR/Category.cpp
+index f80ed07..6aef226 100644
+--- a/metadata-generator/src/IR/Category.cpp
++++ b/metadata-generator/src/IR/Category.cpp
+@@ -10,6 +10,8 @@ CategoryDecl::CategoryDecl(CXCursor cursor) {
+   name = clang_getCString(cxname);
+   clang_disposeString(cxname);
+ 
++  isMainActor = getSwiftIsolationAttrs(cursor).mainActor;
++
+   clang_visitChildren(
+       cursor,
+       [](CXCursor cursor, CXCursor, CXClientData clientData) {
+@@ -66,6 +68,9 @@ void CategoryDecl::processMembers(
+           case CXCursor_ObjCInstanceMethodDecl: {
+             auto member = MemberDecl(cursor, cls->_classTypeParameters);
+             member.parentClassName = cls->className;
++            if (cls->isMainActor && !member.isNonisolated) {
++              member.isMainActor = true;
++            }
+             cls->members.emplace_back(std::move(member));
+             break;
+           }
+diff --git a/metadata-generator/src/IR/Class.cpp b/metadata-generator/src/IR/Class.cpp
+index 4b1ad58..5000486 100644
+--- a/metadata-generator/src/IR/Class.cpp
++++ b/metadata-generator/src/IR/Class.cpp
+@@ -16,6 +16,12 @@ ClassDecl::ClassDecl(CXCursor cursor) {
+   name = clang_getCString(cxname);
+   clang_disposeString(cxname);
+ 
++  SwiftIsolationAttrs isolation = getSwiftIsolationAttrs(cursor);
++  isSendable = isolation.sendable;
++  // A main-actor class is also Sendable in Swift, so both together still
++  // mean main-actor.
++  isMainActor = isolation.mainActor;
++
+   CXPrintingPolicy policy = clang_getCursorPrintingPolicy(cursor);
+   CXString printed = clang_getCursorPrettyPrinted(cursor, policy);
+   std::string prettyText = clang_getCString(printed);
+diff --git a/metadata-generator/src/IR/Member.cpp b/metadata-generator/src/IR/Member.cpp
+index cb850ee..7b9efd5 100644
+--- a/metadata-generator/src/IR/Member.cpp
++++ b/metadata-generator/src/IR/Member.cpp
+@@ -13,6 +13,10 @@ MemberDecl::MemberDecl(CXCursor cursor,
+     availability = getAvailabilityInfo(cursor);
+   }
+ 
++  SwiftIsolationAttrs isolation = getSwiftIsolationAttrs(cursor);
++  isMainActor = isolation.mainActor && !isolation.nonisolated;
++  isNonisolated = isolation.nonisolated;
++
+   CXCursorKind cursorKind = clang_getCursorKind(cursor);
+ 
+   switch (cursorKind) {
+diff --git a/metadata-generator/src/IR/Protocol.cpp b/metadata-generator/src/IR/Protocol.cpp
+index d32250b..638f2e7 100644
+--- a/metadata-generator/src/IR/Protocol.cpp
++++ b/metadata-generator/src/IR/Protocol.cpp
+@@ -12,6 +12,8 @@ ProtocolDecl::ProtocolDecl(CXCursor cursor) {
+   name = clang_getCString(cxname);
+   clang_disposeString(cxname);
+ 
++  isMainActor = getSwiftIsolationAttrs(cursor).mainActor;
++
+   clang_visitChildren(
+       cursor,
+       [](CXCursor cursor, CXCursor, CXClientData clientData) {
+diff --git a/metadata-generator/src/JSONEmitter/Emitter.cpp b/metadata-generator/src/JSONEmitter/Emitter.cpp
+index 58a337a..b6b4c17 100644
+--- a/metadata-generator/src/JSONEmitter/Emitter.cpp
++++ b/metadata-generator/src/JSONEmitter/Emitter.cpp
+@@ -133,6 +133,12 @@ void JSONEmitter::writeMembers(std::string& out,
+     if (member.isStatic) {
+       out += ",\"static\":true";
+     }
++    if (member.isMainActor) {
++      out += ",\"mainActor\":true";
++    }
++    if (member.isNonisolated) {
++      out += ",\"nonisolated\":true";
++    }
+     appendAvailability(out, member.availability);
+     out += "}";
+   }
+@@ -177,6 +183,9 @@ void JSONEmitter::write() {
+     std::string& out = ensureBuffer(proto.second.framework);
+     writeSymbolHeader(out, proto.second.name, "protocol",
+                       proto.second.availability);
++    if (proto.second.isMainActor) {
++      out += ",\"mainActor\":true";
++    }
+     writeMembers(out, proto.second.members);
+     out += "}";
+   }
+@@ -187,6 +196,12 @@ void JSONEmitter::write() {
+     }
+     std::string& out = ensureBuffer(cls.second.framework);
+     writeSymbolHeader(out, cls.second.name, "class", cls.second.availability);
++    if (cls.second.isMainActor) {
++      out += ",\"mainActor\":true";
++    }
++    if (cls.second.isSendable) {
++      out += ",\"sendable\":true";
++    }
+     writeMembers(out, cls.second.members);
+     out += "}";
+   }
+diff --git a/metadata-generator/src/MetadataWriter/Class.cpp b/metadata-generator/src/MetadataWriter/Class.cpp
+index d0c9e99..6c2178b 100644
+--- a/metadata-generator/src/MetadataWriter/Class.cpp
++++ b/metadata-generator/src/MetadataWriter/Class.cpp
+@@ -10,6 +10,7 @@ MDSectionOffset MDMetadataWriter::write(ClassDecl &decl) {
+   MDClass *mdClass = new MDClass();
+ 
+   mdClass->name = strings.add(decl.name, decl.name);
++  mdClass->mainActor = decl.isMainActor;
+   if (decl.runtimeName != "" && decl.runtimeName != decl.name) {
+     mdClass->runtimeName = strings.add(decl.runtimeName, decl.runtimeName);
+   } else {
+@@ -70,6 +71,9 @@ void MDClassSerde::serialize(MDClass *value, void *data) {
+   if (!value->protocols.empty()) {
+     nameOffset |= mdSectionOffsetNext;
+   }
++  if (value->mainActor) {
++    nameOffset |= mdStringFlagMainActor;
++  }
+   binwrite(nameOffset);
+   binwrite(runtimeNameOffset);
+   // Protocols
+diff --git a/metadata-generator/src/MetadataWriter/Member.cpp b/metadata-generator/src/MetadataWriter/Member.cpp
+index 8fff468..667023a 100644
+--- a/metadata-generator/src/MetadataWriter/Member.cpp
++++ b/metadata-generator/src/MetadataWriter/Member.cpp
+@@ -4,6 +4,8 @@ namespace metagen {
+ 
+ MDMember *MDMetadataWriter::memberFromDecl(MemberDecl &decl) {
+   MDMember *member = new MDMember();
++  member->mainActor = decl.isMainActor;
++  member->nonisolated = decl.isNonisolated;
+ 
+   switch (decl.kind) {
+   case kMemberProperty: {
+@@ -100,13 +102,23 @@ size_t MDMemberSerde::size(MDMember *value) {
+   return size;
+ }
+ 
++static inline MDSectionOffset withIsolationFlags(MDSectionOffset offset,
++                                                 MDMember *value) {
++  if (value->mainActor)
++    offset |= mdStringFlagMainActor;
++  if (value->nonisolated)
++    offset |= mdStringFlagNonisolated;
++  return offset;
++}
++
+ void MDMemberSerde::serialize(MDMember *value, void *data) {
+   // Flags
+   binwrite(value->flags);
+ 
+   if (value->flags & mdMemberProperty) {
+-    // Name
+-    binwrite(value->name);
++    // Name (+ isolation flags)
++    MDSectionOffset name = withIsolationFlags(value->name, value);
++    binwrite(name);
+     // Getter selector
+     binwrite(value->getterSelector);
+     binwrite(value->getterSignature);
+@@ -116,8 +128,9 @@ void MDMemberSerde::serialize(MDMember *value, void *data) {
+       binwrite(value->setterSignature);
+     }
+   } else {
+-    // Method selector
+-    binwrite(value->methodSelector);
++    // Method selector (+ isolation flags)
++    MDSectionOffset selector = withIsolationFlags(value->methodSelector, value);
++    binwrite(selector);
+     // Method signature
+     binwrite(value->signature);
+   }
+diff --git a/metadata-generator/src/MetadataWriter/Protocol.cpp b/metadata-generator/src/MetadataWriter/Protocol.cpp
+index b83effd..070e18f 100644
+--- a/metadata-generator/src/MetadataWriter/Protocol.cpp
++++ b/metadata-generator/src/MetadataWriter/Protocol.cpp
+@@ -10,6 +10,7 @@ MDSectionOffset MDMetadataWriter::write(ProtocolDecl &decl) {
+   MDProtocol *mdProtocol = new MDProtocol();
+ 
+   mdProtocol->name = strings.add(decl.name, decl.name);
++  mdProtocol->mainActor = decl.isMainActor;
+ 
+   mdProtocol->protocols.reserve(decl.protocolNames.size());
+   for (const std::string &name : decl.protocolNames) {
+@@ -55,7 +56,8 @@ void MDProtocolSerde::serialize(MDProtocol *value, void *data) {
+   auto memberSerde = MDMemberSerde();
+   // Name
+   auto nameOffset =
+-      value->name | (value->protocols.empty() ? 0 : mdSectionOffsetNext);
++      value->name | (value->protocols.empty() ? 0 : mdSectionOffsetNext) |
++      (value->mainActor ? mdStringFlagMainActor : 0);
+   binwrite(nameOffset);
+ 
+   // Protocols
+diff --git a/metadata-generator/src/main.cpp b/metadata-generator/src/main.cpp
+index a732324..7a17ac4 100644
+--- a/metadata-generator/src/main.cpp
++++ b/metadata-generator/src/main.cpp
+@@ -40,7 +40,11 @@ int main(int argc, char** argv) {
+                                    "-Wno-deprecated-declarations",
+                                    "-Wno-objc-property-no-attribute",
+                                    "-std=gnu11",
+-                                   "-D__NATIVESCRIPT_METADATA_GENERATOR=1"};
++                                   "-D__NATIVESCRIPT_METADATA_GENERATOR=1",
++                                   // As Swift's ClangImporter does: without
++                                   // it, NS_SWIFT_NONISOLATED and
++                                   // NS_SWIFT_SENDABLE expand to nothing.
++                                   "-D__SWIFT_ATTR_SUPPORTS_SENDABLE_DECLS=1"};
+   args.reserve(args.size() + static_cast<size_t>(argc) * 2);
+ 
+   std::unordered_set<std::string> includePaths;
+@@ -326,6 +330,33 @@ int main(int argc, char** argv) {
+     std::cerr << "     unions (n, size): " << writer.unions.size() << ", "
+               << writer.unions.section_size / 1024. << " KB" << std::endl;
+ 
++    size_t mainActorClasses = 0, sendableClasses = 0, mainActorProtocols = 0,
++           mainActorMembers = 0, nonisolatedMembers = 0;
++    auto countMembers = [&](const std::vector<MemberDecl>& members) {
++      for (const MemberDecl& member : members) {
++        mainActorMembers += member.isMainActor ? 1 : 0;
++        nonisolatedMembers += member.isNonisolated ? 1 : 0;
++      }
++    };
++    for (auto& [_, decl] : factory.classes) {
++      mainActorClasses += decl.isMainActor ? 1 : 0;
++      sendableClasses += decl.isSendable ? 1 : 0;
++      std::vector<MemberDecl> own;
++      for (const MemberDecl& member : decl.members) {
++        if (member.parentProtocolName.empty()) own.push_back(member);
++      }
++      countMembers(own);
++    }
++    for (auto& [_, decl] : factory.protocols) {
++      mainActorProtocols += decl.isMainActor ? 1 : 0;
++      countMembers(decl.members);
++    }
++    std::cerr << "  isolation: @MainActor classes " << mainActorClasses
++              << " (directly annotated), protocols " << mainActorProtocols
++              << ", members " << mainActorMembers << "; nonisolated members "
++              << nonisolatedMembers << "; Sendable classes " << sendableClasses
++              << std::endl;
++
+     auto file = std::fopen(outputBinFile.c_str(), "w");
+     std::fwrite(result.first, 1, result.second, file);
+     std::fclose(file);

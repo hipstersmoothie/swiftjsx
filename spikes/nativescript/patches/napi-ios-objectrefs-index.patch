@@ -1,0 +1,68 @@
+--- a/NativeScript/ffi/napi/ObjCBridge.h	2026-10-21 13:37:01
++++ b/NativeScript/ffi/napi/ObjCBridge.h	2026-10-21 13:37:02
+@@ -439,9 +439,9 @@
+ 
+     uintptr_t objectKey = NormalizeHandleKey((void*)object);
+     uintptr_t objectClassKey = NormalizeHandleKey((void*)object_getClass(object));
+-    for (const auto& entry : objectRefs) {
+-      if (NormalizeHandleKey((void*)entry.first) == objectKey &&
+-          NormalizeHandleKey((void*)object_getClass(entry.first)) == objectClassKey) {
++    auto range = objectRefsByKey.equal_range(objectKey);
++    for (auto it = range.first; it != range.second; ++it) {
++      if (NormalizeHandleKey((void*)object_getClass(it->second)) == objectClassKey) {
+         return true;
+       }
+     }
+@@ -940,6 +940,9 @@
+   std::thread::id jsThreadId = std::this_thread::get_id();
+   CFRunLoopRef jsRunLoop = CFRunLoopGetCurrent();
+   std::unordered_map<id, napi_ref> objectRefs;
++  // Index of objectRefs by tag-stripped pointer, so lookups by normalized key
++  // don't scan every live object (that made each new wrapper O(n)).
++  std::unordered_multimap<uintptr_t, id> objectRefsByKey;
+   std::unordered_map<uintptr_t, HandleObjectRef> handleObjectRefs;
+   std::vector<RecentObjectWrapperRef> recentObjectWrappers;
+   size_t nextRecentObjectWrapperSlot = 0;
+@@ -984,6 +987,9 @@
+ 
+   inline void storeObjectRef(id object, napi_ref ref) noexcept {
+     std::lock_guard<std::mutex> lock(objectRefsMutex);
++    if (objectRefs.find(object) == objectRefs.end()) {
++      objectRefsByKey.emplace(NormalizeHandleKey((void*)object), object);
++    }
+     objectRefs[object] = ref;
+     bumpObjectRefsGeneration();
+   }
+@@ -998,13 +1004,13 @@
+ 
+     uintptr_t objectKey = NormalizeHandleKey((void*)object);
+     uintptr_t objectClassKey = NormalizeHandleKey((void*)object_getClass(object));
+-    for (const auto& entry : objectRefs) {
+-      if (NormalizeHandleKey((void*)entry.first) != objectKey ||
+-          NormalizeHandleKey((void*)object_getClass(entry.first)) != objectClassKey) {
++    auto range = objectRefsByKey.equal_range(objectKey);
++    for (auto it = range.first; it != range.second; ++it) {
++      if (NormalizeHandleKey((void*)object_getClass(it->second)) != objectClassKey) {
+         continue;
+       }
+-
+-      return get_ref_value(env, entry.second);
++      auto entry = objectRefs.find(it->second);
++      if (entry != objectRefs.end()) return get_ref_value(env, entry->second);
+     }
+ 
+     return nullptr;
+@@ -1024,6 +1030,13 @@
+     }
+ 
+     napi_ref ref = exact->second;
++    auto range = objectRefsByKey.equal_range(NormalizeHandleKey((void*)object));
++    for (auto it = range.first; it != range.second; ++it) {
++      if (it->second == object) {
++        objectRefsByKey.erase(it);
++        break;
++      }
++    }
+     objectRefs.erase(exact);
+     bumpObjectRefsGeneration();
+     return ref;

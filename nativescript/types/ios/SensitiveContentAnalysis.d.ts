@@ -1,0 +1,62 @@
+/// <reference types="@nativescript/objc-node-api" />
+/// <reference path="./Runtime.d.ts" />
+
+declare const SCSensitiveContentTypeSexuallyExplicit: string;
+
+declare const SCSensitiveContentTypeGoreOrViolence: string;
+
+declare const SCSensitivityAnalysisPolicy: {
+  Disabled: 0,
+  SimpleInterventions: 1,
+  DescriptiveInterventions: 2,
+};
+
+declare const SCVideoStreamAnalyzerStreamDirection: {
+  Outgoing: 1,
+  Incoming: 2,
+};
+
+declare class SCVideoStreamAnalyzer extends NSObject {
+  readonly analysis: SCSensitivityAnalysis;
+
+  analysisChangedHandler: (p1: SCSensitivityAnalysis, p2: NSError) => void;
+
+  initWithParticipantUUIDStreamDirectionError(participantUUID: string, streamDirection: interop.Enum<typeof SCVideoStreamAnalyzerStreamDirection>, error: interop.PointerConvertible): this;
+
+  analyzePixelBuffer(pixelBuffer: interop.Object): void;
+
+  beginAnalysisOfDecompressionSessionError(decompressionSession: interop.Object, error: interop.PointerConvertible): boolean;
+
+  beginAnalysisOfCaptureDeviceInputError(captureDeviceInput: AVCaptureDeviceInput, error: interop.PointerConvertible): boolean;
+
+  endAnalysis(): void;
+
+  continueStream(): void;
+}
+
+declare class SCSensitivityAnalysis extends NSObject {
+  readonly sensitive: boolean;
+
+  readonly detectedTypes: NSSet;
+
+  isSensitive(): boolean;
+
+  readonly shouldInterruptVideo: boolean;
+
+  readonly shouldIndicateSensitivity: boolean;
+
+  readonly shouldMuteAudio: boolean;
+}
+
+declare class SCSensitivityAnalyzer extends NSObject {
+  init(): this;
+
+  readonly analysisPolicy: interop.Enum<typeof SCSensitivityAnalysisPolicy>;
+
+  analyzeImageFileCompletionHandler(fileURL: NSURL, completionHandler: (p1: SCSensitivityAnalysis, p2: NSError) => void | null): void;
+
+  analyzeCGImageCompletionHandler(image: interop.Object, completionHandler: (p1: SCSensitivityAnalysis, p2: NSError) => void | null): void;
+
+  analyzeVideoFileCompletionHandler(fileURL: NSURL, completionHandler: (p1: SCSensitivityAnalysis, p2: NSError) => void | null): NSProgress;
+}
+

@@ -1,0 +1,24 @@
+{
+  "name": "swiftjsx",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-reconciler": "^0.34.0",
+    "react-refresh": "^0.19.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@types/babel__core": "^7.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-reconciler": "^0.34.1",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}

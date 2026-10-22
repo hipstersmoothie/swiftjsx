@@ -1,0 +1,14 @@
+node_modules/
+.build/
+build/
+.swiftpm/
+
+# iOS sample app (generate with xcodegen; only project.yml is committed)
+Apps/iOS/*.xcodeproj/
+Apps/iOS/build/
+
+# NativeScript spike
+spikes/nativescript/.build/
+spikes/nativescript/ios/build/
+spikes/nativescript/ios/*.xcodeproj/
+.nativescript/

@@ -1,0 +1,7 @@
+# Applied in this order on top of NativeScript/napi-ios @ the commit in scripts/build-nativescript.sh.
+napi-jsc-weakref-and-shared-class.patch
+napi-ios-objectrefs-index.patch
+napi-ios-ref-leaks.patch
+napi-ios-pointer-lookups.patch
+napi-ios-main-thread-callbacks.patch
+napi-ios-main-thread-guard.patch

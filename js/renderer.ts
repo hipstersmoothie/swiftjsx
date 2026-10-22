@@ -1,0 +1,311 @@
+// A React renderer whose "host" is SwiftUI.
+//
+// React does all the work (components, hooks, reconciliation). This file only
+// translates the reconciler's mutations (create / append / insert / remove /
+// update) into a flat list of ops, and hands that list to Swift once per commit.
+// Swift owns the actual view tree and renders it with SwiftUI.
+
+import Reconciler from "react-reconciler";
+import {
+  DefaultEventPriority,
+  DiscreteEventPriority,
+  NoEventPriority,
+} from "react-reconciler/constants";
+import { createContext, type ReactNode } from "react";
+
+type Props = Record<string, any>;
+type TextInstance = { id: number; text: string };
+type Container = { id: 0 };
+
+export type Op =
+  | { op: "create"; id: number; type: string; props: Props }
+  | { op: "text"; id: number; text: string }
+  | { op: "append"; parent: number; child: number }
+  | { op: "insert"; parent: number; child: number; before: number }
+  | { op: "remove"; parent: number; child: number }
+  | { op: "update"; id: number; props: Props }
+  | { op: "setText"; id: number; text: string };
+
+// Provided by Swift (see JSEngine.swift).
+declare const __native: {
+  commit(ops: Op[]): void;
+  /** Imperative call on a native view; `callback` > 0 expects `__resolveCommand`. */
+  command(id: number, name: string, args: unknown, callback: number): void;
+  log(level: string, message: string): void;
+  /** Show the red-box error overlay. */
+  fatal(message: string): void;
+};
+
+export type Frame = { x: number; y: number; width: number; height: number };
+export type ScrollTarget = HostInstance | number | "top" | "end";
+export type ScrollOptions = { animated?: boolean; anchor?: "top" | "center" | "bottom" | "leading" | "trailing" };
+
+/**
+ * What a `ref` on a host component points at. The imperative methods are
+ * forwarded to the SwiftUI view.
+ */
+export class HostInstance {
+  /** Sequence number of the last native event delivered to this node. */
+  eventSeq: number | undefined;
+  constructor(readonly id: number, readonly type: string, public props: Props) {}
+
+  /** Focus a TextField. */
+  focus() {
+    __native.command(this.id, "focus", null, 0);
+  }
+  blur() {
+    __native.command(this.id, "blur", null, 0);
+  }
+  /**
+   * Scroll a ScrollView / VirtualList. `target` is a ref to a descendant, a
+   * row index (VirtualList), or "top" / "end".
+   */
+  scrollTo(target: ScrollTarget, options: ScrollOptions = {}) {
+    const resolved = target instanceof HostInstance ? { node: target.id } : typeof target === "number" ? { index: target } : { edge: target };
+    __native.command(this.id, "scrollTo", { ...resolved, animated: options.animated ?? true, anchor: options.anchor ?? null }, 0);
+  }
+  /** Frame in window coordinates, after the last layout. */
+  measure(): Promise<Frame> {
+    return new Promise((resolve) => {
+      const cb = nextCallback++;
+      callbacks.set(cb, resolve as (v: unknown) => void);
+      __native.command(this.id, "measure", null, cb);
+    });
+  }
+}
+
+let nextId = 1;
+let nextCallback = 1;
+let pending: Op[] = [];
+const instances = new Map<number, HostInstance>();
+const callbacks = new Map<number, (value: unknown) => void>();
+
+// Functions can't cross the bridge. Swift sees `onPress: true` and calls back
+// into __dispatch(id, "onPress", payload); we look up the live handler here.
+function serialize(props: Props): Props {
+  const out: Props = {};
+  for (const key in props) {
+    if (key === "children" || key === "key" || key === "ref") continue;
+    const v = props[key];
+    out[key] = typeof v === "function" ? true : v;
+  }
+  // Swift only tracks layout (for measure()) on nodes that have a ref.
+  if (props.ref != null) out.__ref = true;
+  return out;
+}
+
+// `frame={{ width: 10 }}` is a new object every render; compare by value so we
+// don't send (and SwiftUI doesn't re-render) props that didn't really change.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a === "function" && typeof b === "function") return true;
+  if (a && b && typeof a === "object" && typeof b === "object") {
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function shallowDiff(oldProps: Props, newProps: Props): Props | null {
+  const changed: Props = {};
+  let any = false;
+  for (const key in newProps) {
+    if (key === "children" || key === "ref") continue;
+    if (!same(oldProps[key], newProps[key])) {
+      changed[key] = typeof newProps[key] === "function" ? true : newProps[key];
+      any = true;
+    }
+  }
+  for (const key in oldProps) {
+    if (key === "children" || key === "ref") continue;
+    if (!(key in newProps)) {
+      changed[key] = null;
+      any = true;
+    }
+  }
+  if ((oldProps.ref != null) !== (newProps.ref != null)) {
+    changed.__ref = newProps.ref != null ? true : null;
+    any = true;
+  }
+  return any ? changed : null;
+}
+
+let currentPriority: number = NoEventPriority;
+
+const hostConfig: any = {
+  rendererPackageName: "swiftjsx",
+  rendererVersion: "0.1.0",
+  supportsMutation: true,
+  supportsPersistence: false,
+  supportsHydration: false,
+  isPrimaryRenderer: true,
+  supportsMicrotasks: true,
+  scheduleMicrotask: (fn: () => void) => Promise.resolve().then(fn),
+  scheduleTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
+  cancelTimeout: (id: number) => clearTimeout(id),
+  noTimeout: -1,
+  warnsIfNotActing: false,
+
+  createInstance(type: string, props: Props): HostInstance {
+    const inst = new HostInstance(nextId++, type, props);
+    instances.set(inst.id, inst);
+    pending.push({ op: "create", id: inst.id, type, props: serialize(props) });
+    return inst;
+  },
+  createTextInstance(text: string): TextInstance {
+    const inst = { id: nextId++, text };
+    pending.push({ op: "text", id: inst.id, text });
+    return inst;
+  },
+  appendInitialChild(parent: HostInstance, child: HostInstance | TextInstance) {
+    pending.push({ op: "append", parent: parent.id, child: child.id });
+  },
+  appendChild(parent: HostInstance, child: HostInstance | TextInstance) {
+    pending.push({ op: "append", parent: parent.id, child: child.id });
+  },
+  appendChildToContainer(_: Container, child: HostInstance | TextInstance) {
+    pending.push({ op: "append", parent: 0, child: child.id });
+  },
+  insertBefore(parent: HostInstance, child: HostInstance | TextInstance, before: HostInstance | TextInstance) {
+    pending.push({ op: "insert", parent: parent.id, child: child.id, before: before.id });
+  },
+  insertInContainerBefore(_: Container, child: HostInstance | TextInstance, before: HostInstance | TextInstance) {
+    pending.push({ op: "insert", parent: 0, child: child.id, before: before.id });
+  },
+  removeChild(parent: HostInstance, child: HostInstance | TextInstance) {
+    pending.push({ op: "remove", parent: parent.id, child: child.id });
+  },
+  removeChildFromContainer(_: Container, child: HostInstance | TextInstance) {
+    pending.push({ op: "remove", parent: 0, child: child.id });
+  },
+  commitUpdate(inst: HostInstance, _type: string, oldProps: Props, newProps: Props) {
+    inst.props = newProps;
+    const diff = shallowDiff(oldProps, newProps);
+    if (!diff) return;
+    // Lets controlled native inputs ignore stale echoes (see Controlled.swift).
+    if (inst.eventSeq !== undefined) diff.__seq = inst.eventSeq;
+    pending.push({ op: "update", id: inst.id, props: diff });
+  },
+  commitTextUpdate(inst: TextInstance, _old: string, text: string) {
+    inst.text = text;
+    pending.push({ op: "setText", id: inst.id, text });
+  },
+  detachDeletedInstance(inst: HostInstance) {
+    instances.delete(inst.id);
+  },
+  clearContainer() {},
+  resetTextContent() {},
+  shouldSetTextContent: () => false,
+  finalizeInitialChildren: () => false,
+  getRootHostContext: () => ({}),
+  getChildHostContext: (ctx: unknown) => ctx,
+  getPublicInstance: (inst: HostInstance) => inst,
+  prepareForCommit: () => null,
+  resetAfterCommit() {
+    const ops = pending;
+    pending = [];
+    if (ops.length) __native.commit(ops);
+  },
+  preparePortalMount() {},
+  hideInstance(inst: HostInstance) {
+    pending.push({ op: "update", id: inst.id, props: { hidden: true } });
+  },
+  unhideInstance(inst: HostInstance) {
+    pending.push({ op: "update", id: inst.id, props: { hidden: null } });
+  },
+  hideTextInstance() {},
+  unhideTextInstance() {},
+  getInstanceFromNode: () => null,
+  beforeActiveInstanceBlur() {},
+  afterActiveInstanceBlur() {},
+  prepareScopeUpdate() {},
+  getInstanceFromScope: () => null,
+
+  // Update priorities: native events are "discrete" (like a click on the web),
+  // so state updates from them render before the event handler returns.
+  setCurrentUpdatePriority(p: number) {
+    currentPriority = p;
+  },
+  getCurrentUpdatePriority: () => currentPriority,
+  resolveUpdatePriority: () => currentPriority || DefaultEventPriority,
+  resolveEventType: () => null,
+  resolveEventTimeStamp: () => -1.1,
+  trackSchedulerEvent() {},
+  shouldAttemptEagerTransition: () => false,
+  requestPostPaintCallback() {},
+
+  // Suspense-y commit hooks: we never suspend a commit.
+  maySuspendCommit: () => false,
+  maySuspendCommitOnUpdate: () => false,
+  maySuspendCommitInSyncRender: () => false,
+  preloadInstance: () => true,
+  startSuspendingCommit() {},
+  suspendInstance() {},
+  waitForCommitToBeReady: () => null,
+  getSuspendedCommitReason: () => null,
+
+  NotPendingTransition: null,
+  HostTransitionContext: createContext(null),
+  resetFormInstance() {},
+  bindToConsole: (methodName: string, args: unknown[]) =>
+    (console as any)[methodName].bind(console, ...args),
+};
+
+const reconciler = Reconciler(hostConfig);
+// Registers with the React Refresh hook (installed by refresh-setup.ts).
+(reconciler as any).injectIntoDevTools();
+
+// Called by Swift when a native control fires an event. `seq` is set for
+// events from controlled inputs.
+(globalThis as any).__dispatch = (id: number, event: string, payload: unknown, seq?: number) => {
+  const inst = instances.get(id);
+  const handler = inst?.props[event];
+  if (seq != null && inst) inst.eventSeq = seq;
+  if (typeof handler !== "function") return;
+  const prev = currentPriority;
+  currentPriority = DiscreteEventPriority;
+  try {
+    handler(payload);
+  } finally {
+    currentPriority = prev;
+  }
+};
+
+(globalThis as any).__resolveCommand = (cb: number, value: unknown) => {
+  callbacks.get(cb)?.(value);
+  callbacks.delete(cb);
+};
+
+const describe = (e: unknown) => (e instanceof Error ? `${e.message}\n${e.stack}` : String(e));
+const onUncaught = (e: unknown) => __native.fatal(describe(e));
+const onCaught = (e: unknown) => console.error(describe(e));
+
+let root: unknown = null;
+
+/**
+ * Mount the app. Calling it again (which happens when a hot update re-runs
+ * your bundle) is a no-op; React Refresh swaps the components in place.
+ */
+export function render(element: ReactNode) {
+  if (root) return;
+  // @types/react-reconciler lags the 0.34 signature, so call it untyped.
+  root = (reconciler.createContainer as any)(
+    { id: 0 },
+    1, // ConcurrentRoot
+    null,
+    false,
+    null,
+    "",
+    onUncaught,
+    onCaught,
+    onCaught,
+    () => {},
+  );
+  // Mount synchronously so the first SwiftUI frame isn't blank. Later updates
+  // are scheduled normally (concurrent features, transitions, Suspense all work).
+  reconciler.updateContainerSync(element, root as any, null, null);
+  reconciler.flushSyncWork();
+}

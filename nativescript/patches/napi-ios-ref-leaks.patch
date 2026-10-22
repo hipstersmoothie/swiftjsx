@@ -1,0 +1,150 @@
+diff -ru a/NativeScript/ffi/napi/Interop.h b/NativeScript/ffi/napi/Interop.h
+--- a/NativeScript/ffi/napi/Interop.h	2026-10-21 14:33:19
++++ b/NativeScript/ffi/napi/Interop.h	2026-10-21 14:33:19
+@@ -46,6 +46,9 @@
+ 
+   void* data;
+   bool adopted = false;
++  // Weak ref registered in the pointer cache for this instance (owned here,
++  // borrowed by the cache); deleted in finalize.
++  napi_ref cacheRef = nullptr;
+ };
+ 
+ class Reference {
+diff -ru a/NativeScript/ffi/napi/Interop.mm b/NativeScript/ffi/napi/Interop.mm
+--- a/NativeScript/ffi/napi/Interop.mm	2026-10-21 14:33:19
++++ b/NativeScript/ffi/napi/Interop.mm	2026-10-21 14:34:32
+@@ -299,15 +299,22 @@
+ }
+ 
+ void finalizePointerNow(napi_env env, void* data, void* hint) {
+-  (void)env;
+   (void)hint;
+   Pointer* ptr = (Pointer*)data;
+   if (ptr == nullptr) {
+     return;
+   }
+-  auto it = g_pointerCache.find(pointerKey(ptr->data));
+-  if (it != g_pointerCache.end()) {
+-    g_pointerCache.erase(it);
++  if (ptr->cacheRef != nullptr) {
++    // Only remove the cache entry if it is still ours: a newer Pointer for
++    // the same address may own it now. (Erasing unconditionally both dropped
++    // live entries and leaked their refs.)
++    auto it = g_pointerCache.find(pointerKey(ptr->data));
++    if (it != g_pointerCache.end() && it->second == ptr->cacheRef) {
++      g_pointerCache.erase(it);
++    }
++    // No JS calls here: this can run during GC finalization.
++    napi_delete_reference(env, ptr->cacheRef);
++    ptr->cacheRef = nullptr;
+   }
+   delete ptr;
+ }
+@@ -318,16 +325,16 @@
+     return false;
+   }
+ 
++  // Stale entries are dropped from the cache but not deleted: the ref is owned
++  // by the Pointer that registered it and is deleted in its finalizer.
+   *value = get_ref_value(env, it->second);
+   if (*value == nullptr) {
+-    napi_delete_reference(env, it->second);
+     g_pointerCache.erase(it);
+     return false;
+   }
+ 
+   napi_valuetype valueType = napi_undefined;
+   if (napi_typeof(env, *value, &valueType) != napi_ok || valueType != napi_object) {
+-    napi_delete_reference(env, it->second);
+     g_pointerCache.erase(it);
+     *value = nullptr;
+     return false;
+@@ -335,7 +342,6 @@
+ 
+   Pointer* ptr = Pointer::unwrap(env, *value);
+   if (ptr == nullptr || ptr->data != data) {
+-    napi_delete_reference(env, it->second);
+     g_pointerCache.erase(it);
+     *value = nullptr;
+     return false;
+@@ -344,14 +350,23 @@
+   return true;
+ }
+ 
+-inline void cachePointer(napi_env env, void* data, napi_value value) {
++// Registers `value` as the cached Pointer for `data` and returns the weak ref,
++// which the caller (the Pointer) owns. Returns nullptr if a live entry exists.
++inline napi_ref cachePointer(napi_env env, void* data, napi_value value) {
+   const uintptr_t key = pointerKey(data);
+-  if (g_pointerCache.find(key) != g_pointerCache.end()) {
+-    return;
++  auto it = g_pointerCache.find(key);
++  if (it != g_pointerCache.end()) {
++    if (get_ref_value(env, it->second) != nullptr) {
++      return nullptr;
++    }
++    g_pointerCache.erase(it);  // dead entry; its owner deletes the ref
+   }
+   napi_ref ref = nullptr;
+-  napi_create_reference(env, value, 0, &ref);
++  if (napi_create_reference(env, value, 0, &ref) != napi_ok) {
++    return nullptr;
++  }
+   g_pointerCache[key] = ref;
++  return ref;
+ }
+ 
+ inline std::string pointerHexString(void* data) {
+@@ -909,11 +924,17 @@
+   napi_unwrap(env, arg, (void**)&ptr);
+ 
+   if (ptr != nullptr && ptr->data != nullptr) {
++    // The memory is going away, so drop the cache entry for its address. The
++    // entry's ref belongs to whichever Pointer registered it; only release our
++    // own (another Pointer's ref is deleted by its finalizer).
+     auto it = g_pointerCache.find(pointerKey(ptr->data));
+     if (it != g_pointerCache.end()) {
+-      napi_delete_reference(env, it->second);
+       g_pointerCache.erase(it);
+     }
++    if (ptr->cacheRef != nullptr) {
++      napi_delete_reference(env, ptr->cacheRef);
++      ptr->cacheRef = nullptr;
++    }
+     free(ptr->data);
+     ptr->data = nullptr;
+   }
+@@ -1465,7 +1486,7 @@
+ 
+   Pointer* ptr = new Pointer(data);
+   napi_wrap(env, jsThis, ptr, Pointer::finalize, nullptr, nullptr);
+-  cachePointer(env, data, jsThis);
++  ptr->cacheRef = cachePointer(env, data, jsThis);
+ 
+   return jsThis;
+ }
+diff -ru a/NativeScript/ffi/napi/Object.mm b/NativeScript/ffi/napi/Object.mm
+--- a/NativeScript/ffi/napi/Object.mm	2026-10-21 14:33:19
++++ b/NativeScript/ffi/napi/Object.mm	2026-10-21 14:33:19
+@@ -426,7 +426,7 @@
+ }
+ 
+ namespace {
+-void finalize_objc_object_now(napi_env /*env*/, void* data, void* hint) {
++void finalize_objc_object_now(napi_env env, void* data, void* hint) {
+   (void)hint;
+   JSObjectFinalizerContext* context = static_cast<JSObjectFinalizerContext*>(data);
+   if (context == nullptr) {
+@@ -436,6 +436,11 @@
+   ObjCBridgeState* bridgeState = context->bridgeState;
+   if (IsBridgeStateLive(bridgeState, context->bridgeStateToken)) {
+     bridgeState->unregisterObjectIfRefMatches(context->object, context->ref);
++    // The ref returned by napi_add_finalizer() in getObject() belongs to this
++    // context: objectRefs / handleObjectRefs only borrow it (and no longer
++    // hold it after unregistering, or never did if the object was re-wrapped).
++    // Without this, every wrapped object leaked one napi_ref.
++    DeleteReferenceOnOwningThread(env, bridgeState, context->bridgeStateToken, context->ref);
+   }
+ 
+   delete context;
