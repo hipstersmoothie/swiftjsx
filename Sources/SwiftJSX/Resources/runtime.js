@@ -18087,11 +18087,11 @@ ${error.stack}` : String(error));
   }
   function useSharedValue(initial) {
     const $ = (0, import_compiler_runtime.c)(6);
-    if ($[0] !== "1d93727551b85d34ac23171b46cea1d617eafcf519449a0bb63dfa7415cb92ed") {
+    if ($[0] !== "0466223fa8cfc2d85569d109af94631a41d649315456642e137ab991bae5366c") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "1d93727551b85d34ac23171b46cea1d617eafcf519449a0bb63dfa7415cb92ed";
+      $[0] = "0466223fa8cfc2d85569d109af94631a41d649315456642e137ab991bae5366c";
     }
     let t0;
     if ($[1] !== initial) {
@@ -18179,8 +18179,9 @@ ${error.stack}` : String(error));
     const fn = typeof v === "function" ? v : v.__animatedStyle;
     const {
       code,
-      closure
+      closure: read
     } = fn.__worklet;
+    const closure = read();
     const out = {};
     for (const key in closure) out[key] = serializeCaptured(closure[key], ids);
     return {
@@ -18205,7 +18206,8 @@ ${error.stack}` : String(error));
       jsFunctions.set(id, fn);
       ids.add(id);
       return {
-        __jsFunction: id
+        __jsFunction: id,
+        name: fn.name || "anonymous"
       };
     }
     if (Array.isArray(v)) return v.map((x) => serializeCaptured(x, ids));

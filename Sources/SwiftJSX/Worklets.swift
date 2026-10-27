@@ -26,6 +26,8 @@ final class WorkletRuntime {
     private let callJS: (Int, [Any]) -> Void
     private let syncToJS: ([String: Any]) -> Void
     private let report: (String) -> Void
+    /// Animations of the steps the last flush applied ("none" if unanimated), for tests.
+    private(set) var lastSteps: [String] = []
 
     init(tree: NodeTree, callJS: @escaping (Int, [Any]) -> Void, syncToJS: @escaping ([String: Any]) -> Void,
          report: @escaping (String) -> Void) {
@@ -37,11 +39,6 @@ final class WorkletRuntime {
         context.name = "SwiftJSX worklets"
 
         let host = JSValue(newObjectIn: context)!
-        let callJSBlock: @convention(block) (Int, JSValue) -> Void = { id, args in
-            let list = args.toArray() ?? []
-            MainActor.assumeIsolated { callJS(id, list) }
-        }
-        host.setObject(callJSBlock, forKeyedSubscript: "callJS" as NSString)
         let log: @convention(block) (String) -> Void = { print("[worklet] \($0)") }
         host.setObject(log, forKeyedSubscript: "log" as NSString)
         context.setObject(host, forKeyedSubscript: "__host" as NSString)
@@ -111,7 +108,11 @@ final class WorkletRuntime {
     /// disable animations, so a dragged view never lags behind the finger.
     private func flush() {
         guard let result = api.invokeMethod("flush", withArguments: [])?.toDictionary() else { return }
-        for case let update as [String: Any] in result["styles"] as? [Any] ?? [] {
+        let updates = result["styles"] as? [Any] ?? []
+        if !updates.isEmpty {
+            lastSteps = updates.map { (($0 as? [String: Any])?["animation"] as? [String: Any])?["type"] as? String ?? "none" }
+        }
+        for case let update as [String: Any] in updates {
             guard let id = (update["node"] as? NSNumber)?.intValue, let node = tree?.node(id) else { continue }
             let props = update["props"] as? [String: Any] ?? [:]
             if let animation = parseAnimation(update["animation"]) {
@@ -125,6 +126,11 @@ final class WorkletRuntime {
         if let values = result["values"] as? [String: Any], !values.isEmpty {
             syncToJS(values)
         }
+        // After the sync, so JS-thread callbacks see the values the worklet wrote.
+        for case let call as [Any] in result["calls"] as? [Any] ?? [] {
+            guard let id = (call.first as? NSNumber)?.intValue else { continue }
+            callJS(id, call.dropFirst().first as? [Any] ?? [])
+        }
     }
 
     // MARK: Prelude
@@ -133,7 +139,9 @@ final class WorkletRuntime {
     (() => {
       const shared = new Map();   // id -> { value, styles: Set<nodeId>, proxy }
       const styles = new Map();   // nodeId -> { fn, deps: Set<id> }
-      const changed = new Map();  // id -> animation spec | null, since the last flush
+      const changed = new Map();  // id -> { animation, previous }, since the last flush
+      const calls = [];           // [id, args] of JS-thread functions, run after the flush
+      const warned = new Set();
       const toJS = new Map();     // id -> value written by a worklet, to sync back
       let tracking = null;
 
@@ -157,8 +165,9 @@ final class WorkletRuntime {
         const s = entry(id);
         let animation = null;
         if (v && typeof v === "object" && v.__animate) { animation = v.animation; v = v.to; }
+        const previous = changed.has(id) ? changed.get(id).previous : s.value;
+        changed.set(id, { animation, previous });
         s.value = v;
-        if (!changed.has(id) || animation) changed.set(id, animation);
         if (fromWorklet) toJS.set(id, v);
       }
 
@@ -169,7 +178,7 @@ final class WorkletRuntime {
           animation: { type: config.easing ?? "easeInOut", duration: config.duration ?? 0.3, delay: config.delay },
         }),
         withAnimation: (animation, to) => ({ __animate: true, to, animation }),
-        runOnJS: (fn) => fn,
+        runOnJS: (fn) => fn.__runOnJS ?? fn,
       };
 
       function hydrate(v) {
@@ -179,7 +188,17 @@ final class WorkletRuntime {
           if ("__worklet" in v) return compile(v.__worklet);
           if ("__jsFunction" in v) {
             const id = v.__jsFunction;
-            return (...args) => { __host.callJS(id, args); };
+            const call = (...args) => { calls.push([id, args]); };
+            // Called without runOnJS: usually a helper missing "worklet".
+            const direct = (...args) => {
+              if (!warned.has(id)) {
+                warned.add(id);
+                __host.log(`A worklet called ${v.name}(), a JS-thread function: it runs later on the JS thread and returns undefined. Mark it "worklet" to run it here, or call it through runOnJS().`);
+              }
+              call(...args);
+            };
+            direct.__runOnJS = call;
+            return direct;
           }
           if ("__builtin" in v) return builtins[v.__builtin];
           const out = {};
@@ -236,24 +255,46 @@ final class WorkletRuntime {
           if (m.type === "delete") shared.delete(m.id);
           else set(m.id, m.value, false);
         },
+        // Styles whose shared values changed, re-evaluated. Values changed with
+        // different animations are applied in steps, one animation each (only
+        // that group's values new so far), so a spring on one value and a
+        // timing curve on another both keep their own curve. Unanimated
+        // changes go last.
         flush() {
-          const dirty = new Map();  // node -> animation
-          for (const [id, animation] of changed) {
+          const byNode = new Map();  // node -> Map<animation key, { animation, ids }>
+          for (const [id, change] of changed) {
             const s = shared.get(id);
             if (!s) continue;
+            const key = change.animation ? JSON.stringify(change.animation) : "";
             for (const node of s.styles) {
-              if (!dirty.has(node) || (animation && !dirty.get(node))) dirty.set(node, animation);
+              const groups = byNode.get(node) ?? new Map();
+              const group = groups.get(key) ?? { animation: change.animation, ids: [] };
+              group.ids.push(id);
+              groups.set(key, group);
+              byNode.set(node, groups);
+            }
+          }
+          const out = [];
+          for (const [node, groups] of byNode) {
+            if (!styles.has(node)) continue;
+            const steps = [...groups.values()].sort((a, b) => (a.animation ? 0 : 1) - (b.animation ? 0 : 1));
+            if (steps.length === 1) {
+              out.push({ node, props: evaluate(node), animation: steps[0].animation });
+              continue;
+            }
+            const ids = steps.flatMap((step) => step.ids);
+            const now = new Map(ids.map((id) => [id, shared.get(id).value]));
+            for (const id of ids) shared.get(id).value = changed.get(id).previous;
+            for (const step of steps) {
+              for (const id of step.ids) shared.get(id).value = now.get(id);
+              out.push({ node, props: evaluate(node), animation: step.animation });
             }
           }
           changed.clear();
-          const out = [];
-          for (const [node, animation] of dirty) {
-            if (styles.has(node)) out.push({ node, props: evaluate(node), animation });
-          }
           const values = {};
           for (const [id, v] of toJS) values[id] = v;
           toJS.clear();
-          return { styles: out, values };
+          return { styles: out, values, calls: calls.splice(0) };
         },
       };
     })()

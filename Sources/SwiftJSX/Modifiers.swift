@@ -74,8 +74,10 @@ struct Modifiers: ViewModifier {
             .disabled(node.bool("disabled"))
             .transition(transition(node.string("transition")))
             .onAppear { if node.has("onAppear") { runtime?.dispatch(node.id, "onAppear") } }
-            .modifier(TapModifier(node: node) { runtime?.fire(node, "onTapGesture") })
+            // Interactions (incl. double tap) inside the single tap, so a view
+            // with both waits for the double tap before firing the single one.
             .modifier(Interactions(node: node))
+            .modifier(TapModifier(node: node) { runtime?.fire(node, "onTapGesture") })
             .modifier(RefreshModifier(node: node))
             .modifier(AttachedActions(node: node))
     }

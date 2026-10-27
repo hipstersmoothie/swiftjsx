@@ -11,8 +11,11 @@ final class GalleryTests: XCTestCase {
         app.launch()
     }
 
+    /// Taps a gallery row, scrolling to it first (the list is lazy).
     private func open(_ demo: String) {
-        app.buttons.containing(.staticText, identifier: demo).firstMatch.tap()
+        let row = app.buttons.containing(.staticText, identifier: demo).firstMatch
+        for _ in 0..<6 where !row.isHittable { app.swipeUp() }
+        row.tap()
     }
 
     /// Saved in the result bundle (see Apps/iOS/README.md for exporting them).
@@ -113,9 +116,7 @@ final class GalleryTests: XCTestCase {
 
     // MARK: Toy apps (live network)
 
-    private func openApp(_ name: String) {
-        app.buttons.containing(.staticText, identifier: name).firstMatch.tap()
-    }
+    private func openApp(_ name: String) { open(name) }
 
     func testHackerNews() {
         openApp("Hacker News")

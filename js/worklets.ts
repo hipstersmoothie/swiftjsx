@@ -19,11 +19,12 @@ import type { AnimationSpec, Modifiers } from "./components";
 
 declare const __native: { command(id: number, name: string, args: unknown, callback: number): void };
 
-type Worklet = { code: string; closure: Record<string, unknown> };
+/** `closure` returns the captured variables (read when the worklet is sent). */
+type Worklet = { code: string; closure: () => Record<string, unknown> };
 type WorkletFunction = Function & { __worklet?: Worklet; __builtin?: string };
 
 // Called by code the worklets Babel pass generates.
-(globalThis as any).__swiftjsx_worklet = (fn: WorkletFunction, code: string, closure: Record<string, unknown>) => {
+(globalThis as any).__swiftjsx_worklet = (fn: WorkletFunction, code: string, closure: () => Record<string, unknown>) => {
   fn.__worklet = { code, closure };
   return fn;
 };
@@ -128,8 +129,10 @@ export const withTiming = builtin(
 
 /**
  * Calls a JS-thread function (e.g. a state setter) from a worklet. It runs
- * later, on the JS thread; the call returns undefined. (Calling a JS-thread
- * function directly from a worklet does the same; this is for readability.)
+ * after the worklet, on the JS thread, and sees the shared values the worklet
+ * wrote; the call returns undefined. (Calling a JS-thread function directly
+ * from a worklet does the same, with a warning: it's usually a helper that's
+ * missing its "worklet" directive.)
  */
 export const runOnJS = builtin("runOnJS", <A extends unknown[]>(fn: (...args: A) => unknown) => fn as (...args: A) => void);
 
@@ -177,7 +180,8 @@ export function isWorkletProp(v: unknown): boolean {
 /** `{ __worklet: { code, closure } }`, with captured values made sendable. JS functions it captures are added to `ids`. */
 export function serializeWorkletProp(v: unknown, ids: Set<number>): unknown {
   const fn = (typeof v === "function" ? v : (v as AnimatedStyle).__animatedStyle) as WorkletFunction;
-  const { code, closure } = fn.__worklet!;
+  const { code, closure: read } = fn.__worklet!;
+  const closure = read();
   const out: Record<string, unknown> = {};
   for (const key in closure) out[key] = serializeCaptured(closure[key], ids);
   return { __worklet: { code, closure: out } };
@@ -193,7 +197,7 @@ function serializeCaptured(v: unknown, ids: Set<number>): unknown {
     if (id === undefined) functionIds.set(fn, (id = nextFunction++));
     jsFunctions.set(id, fn);
     ids.add(id);
-    return { __jsFunction: id };
+    return { __jsFunction: id, name: fn.name || "anonymous" };
   }
   if (Array.isArray(v)) return v.map((x) => serializeCaptured(x, ids));
   if (v && typeof v === "object") {

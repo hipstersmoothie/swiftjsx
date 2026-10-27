@@ -260,10 +260,19 @@ struct CompilerTests {
         runtime.press("Read")
         #expect(await eventually { runtime.texts().contains("read 100,80") })
 
+        // The first drag event lifts with a spring while the offset follows
+        // the finger unanimated: two steps.
+        #expect(runtime.worklets.lastSteps == ["spring", "none"])
+        #expect(card.double("scale") == 1.1)
+
         runtime.fire(card, "onDragEnd", drag(150, 80))
         #expect(offset(card) == [0, 0])
         #expect(card.double("opacity") == 1)
+        // A spring and a timing curve in one handler each keep their own.
+        #expect(runtime.worklets.lastSteps.sorted() == ["easeInOut", "spring"])
         #expect(await eventually { runtime.texts().contains("drops 1") })
+        // runOnJS callbacks run after the values sync, so they see the drop.
+        #expect(runtime.texts().contains("dropped at 0,0"))
     }
 
     @Test func jsThreadWritesReachTheMainThread() async throws {

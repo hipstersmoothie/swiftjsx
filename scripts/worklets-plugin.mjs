@@ -3,11 +3,13 @@
 // A function is a worklet if its body starts with a "worklet" directive, or if
 // it's the callback passed to useAnimatedStyle(). Each one becomes
 //
-//   __swiftjsx_worklet(fn, "<its source as plain JS>", { a, b })
+//   __swiftjsx_worklet(fn, "<its source as plain JS>", () => ({ a, b }))
 //
-// where { a, b } are the variables it uses from enclosing scopes, captured when
-// the function is created (each render). The main thread compiles the source
-// in its own JS context and calls it with those values.
+// where { a, b } are the variables it uses from enclosing scopes (read when the
+// worklet is sent to the main thread, so helpers declared further down a module
+// work). The main thread compiles the source in its own JS context and calls it
+// with those values. `function f() { "worklet"; … }` declarations are
+// registered right after the declaration.
 
 import generatorModule from "@babel/generator";
 import { transformSync } from "esbuild";
@@ -36,6 +38,8 @@ export default function workletsPlugin({ types: t }) {
     const names = new Set();
     path.traverse({
       ReferencedIdentifier(ref) {
+        // `(offset: SharedValue<Point>) => …`: types are erased, not captured.
+        if (ref.findParent((p) => p.isTSType() || p.isTSTypeAnnotation() || p.isTSTypeParameterInstantiation())) return;
         const binding = ref.scope.getBinding(ref.node.name);
         if (!binding) return;
         for (let scope = binding.scope; scope; scope = scope.parent) {
@@ -57,23 +61,32 @@ export default function workletsPlugin({ types: t }) {
     return js.trim().replace(/;$/, "");
   }
 
+  /** `__swiftjsx_worklet(fn, code, () => ({ captured }))` */
+  function register(fn, path) {
+    const closure = t.arrowFunctionExpression([], t.objectExpression(
+      capturedNames(path).map((name) => t.objectProperty(t.identifier(name), t.identifier(name), false, true)),
+    ));
+    return t.callExpression(t.memberExpression(t.identifier("globalThis"), t.identifier("__swiftjsx_worklet")), [
+      fn,
+      t.stringLiteral(source(path)),
+      closure,
+    ]);
+  }
+
   return {
     name: "swiftjsx-worklets",
     visitor: {
       "ArrowFunctionExpression|FunctionExpression"(path) {
         if (path.node.__swiftjsxWorklet || !isWorklet(path)) return;
         path.node.__swiftjsxWorklet = true;
-        const code = source(path);
-        const closure = t.objectExpression(
-          capturedNames(path).map((name) => t.objectProperty(t.identifier(name), t.identifier(name), false, true)),
-        );
-        path.replaceWith(
-          t.callExpression(t.memberExpression(t.identifier("globalThis"), t.identifier("__swiftjsx_worklet")), [
-            path.node,
-            t.stringLiteral(code),
-            closure,
-          ]),
-        );
+        path.replaceWith(register(path.node, path));
+      },
+      FunctionDeclaration(path) {
+        if (path.node.__swiftjsxWorklet || !isWorklet(path) || !path.node.id) return;
+        path.node.__swiftjsxWorklet = true;
+        const statement = t.expressionStatement(register(t.identifier(path.node.id.name), path));
+        // `export function f` / `export default function f`: register after the export.
+        (path.parentPath.isExportDeclaration() ? path.parentPath : path).insertAfter(statement);
       },
     },
   };
