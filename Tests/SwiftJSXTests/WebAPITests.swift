@@ -58,24 +58,24 @@ final class MockServer: URLProtocol {
     }
 }
 
+/// `fetch` goes to MockServer, and localStorage to a fresh, throwaway store.
+func useMockServer() {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [MockServer.self]
+    WebHost.session = URLSession(configuration: configuration)
+    WebStorage.shared = WebStorage(suiteName: "SwiftJSXTests-\(UUID().uuidString)")
+}
+
 @MainActor
 @Suite(.serialized) struct WebAPITests {
     @Test func webAPIsWork() async throws {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [MockServer.self]
-        WebHost.session = URLSession(configuration: configuration)
-        WebStorage.shared = WebStorage(suiteName: "SwiftJSXTests-\(UUID().uuidString)")
+        useMockServer()
 
-        let runtime = try fixture("WebAPIs", threading: .background)
-        let done = await eventually(timeout: .seconds(10)) {
-            guard let summary = runtime.texts().first, let total = summary.split(separator: " ").last else { return false }
-            return summary.hasPrefix("\(total) of")
-        }
-        let results = runtime.texts().dropFirst()
-        for failure in results where failure.hasPrefix("FAIL") {
-            Issue.record("\(failure)")
-        }
-        #expect(done, "only \(runtime.texts().first ?? "?") checks finished")
-        #expect(runtime.error == nil, "\(runtime.error ?? "")")
+        try await expectChecksPass("WebAPIs")
+    }
+
+    @Test func npmPackagesWork() async throws {
+        useMockServer()
+        try await expectChecksPass("Packages")
     }
 }

@@ -1,9 +1,6 @@
-import { useEffect, useState } from "react";
-import { render, VStack, Text } from "swiftjsx";
+import { runChecks, eq, rejects, type Checks } from "./support/checks";
 
-// Each check throws (or rejects) on failure; results render as "PASS name" /
-// "FAIL name: message" for the Swift test to read.
-const checks: Record<string, () => unknown> = {
+const checks: Checks = {
   async "fetch json"() {
     const response = await fetch("https://mock.test/json?x=1");
     eq(response.status, 200);
@@ -131,40 +128,4 @@ const checks: Record<string, () => unknown> = {
   },
 };
 
-function eq(actual: unknown, expected: unknown) {
-  if (actual !== expected) throw new Error(`expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
-}
-
-async function rejects(promise: Promise<unknown>, name: string) {
-  try {
-    await promise;
-  } catch (error: any) {
-    if (error?.name !== name) throw new Error(`expected ${name}, got ${error?.name}: ${error?.message}`);
-    return;
-  }
-  throw new Error(`expected a ${name} rejection`);
-}
-
-function App() {
-  const [results, setResults] = useState<string[]>([]);
-  useEffect(() => {
-    for (const [name, check] of Object.entries(checks)) {
-      Promise.resolve()
-        .then(check)
-        .then(
-          () => setResults((r) => [...r, `PASS ${name}`]),
-          (error) => setResults((r) => [...r, `FAIL ${name}: ${error?.message ?? error}`]),
-        );
-    }
-  }, []);
-  return (
-    <VStack>
-      <Text>{`${results.length} of ${Object.keys(checks).length}`}</Text>
-      {results.map((r) => (
-        <Text key={r}>{r}</Text>
-      ))}
-    </VStack>
-  );
-}
-
-render(<App />);
+runChecks(checks);
