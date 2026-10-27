@@ -107,7 +107,7 @@ function StatTile({ value, label, symbol, color }: { value: string; label: strin
       spacing={6}
       padding={{ vertical: 14 }}
       frame={{ maxWidth: "infinity" }}
-      background="#8881"
+      background="tertiarySystemFill"
       cornerRadius={16}
       accessibilityElement="combine"
     >

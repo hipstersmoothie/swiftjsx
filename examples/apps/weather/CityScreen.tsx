@@ -54,13 +54,9 @@ function Hero({ city, forecast: { current, days } }: { city: City; forecast: For
   return (
     <VStack spacing={2} padding={{ top: 24, bottom: 20 }}>
       <Text font="largeTitle" lineLimit={1}>{city.name}</Text>
-      {/* No font sizes beyond the text styles, so the 34pt largeTitle is scaled up; the frame reserves its space. */}
       <Text
-        font="largeTitle"
-        fontWeight="thin"
+        font={{ size: 96, weight: "thin" }}
         padding={{ leading: 8 }}
-        frame={{ height: 92 }}
-        scale={2.6}
         accessibilityIdentifier="current-temp"
         accessibilityLabel={`${temp(current.temperature)}, ${conditionLabel(current.code)}`}
       >

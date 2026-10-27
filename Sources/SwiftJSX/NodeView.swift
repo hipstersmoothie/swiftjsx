@@ -56,7 +56,7 @@ struct NodeView: View {
 
     @ViewBuilder private var content: some View {
         if Self.tinted.contains(node.type) {
-            control.tint(node.string("tint").flatMap(color))
+            control.tint(color(node.prop("tint")))
         } else {
             control
         }
@@ -68,13 +68,22 @@ struct NodeView: View {
             Text(node.text)
 
         case "Text":
-            let text = Text(node.textContent)
+            // Font and color come from the modifiers (environment); the rest
+            // are Text's own.
+            let underline = node.prop("underline")
+            let text = styledText(node)
                 .strikethrough(node.bool("strikethrough"))
                 .italic(node.bool("italic"))
+                .bold(node.bool("bold"))
+                .underline(underline != nil && (underline as? Bool) != false, color: color(underline))
+                .kerning(node.cgFloat("kerning") ?? 0)
+                .tracking(node.cgFloat("tracking") ?? 0)
             Group {
                 if node.bool("monospacedDigit") { text.monospacedDigit() } else { text }
             }
             .lineLimit(node.double("lineLimit").map { Int($0) })
+            .lineSpacing(node.cgFloat("lineSpacing") ?? 0)
+            .minimumScaleFactor(node.cgFloat("minimumScaleFactor") ?? 1)
             .multilineTextAlignment(textAlignment(node.string("textAlignment")))
             .contentTransition(node.has("animation") ? .numericText() : .identity)
 
@@ -155,6 +164,9 @@ struct NodeView: View {
         case "Label":
             Label(node.string("title") ?? "", systemImage: node.string("systemImage") ?? "")
 
+        case "Rectangle", "RoundedRectangle", "Circle", "Ellipse", "Capsule":
+            ShapeView(node: node)
+
         case "Spacer":
             Spacer(minLength: node.cgFloat("minLength"))
 
@@ -179,7 +191,7 @@ struct NodeView: View {
                 if let title = node.string("title") { Text(title) } else { Children(node: node) }
             }
             .modifier(ButtonStyleModifier(style: node.string("buttonStyle")))
-            .tint(node.string("tint").flatMap(color))
+            .tint(color(node.prop("tint")))
 
         case "TextField":
             TextFieldHost(node: node)

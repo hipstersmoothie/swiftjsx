@@ -123,8 +123,20 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   The build compiles worklets to source plus the values they capture; a small second
   JSContext on the main thread runs them. `withSpring`/`withTiming` hand the change to
   SwiftUI, which animates it natively.
-- **Styling.** `background` takes colors, materials (`"thinMaterial"`) and gradients
-  (`{ gradient: ["blue", "purple"] }`); controls take `tint`; `Text` takes `lineLimit`.
+- **Shapes, colors and fonts.**
+  - Shapes: `<Circle>`, `<Capsule>`, `<RoundedRectangle>`, `<Ellipse>`, `<Rectangle>`
+    with `fill`, `stroke`, `lineWidth`, `dash` and `trim` (progress rings).
+    `cornerRadius` takes a number, `"capsule"`, or one radius per corner.
+  - Colors: names, hex, opacity (`"blue/20"`), iOS system colors (`systemBackground`,
+    `secondaryLabel`, `separator`…), and `{ light, dark }` pairs. `secondary` …
+    `quinary` are levels of the surrounding style, as in SwiftUI.
+  - Fills: `background`, `foregroundStyle` and shape fills take colors, materials, and
+    linear, radial or angular gradients with stops. `colorScheme` forces light or dark
+    for a subtree; `Screen` takes `toolbarBackground` and `toolbarColorScheme`.
+  - Fonts: text styles or `{ size, weight, design, width }`, and custom fonts
+    (`{ name, size, relativeTo }`, scaled with Dynamic Type). `Text` takes `lineLimit`,
+    `minimumScaleFactor`, `textCase`, `kerning`, `underline`, and nested `<Text>` runs
+    and `<Image systemName>` symbols inline. Controls take `tint`.
 - **Images.** `<Image systemName>` (SF Symbols), `<Image name>` (asset catalog), and
   `<Image src="https://…" contentMode="fill">`. URL images are cached in memory, requested
   once even when several views want them, and decoded off the main thread. They fire

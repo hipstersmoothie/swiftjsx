@@ -5,7 +5,7 @@ import { clockTime } from "./format";
 
 // Translucent, so it reads as a light gray bubble in light mode and a dark
 // gray one in dark mode (there are no semantic system colors to use).
-const THEIRS = "#78788033";
+const THEIRS = "systemGray5";
 
 export function MessageBubble({ message, contactId, showMeta }: { message: Message; contactId: string; showMeta: boolean }) {
   const mine = message.from === "me";

@@ -58,6 +58,7 @@ struct ScreenHost: View {
             ForEach(node.children.filter { $0.type != "ToolbarItem" && !$0.isAttachment }) { NodeView(node: $0) }
         }
         .modifier(SearchableModifier(node: node))
+        .modifier(ToolbarStyle(node: node))
         .navigationTitle(node.string("title") ?? "")
         #if os(iOS)
         .navigationBarTitleDisplayMode(titleDisplayMode(node.string("titleDisplayMode")))
@@ -68,6 +69,29 @@ struct ScreenHost: View {
                     HStack { Children(node: item) }
                 }
             }
+        }
+    }
+}
+
+/// `toolbarBackground` (a fill, or "hidden") and `toolbarColorScheme` on a
+/// `<Screen>`: the navigation bar's background, and light or dark items.
+struct ToolbarStyle: ViewModifier {
+    let node: Node
+
+    func body(content: Content) -> some View {
+        let background = node.prop("toolbarBackground")
+        #if os(iOS)
+        let bar = ToolbarPlacement.navigationBar
+        #else
+        let bar = ToolbarPlacement.windowToolbar
+        #endif
+        let styled = content
+            .toolbarColorScheme(colorScheme(node.string("toolbarColorScheme")), for: bar)
+            .toolbarBackgroundVisibility(background == nil ? .automatic : (background as? String == "hidden" ? .hidden : .visible), for: bar)
+        if let fill = fill(background) {
+            styled.toolbarBackground(fill, for: bar)
+        } else {
+            styled
         }
     }
 }

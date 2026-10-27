@@ -14,7 +14,7 @@ export function Avatar({ contact, size }: { contact: Contact; size: 30 | 48 | 72
       foregroundStyle="white"
       frame={{ width: size, height: size }}
       background={{ gradient: contact.colors, start: "topLeading", end: "bottomTrailing" }}
-      cornerRadius={size / 2}
+      cornerRadius="capsule"
       accessibilityHidden
     >
       {initials}

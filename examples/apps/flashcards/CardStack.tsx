@@ -172,7 +172,7 @@ function CardFace({ card, theme, side }: { card: Card; theme: Theme; side: "fron
       transition="opacity"
     >
       <HStack>
-        <Text font="caption" fontWeight="bold" foregroundStyle={front ? "#FFFFFFB3" : theme.tint}>
+        <Text font="caption" fontWeight="bold" foregroundStyle={front ? "secondary" : theme.tint}>
           {front ? "QUESTION" : "ANSWER"}
         </Text>
         <Spacer />
@@ -193,7 +193,7 @@ function CardFace({ card, theme, side }: { card: Card; theme: Theme; side: "fron
         title={front ? "Tap to reveal" : "Swipe right if you knew it"}
         systemImage={front ? "hand.tap" : "hand.draw"}
         font="footnote"
-        foregroundStyle="#FFFFFFB3"
+        foregroundStyle="secondary"
       />
     </VStack>
   );

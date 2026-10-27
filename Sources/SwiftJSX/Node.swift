@@ -91,7 +91,7 @@ public final class Node: Identifiable {
     static let modifierKeys: Set<String> = Set([
         "padding", "frame", "background", "foregroundStyle", "font", "fontWeight", "fontDesign",
         "cornerRadius", "border", "shadow", "opacity", "disabled", "transition", "onAppear",
-        "onTapGesture", "hidden", "onDisappear",
+        "onTapGesture", "hidden", "onDisappear", "colorScheme",
     ]).union(featureKeys.map(\.0)).subtracting(["__ref"])
 
     /// Views with state of their own get the wrapper from the start, so even

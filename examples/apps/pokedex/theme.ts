@@ -10,9 +10,8 @@ const typeColors: Record<string, Hex> = {
 
 export const typeColor = (type: string | undefined): Hex => (type && typeColors[type]) || "#8E8E93";
 
-/** A `#rrggbb` color at `opacity` (0–1), as `#rrggbbaa`. */
-export const withOpacity = (hex: Hex, opacity: number): Color =>
-  `${hex}${Math.round(opacity * 255).toString(16).padStart(2, "0")}`;
+/** A color at `opacity` (0–1). */
+export const withOpacity = (hex: Hex, opacity: number): Color => `${hex}/${Math.round(opacity * 100)}`;
 
 export const statLabels: Record<string, string> = {
   hp: "HP", attack: "Attack", defense: "Defense", "special-attack": "Sp. Atk", "special-defense": "Sp. Def", speed: "Speed",

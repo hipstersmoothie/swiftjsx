@@ -4,15 +4,75 @@
 import type { ReactNode, FC, Ref } from "react";
 import type { HostInstance } from "./renderer";
 
-export type Color =
+type NamedColor =
   | "primary" | "secondary" | "accent" | "red" | "orange" | "yellow" | "green"
   | "mint" | "teal" | "cyan" | "blue" | "indigo" | "purple" | "pink" | "brown"
   | "gray" | "black" | "white" | "clear"
-  | `#${string}`;
+  // iOS semantic colors: adapt to light and dark mode.
+  | "systemBackground" | "secondarySystemBackground" | "tertiarySystemBackground"
+  | "systemGroupedBackground" | "secondarySystemGroupedBackground" | "tertiarySystemGroupedBackground"
+  | "systemFill" | "secondarySystemFill" | "tertiarySystemFill" | "quaternarySystemFill"
+  | "label" | "secondaryLabel" | "tertiaryLabel" | "quaternaryLabel" | "placeholderText"
+  | "separator" | "opaqueSeparator" | "link"
+  | "systemGray" | "systemGray2" | "systemGray3" | "systemGray4" | "systemGray5" | "systemGray6";
 
-export type Font =
+/**
+ * A color: a name, hex (`#rgb`, `#rrggbb`, `#rrggbbaa`), either with `/NN`
+ * for NN% opacity (`"blue/20"`, like Tailwind).
+ */
+export type Color = NamedColor | `${NamedColor}/${number}` | `#${string}`;
+
+/** A color, or a pair for light and dark mode. */
+export type ColorValue = Color | { light: Color; dark: Color };
+
+/** A gradient. Stops are evenly spaced unless given a `location` (0–1). */
+export type Gradient = {
+  gradient: (ColorValue | { color: ColorValue; location: number })[];
+  /** Default "linear", from `start` (top) to `end` (bottom). */
+  type?: "linear" | "radial" | "angular";
+  start?: Alignment;
+  end?: Alignment;
+  /** Radial and angular gradients. */
+  center?: Alignment;
+  startRadius?: number;
+  endRadius?: number;
+};
+
+/**
+ * What `foregroundStyle`, `background` and shape `fill`/`stroke` take: a
+ * color, a material, a gradient, or (for foregrounds) a level of the current
+ * style: "secondary" … "quinary" are dimmer versions of whatever color the
+ * text would have, like in SwiftUI (gray on white, translucent white on blue).
+ */
+export type Fill = ColorValue | Material | Gradient | "tertiary" | "quaternary" | "quinary";
+
+export type TextStyle =
   | "largeTitle" | "title" | "title2" | "title3" | "headline" | "subheadline"
   | "body" | "callout" | "footnote" | "caption" | "caption2";
+
+type FontWeight = "ultraLight" | "thin" | "light" | "regular" | "medium" | "semibold" | "bold" | "heavy" | "black";
+type FontDesign = "default" | "rounded" | "monospaced" | "serif";
+
+/**
+ * A text style, or a font: `{ size: 96, weight: "thin" }` (a fixed-size
+ * system font), or `{ name: "Avenir Next", size: 20, relativeTo: "title3" }`
+ * (a custom font that scales with Dynamic Type).
+ */
+export type Font =
+  | TextStyle
+  | {
+      size?: number;
+      weight?: FontWeight;
+      design?: FontDesign;
+      width?: "compressed" | "condensed" | "standard" | "expanded";
+      /** A font installed or bundled with the app (by PostScript or family name). */
+      name?: string;
+      /** The text style a custom font scales with (default "body"). */
+      relativeTo?: TextStyle;
+    };
+
+/** A radius for every corner, "capsule" (fully rounded ends), or one per corner. */
+export type CornerRadius = number | "capsule" | { topLeading?: number; topTrailing?: number; bottomLeading?: number; bottomTrailing?: number };
 
 export type Dimension = number | "infinity";
 
@@ -27,15 +87,23 @@ export type Material = "ultraThinMaterial" | "thinMaterial" | "regularMaterial" 
 export interface Modifiers {
   padding?: number | boolean | { top?: number; leading?: number; bottom?: number; trailing?: number; horizontal?: number; vertical?: number };
   frame?: { width?: number; height?: number; minWidth?: number; maxWidth?: Dimension; minHeight?: number; maxHeight?: Dimension; alignment?: Alignment };
-  /** A color, a material, or a linear gradient (top to bottom unless `start`/`end` say otherwise). */
-  background?: Color | Material | { gradient: Color[]; start?: Alignment; end?: Alignment };
-  foregroundStyle?: Color;
+  /** A color, a material or a gradient behind the view (inside its padding). */
+  background?: Fill;
+  /** Color (or gradient…) of text, symbols and shapes inside. */
+  foregroundStyle?: Fill;
   font?: Font;
-  fontWeight?: "ultraLight" | "thin" | "light" | "regular" | "medium" | "semibold" | "bold" | "heavy" | "black";
-  fontDesign?: "default" | "rounded" | "monospaced" | "serif";
-  cornerRadius?: number;
-  border?: { color: Color; width?: number };
-  shadow?: number | { radius: number; x?: number; y?: number; color?: Color };
+  fontWeight?: FontWeight;
+  fontDesign?: FontDesign;
+  /**
+   * Rounds the background and border, and clips the content (except on a
+   * material background, where clipping would turn off vibrancy).
+   */
+  cornerRadius?: CornerRadius;
+  /** Drawn inside the view's edge, following `cornerRadius`. */
+  border?: { color: Fill; width?: number };
+  shadow?: number | { radius: number; x?: number; y?: number; color?: ColorValue };
+  /** Light or dark appearance for this view and everything inside it. */
+  colorScheme?: "light" | "dark";
   opacity?: number;
   disabled?: boolean;
   /** Animate every change to this view (and its children's insertions/removals). */
@@ -137,10 +205,29 @@ export const List = host<Modifiers & WithChildren>("List");
 export const Form = host<Modifiers & WithChildren>("Form");
 export const Section = host<Modifiers & WithChildren & { header?: string; footer?: string }>("Section");
 
+/**
+ * Text. Nest `<Text>` for styled runs (`<Text>Hello <Text fontWeight="bold"
+ * foregroundStyle="blue">world</Text></Text>`), and `<Image systemName>` for
+ * inline symbols. Runs take the text props below plus font, fontWeight,
+ * fontDesign and foregroundStyle.
+ */
 export const Text = host<
   Modifiers & WithChildren & {
+    bold?: boolean;
     strikethrough?: boolean;
     italic?: boolean;
+    /** `true`, or the underline's color. */
+    underline?: boolean | ColorValue;
+    /** Extra space between characters, in points. */
+    kerning?: number;
+    tracking?: number;
+    /** Extra space between lines, in points. */
+    lineSpacing?: number;
+    /** Shrinks the font down to this fraction (e.g. 0.5) before truncating. */
+    minimumScaleFactor?: number;
+    textCase?: "uppercase" | "lowercase";
+    /** Runs only: raise (or lower, negative) from the baseline, in points. */
+    baselineOffset?: number;
     monospacedDigit?: boolean;
     // With an `animation` prop, changing digits roll (numeric content transition).
     /** Maximum lines; the rest is truncated with "…". */
@@ -166,10 +253,29 @@ type ImageSource =
     };
 export const Image = host<Modifiers & ImageSource>("Image");
 export const Label = host<Modifiers & { title: string; systemImage: string }>("Label");
+type ShapeProps = Modifiers & {
+  /** Default: the foreground style. */
+  fill?: Fill;
+  /** Outline, drawn inside the frame. */
+  stroke?: Fill;
+  lineWidth?: number;
+  /** Dash and gap lengths, e.g. [6, 4]. */
+  dash?: number[];
+  /** Draw only part of the stroke, from 0 to 1 (progress rings). */
+  trim?: [number, number];
+};
+
+// Shapes fill the space they're offered: give them a `frame`.
+export const Rectangle = host<ShapeProps>("Rectangle");
+export const RoundedRectangle = host<ShapeProps & { cornerRadius?: CornerRadius }>("RoundedRectangle");
+export const Circle = host<ShapeProps>("Circle");
+export const Ellipse = host<ShapeProps>("Ellipse");
+export const Capsule = host<ShapeProps>("Capsule");
+
 export const Spacer = host<Modifiers & { minLength?: number }>("Spacer");
 export const Divider = host<Modifiers>("Divider");
 /** A spinner, or a bar when `value` is set. */
-export const ProgressView = host<Modifiers & { value?: number; total?: number; label?: string; tint?: Color }>("ProgressView");
+export const ProgressView = host<Modifiers & { value?: number; total?: number; label?: string; tint?: ColorValue }>("ProgressView");
 
 export const Button = host<
   Modifiers & WithChildren & {
@@ -178,7 +284,7 @@ export const Button = host<
     role?: "destructive" | "cancel";
     buttonStyle?: "automatic" | "bordered" | "borderedProminent" | "borderless" | "plain";
     /** Accent color of the button (and its background in `<SwipeActions>`). */
-    tint?: Color;
+    tint?: ColorValue;
   }
 >("Button");
 
@@ -193,8 +299,8 @@ export const TextField = host<
     secure?: boolean;
   }
 >("TextField");
-export const Toggle = host<Modifiers & WithChildren & { value: boolean; onChange: (value: boolean) => void; label?: string; tint?: Color }>("Toggle");
-export const Slider = host<Modifiers & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; tint?: Color }>("Slider");
+export const Toggle = host<Modifiers & WithChildren & { value: boolean; onChange: (value: boolean) => void; label?: string; tint?: ColorValue }>("Toggle");
+export const Slider = host<Modifiers & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; tint?: ColorValue }>("Slider");
 export const Stepper = host<Modifiers & WithChildren & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; label?: string }>("Stepper");
 export const Picker = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string }[]; label?: string; pickerStyle?: "menu" | "segmented" | "inline" }>("Picker");
 
@@ -264,6 +370,10 @@ export const Screen = host<
     searchText?: string;
     onSearchTextChange?: (text: string) => void;
     searchPrompt?: string;
+    /** The navigation bar's background (shown even before scrolling), or "hidden". */
+    toolbarBackground?: Fill | "hidden";
+    /** Light or dark navigation bar items (e.g. "dark" for white items on a dark screen). */
+    toolbarColorScheme?: "light" | "dark";
   }
 >("Screen");
 

@@ -7,7 +7,8 @@ import { conditionLabel, conditionSymbol, symbolColor, temperatureColor } from "
 import { useTemperature, useWindSpeed, hourLabel, weekday, clockTime } from "./format";
 
 // White at reduced opacity: "secondary" is a fixed gray, not relative to the white text.
-export const dim: Color = "#ffffffb3";
+/** Dimmed version of the white text on the gradient (hierarchical secondary). */
+export const dim = "secondary";
 const faint: Color = "#ffffff40";
 
 function Card({ title, icon, children }: { title: string; icon: string; children: ReactNode }) {

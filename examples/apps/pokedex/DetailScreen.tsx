@@ -81,7 +81,7 @@ function TypeBadge({ type }: { type: string }) {
       foregroundStyle="white"
       padding={{ horizontal: 14, vertical: 6 }}
       background={typeColor(type)}
-      cornerRadius={999}
+      cornerRadius="capsule"
       shadow={{ radius: 3, y: 2, color: "#00000026" }}
     >
       {capitalize(type)}
@@ -139,7 +139,7 @@ function Abilities({ pokemon, color }: { pokemon: Pokemon; color: Color }) {
           <Text>{displayName(ability.name)}</Text>
           <Spacer />
           {ability.hidden ? (
-            <Text font="caption" foregroundStyle="secondary" padding={{ horizontal: 8, vertical: 3 }} background="#8882" cornerRadius={999}>
+            <Text font="caption" foregroundStyle="secondary" padding={{ horizontal: 8, vertical: 3 }} background="secondarySystemFill" cornerRadius="capsule">
               Hidden
             </Text>
           ) : null}

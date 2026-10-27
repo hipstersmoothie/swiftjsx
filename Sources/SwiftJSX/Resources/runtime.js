@@ -17980,9 +17980,12 @@ ${error.stack}` : String(error));
   __export(index_exports, {
     Alert: () => Alert,
     Button: () => Button,
+    Capsule: () => Capsule,
+    Circle: () => Circle,
     ConfirmationDialog: () => ConfirmationDialog,
     ContextMenu: () => ContextMenu,
     Divider: () => Divider,
+    Ellipse: () => Ellipse,
     Form: () => Form,
     HStack: () => HStack,
     HostInstance: () => HostInstance,
@@ -17999,6 +18002,8 @@ ${error.stack}` : String(error));
     Navigator: () => Navigator,
     Picker: () => Picker,
     ProgressView: () => ProgressView,
+    Rectangle: () => Rectangle,
+    RoundedRectangle: () => RoundedRectangle,
     Screen: () => Screen,
     ScrollView: () => ScrollView,
     Section: () => Section,
@@ -18656,6 +18661,11 @@ ${e.stack}` : String(e);
   var Text = host("Text");
   var Image = host("Image");
   var Label = host("Label");
+  var Rectangle = host("Rectangle");
+  var RoundedRectangle = host("RoundedRectangle");
+  var Circle = host("Circle");
+  var Ellipse = host("Ellipse");
+  var Capsule = host("Capsule");
   var Spacer = host("Spacer");
   var Divider = host("Divider");
   var ProgressView = host("ProgressView");

@@ -6,26 +6,28 @@ Flashcards): what each one wanted and couldn't do.
 
 ## Layout and drawing
 
-- [ ] Shapes: `Circle`, `Capsule`, `RoundedRectangle` with fill and stroke, per-corner
-      radii (chat bubble tails), `cornerRadius="capsule"`. Today it's stacks with
-      `cornerRadius = size / 2`.
+- [x] Shapes (`Circle`, `Capsule`, `RoundedRectangle`, `Ellipse`, `Rectangle`) with fill,
+      stroke, dash and trim; `cornerRadius="capsule"` and per-corner radii.
+- [x] Radial and angular gradients, gradient stops.
 - [ ] Proportional layout: `GeometryReader` / `containerRelativeFrame`, `layoutPriority`,
       a non-lazy `Grid`, and a wrapping (flow) layout for chips. Bars and gauges are
       fixed-width with point math.
 - [ ] `overlay` prop (badges), `zIndex`, `contentShape` (full-row taps on plain buttons).
-- [ ] Gradients beyond linear top-to-bottom: stops/locations, radial and angular.
+- [ ] Custom `Path` shapes.
+- [ ] On a material background, `cornerRadius` rounds the background but doesn't clip
+      the content: a rounded clip over a material turns off vibrancy, and hierarchical
+      text and dividers on it vanish.
 
 ## Text, color, symbols
 
-- [ ] Fonts: numeric size and weight (`font={{ size: 96, weight: "thin" }}`),
-      `minimumScaleFactor`, `textCase`, kerning, custom fonts.
-- [ ] Styled runs and inline images: nested `<Text>` only concatenates strings.
-- [ ] Colors: opacity on named colors, semantic system colors (systemBackground,
-      secondarySystemGroupedBackground, separator…), light/dark pairs for custom colors.
-      `foregroundStyle="secondary"` is a fixed gray, not the hierarchical secondary of the
-      current style; no tertiary/quaternary.
-- [ ] Color scheme: `preferredColorScheme`, toolbar background and color scheme (white
-      toolbar items on a dark gradient screen).
+- [x] Fonts: numeric size and weight, width, custom fonts scaled with Dynamic Type,
+      `minimumScaleFactor`, `textCase`, kerning, `lineSpacing`, `underline`.
+- [x] Styled runs (nested `<Text>`) and inline `<Image systemName>`.
+- [x] Colors: opacity (`"blue/20"`), semantic system colors, `{ light, dark }` pairs,
+      hierarchical `secondary`…`quinary`; `colorScheme`; toolbar background and color
+      scheme on `Screen`.
+- [ ] Custom font files: fonts must be bundled and listed in the app's Info.plist;
+      there's no runtime registration.
 - [ ] SF Symbols: rendering modes (multicolor, hierarchical, palette), `symbolEffect`,
       symbol content transitions.
 

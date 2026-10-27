@@ -54,7 +54,7 @@ function PokemonCard({ entry, onAppear }: { entry: Entry; onAppear?(): void }) {
           spacing={2}
           padding={10}
           frame={{ maxWidth: "infinity" }}
-          background={pokemon ? withOpacity(typeColor(pokemon.types[0]), 0.22) : "#8881"}
+          background={pokemon ? withOpacity(typeColor(pokemon.types[0]), 0.22) : "tertiarySystemFill"}
           cornerRadius={18}
           animation="smooth"
           onAppear={() => {

@@ -62,7 +62,7 @@ export function SymbolPicker({ value, theme, onChange }: { value: string; theme:
           systemName={symbol}
           foregroundStyle={symbol === value ? "white" : "secondary"}
           frame={{ width: 40, height: 40 }}
-          background={symbol === value ? themes[theme].tint : "#8881"}
+          background={symbol === value ? themes[theme].tint : "tertiarySystemFill"}
           cornerRadius={10}
           animation="snappy"
           onTapGesture={() => onChange(symbol)}

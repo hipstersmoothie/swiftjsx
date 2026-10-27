@@ -52,21 +52,30 @@ struct Modifiers: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .transformEnvironment(\.font) { font in
-                if let f = node.string("font").flatMap(fontStyle) { font = .system(f) }
+            .transformEnvironment(\.font) { current in
+                if let f = font(node.prop("font")) { current = f }
             }
             .fontWeight(node.string("fontWeight").flatMap(fontWeight))
             .fontDesign(node.string("fontDesign").flatMap(fontDesign))
             .modifier(ForegroundModifier(node: node))
             .padding(padding)
             .modifier(FrameModifier(frame: node.dict("frame")))
-            .background(backgroundStyle(node.prop("background")))
-            .clipShape(CornerClip(radius: node.cgFloat("cornerRadius") ?? 0))
+            // The background is drawn in the corner shape. A material's content
+            // isn't clipped: a rounded clip over a material turns off vibrancy,
+            // and hierarchical text ("secondary") and dividers on it vanish.
+            .background {
+                // Square backgrounds extend under the bars at screen edges
+                // (full-bleed gradients), like SwiftUI's .background(style).
+                BoxShape(corners: corners)
+                    .fill(fill(node.prop("background")) ?? AnyShapeStyle(Color.clear))
+                    .ignoresSafeArea(edges: corners.isSquare ? .all : [])
+            }
+            .clipShape(BoxShape(corners: hasMaterialBackground ? Corners(nil) : corners, unbounded: true))
             .overlay {
                 if let border = node.dict("border") {
-                    RoundedRectangle(cornerRadius: node.cgFloat("cornerRadius") ?? 0)
-                        .stroke(color(border["color"] as? String ?? "") ?? .primary,
-                                lineWidth: (border["width"] as? NSNumber).map { CGFloat($0.doubleValue) } ?? 1)
+                    BoxShape(corners: Corners(node.prop("cornerRadius")))
+                        .strokeBorder(fill(border["color"]) ?? AnyShapeStyle(.primary),
+                                      lineWidth: (border["width"] as? NSNumber).map { CGFloat($0.doubleValue) } ?? 1)
                 }
             }
             .shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
@@ -81,6 +90,16 @@ struct Modifiers: ViewModifier {
             .modifier(TapModifier(node: node) { runtime?.fire(node, "onTapGesture") })
             .modifier(RefreshModifier(node: node))
             .modifier(AttachedActions(node: node))
+            // Last, so the view's own background and border use it too.
+            .transformEnvironment(\.colorScheme) { scheme in
+                if let forced = colorScheme(node.string("colorScheme")) { scheme = forced }
+            }
+    }
+
+    private var corners: Corners { Corners(node.prop("cornerRadius")) }
+
+    private var hasMaterialBackground: Bool {
+        (node.prop("background") as? String).flatMap(material) != nil
     }
 
     private var padding: EdgeInsets {
@@ -103,7 +122,7 @@ struct Modifiers: ViewModifier {
         if let r = node.double("shadow") { return (.black.opacity(0.2), r, 0, r / 2) }
         if let d = node.dict("shadow") {
             func v(_ k: String) -> CGFloat { (d[k] as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0 }
-            return ((d["color"] as? String).flatMap(color) ?? .black.opacity(0.2), v("radius"), v("x"), v("y"))
+            return (color(d["color"]) ?? .black.opacity(0.2), v("radius"), v("x"), v("y"))
         }
         return (.clear, 0, 0, 0)
     }
@@ -195,25 +214,10 @@ struct ForegroundModifier: ViewModifier {
     let node: Node
     func body(content: Content) -> some View {
         if node.features.contains(.foreground) {
-            content.foregroundStyle(node.string("foregroundStyle").flatMap(color).map(AnyShapeStyle.init) ?? AnyShapeStyle(.foreground))
+            content.foregroundStyle(fill(node.prop("foregroundStyle")) ?? AnyShapeStyle(.foreground))
         } else {
             content
         }
-    }
-}
-
-/// `cornerRadius` clip. Without a radius it clips nothing, so children's
-/// shadows and overflow still show.
-struct CornerClip: Shape {
-    var radius: CGFloat
-    var animatableData: CGFloat {
-        get { radius }
-        set { radius = newValue }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        radius > 0 ? Path(roundedRect: rect, cornerRadius: radius, style: .continuous)
-            : Path(rect.insetBy(dx: -1e6, dy: -1e6))
     }
 }
 
@@ -278,89 +282,6 @@ struct PickerStyleModifier: ViewModifier {
 
 // MARK: - Prop value parsing
 
-/// `background`: a color, a material ("thinMaterial"…), or
-/// `{ gradient: [colors], start?, end? }` (a linear gradient, top to bottom by default).
-func backgroundStyle(_ value: Any?) -> AnyShapeStyle {
-    switch value {
-    case let name as String:
-        if let material = material(name) { return AnyShapeStyle(material) }
-        return AnyShapeStyle(color(name) ?? .clear)
-    case let spec as [String: Any]:
-        let colors = (spec["gradient"] as? [Any] ?? []).compactMap { ($0 as? String).flatMap(color) }
-        return AnyShapeStyle(LinearGradient(colors: colors.isEmpty ? [.clear] : colors,
-                                            startPoint: unitPoint(spec["start"] as? String) ?? .top,
-                                            endPoint: unitPoint(spec["end"] as? String) ?? .bottom))
-    default:
-        return AnyShapeStyle(Color.clear)
-    }
-}
-
-func material(_ name: String) -> Material? {
-    switch name {
-    case "ultraThinMaterial": .ultraThinMaterial
-    case "thinMaterial": .thinMaterial
-    case "regularMaterial": .regularMaterial
-    case "thickMaterial": .thickMaterial
-    case "ultraThickMaterial": .ultraThickMaterial
-    case "bar": .bar
-    default: nil
-    }
-}
-
-func unitPoint(_ name: String?) -> UnitPoint? {
-    switch name {
-    case "top": .top
-    case "center": .center
-    case "bottom": .bottom
-    case "leading": .leading
-    case "trailing": .trailing
-    case "topLeading": .topLeading
-    case "topTrailing": .topTrailing
-    case "bottomLeading": .bottomLeading
-    case "bottomTrailing": .bottomTrailing
-    default: nil
-    }
-}
-
-func color(_ name: String) -> Color? {
-    switch name {
-    case "primary": .primary
-    case "secondary": .secondary
-    case "accent": .accentColor
-    case "red": .red
-    case "orange": .orange
-    case "yellow": .yellow
-    case "green": .green
-    case "mint": .mint
-    case "teal": .teal
-    case "cyan": .cyan
-    case "blue": .blue
-    case "indigo": .indigo
-    case "purple": .purple
-    case "pink": .pink
-    case "brown": .brown
-    case "gray": .gray
-    case "black": .black
-    case "white": .white
-    case "clear": .clear
-    default: hexColor(name)
-    }
-}
-
-/// `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa` — same as CSS.
-func hexColor(_ string: String) -> Color? {
-    guard string.hasPrefix("#") else { return nil }
-    var hex = String(string.dropFirst())
-    if hex.count == 3 || hex.count == 4 { hex = hex.map { "\($0)\($0)" }.joined() }
-    if hex.count == 6 { hex += "ff" }
-    guard hex.count == 8, let v = UInt64(hex, radix: 16) else { return nil }
-    return Color(.sRGB,
-                 red: Double((v >> 24) & 0xff) / 255,
-                 green: Double((v >> 16) & 0xff) / 255,
-                 blue: Double((v >> 8) & 0xff) / 255,
-                 opacity: Double(v & 0xff) / 255)
-}
-
 func fontStyle(_ name: String) -> Font.TextStyle? {
     switch name {
     case "largeTitle": .largeTitle
@@ -414,6 +335,14 @@ func alignment(_ name: String?) -> Alignment? {
     case "topTrailing": .topTrailing
     case "bottomLeading": .bottomLeading
     case "bottomTrailing": .bottomTrailing
+    default: nil
+    }
+}
+
+func colorScheme(_ name: String?) -> ColorScheme? {
+    switch name {
+    case "light": .light
+    case "dark": .dark
     default: nil
     }
 }

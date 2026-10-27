@@ -16,6 +16,7 @@ import { TabsDemo } from "./screens/Tabs";
 import { SplitViewDemo } from "./screens/SplitView";
 import { GesturesDemo } from "./screens/Gestures";
 import { ImagesDemo } from "./screens/Images";
+import { StylesDemo } from "./screens/Styles";
 
 type Demo = { title: string; subtitle: string; icon: string; color: any; screen: () => ReactElement };
 
@@ -28,6 +29,7 @@ const demos: Demo[] = [
   { title: "Tabs", subtitle: "TabView, badges, a page-style pager", icon: "square.split.bottomrightquarter", color: "teal", screen: () => <TabsDemo /> },
   { title: "Split view", subtitle: "NavigationSplitView: columns on iPad, a stack on iPhone", icon: "sidebar.left", color: "mint", screen: () => <SplitViewDemo /> },
   { title: "Gestures", subtitle: "drag, pinch, rotate, long press, double tap", icon: "hand.draw", color: "red", screen: () => <GesturesDemo /> },
+  { title: "Shapes, colors & fonts", subtitle: "Circle, Capsule, gradients, system colors, styled text", icon: "paintpalette", color: "pink", screen: () => <StylesDemo /> },
   { title: "Images", subtitle: "Remote images: cached, decoded off main", icon: "photo.on.rectangle", color: "cyan", screen: () => <ImagesDemo /> },
   { title: "Native", subtitle: "Objective-C APIs from JS, onMain()", icon: "cpu", color: "indigo", screen: () => <NativeDemo /> },
 ];

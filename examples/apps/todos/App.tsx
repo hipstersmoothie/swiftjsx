@@ -122,7 +122,7 @@ function ListRow({ name, icon, color, count, onPress, onDelete }: {
         <Text foregroundStyle="primary">{name}</Text>
         <Spacer />
         <Text foregroundStyle="secondary" monospacedDigit animation="snappy">{count}</Text>
-        <Image systemName="chevron.right" font="footnote" fontWeight="semibold" foregroundStyle="gray" opacity={0.6} />
+        <Image systemName="chevron.right" font="footnote" fontWeight="semibold" foregroundStyle="tertiary" />
       </HStack>
       {/* Not role="destructive": that removes the row right away, before the alert confirms. */}
       {onDelete ? (
