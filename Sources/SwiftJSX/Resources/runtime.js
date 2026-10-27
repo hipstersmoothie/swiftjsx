@@ -4747,33 +4747,33 @@
         function pingEngtangledActionScope() {
           if (0 === --currentEntangledPendingCount && (-1 < transitionUpdateTime || (transitionStartTime = -1.1), entangledTransitionTypes = null, null !== currentEntangledListeners)) {
             null !== currentEntangledActionThenable && (currentEntangledActionThenable.status = "fulfilled");
-            var listeners = currentEntangledListeners;
+            var listeners2 = currentEntangledListeners;
             currentEntangledListeners = null;
             currentEntangledLane = 0;
             currentEntangledActionThenable = null;
-            for (var i = 0; i < listeners.length; i++) (0, listeners[i])();
+            for (var i = 0; i < listeners2.length; i++) (0, listeners2[i])();
           }
         }
         function chainThenableValue(thenable, result) {
-          var listeners = [], thenableWithOverride = {
+          var listeners2 = [], thenableWithOverride = {
             status: "pending",
             value: null,
             reason: null,
             then: function(resolve) {
-              listeners.push(resolve);
+              listeners2.push(resolve);
             }
           };
           thenable.then(
             function() {
               thenableWithOverride.status = "fulfilled";
               thenableWithOverride.value = result;
-              for (var i = 0; i < listeners.length; i++) (0, listeners[i])(result);
+              for (var i = 0; i < listeners2.length; i++) (0, listeners2[i])(result);
             },
             function(error) {
               thenableWithOverride.status = "rejected";
               thenableWithOverride.reason = error;
-              for (error = 0; error < listeners.length; error++)
-                (0, listeners[error])(void 0);
+              for (error = 0; error < listeners2.length; error++)
+                (0, listeners2[error])(void 0);
             }
           );
           return thenableWithOverride;
@@ -5652,8 +5652,8 @@
             var lane = concurrentQueues[i];
             concurrentQueues[i++] = null;
             if (null !== queue && null !== update) {
-              var pending2 = queue.pending;
-              null === pending2 ? update.next = update : (update.next = pending2.next, pending2.next = update);
+              var pending3 = queue.pending;
+              null === pending3 ? update.next = update : (update.next = pending3.next, pending3.next = update);
               queue.pending = update;
             }
             0 !== lane && markUpdateLaneFromFiberToRoot(fiber, update, lane);
@@ -7269,8 +7269,8 @@
         }
         function enqueueRenderPhaseUpdate(queue, update) {
           didScheduleRenderPhaseUpdateDuringThisPass = didScheduleRenderPhaseUpdate = true;
-          var pending2 = queue.pending;
-          null === pending2 ? update.next = update : (update.next = pending2.next, pending2.next = update);
+          var pending3 = queue.pending;
+          null === pending3 ? update.next = update : (update.next = pending3.next, pending3.next = update);
           queue.pending = update;
         }
         function entangleTransitionUpdate(root2, queue, lane) {
@@ -15092,15 +15092,15 @@
         var renderer2CursorDEV = createCursor(null);
         var rendererSigil = {};
         var currentlyRenderingFiber$1 = null, lastContextDependency = null, isDisallowedContextReadInDEV = false, AbortControllerLocal = "undefined" !== typeof AbortController ? AbortController : function() {
-          var listeners = [], signal = this.signal = {
+          var listeners2 = [], signal = this.signal = {
             aborted: false,
             addEventListener: function(type, listener) {
-              listeners.push(listener);
+              listeners2.push(listener);
             }
           };
           this.abort = function() {
             signal.aborted = true;
-            listeners.forEach(function(listener) {
+            listeners2.forEach(function(listener) {
               return listener();
             });
           };
@@ -17007,6 +17007,862 @@
     }
   });
 
+  // js/web/events.ts
+  var DOMException = class extends Error {
+    constructor(message = "", name = "Error") {
+      super(message);
+      this.name = name;
+    }
+  };
+  var Event = class {
+    constructor(type, init = {}) {
+      this.timeStamp = performance.now();
+      this.defaultPrevented = false;
+      this.target = null;
+      this.currentTarget = null;
+      /** @internal */
+      this._stopped = false;
+      if (arguments.length === 0) throw new TypeError("Event constructor: 1 argument required");
+      this.type = String(type);
+      this.bubbles = !!init.bubbles;
+      this.cancelable = !!init.cancelable;
+      this.composed = !!init.composed;
+    }
+    preventDefault() {
+      if (this.cancelable) this.defaultPrevented = true;
+    }
+    stopPropagation() {
+    }
+    stopImmediatePropagation() {
+      this._stopped = true;
+    }
+  };
+  var CustomEvent = class extends Event {
+    constructor(type, init = {}) {
+      super(type, init);
+      this.detail = init.detail;
+    }
+  };
+  var listeners = /* @__PURE__ */ Symbol("listeners");
+  var _a;
+  _a = listeners;
+  var EventTarget = class {
+    constructor() {
+      this[_a] = /* @__PURE__ */ new Map();
+    }
+    addEventListener(type, listener, options) {
+      if (!listener) return;
+      const opts = typeof options === "boolean" ? {
+        capture: options
+      } : options ?? {};
+      if (opts.signal?.aborted) return;
+      const capture = !!opts.capture;
+      const list = this[listeners].get(type) ?? [];
+      if (list.some((e) => e.listener === listener && e.capture === capture)) return;
+      list.push({
+        listener,
+        once: !!opts.once,
+        capture
+      });
+      this[listeners].set(type, list);
+      opts.signal?.addEventListener("abort", () => this.removeEventListener(type, listener, {
+        capture
+      }));
+    }
+    removeEventListener(type, listener, options) {
+      const capture = typeof options === "boolean" ? options : !!options?.capture;
+      const list = this[listeners].get(type);
+      if (!list) return;
+      const index = list.findIndex((e) => e.listener === listener && e.capture === capture);
+      if (index >= 0) list.splice(index, 1);
+    }
+    dispatchEvent(event) {
+      event.target ?? (event.target = this);
+      event.currentTarget = this;
+      for (const entry of [...this[listeners].get(event.type) ?? []]) {
+        if (entry.once) this.removeEventListener(event.type, entry.listener, {
+          capture: entry.capture
+        });
+        try {
+          if (typeof entry.listener === "function") entry.listener.call(this, event);
+          else entry.listener.handleEvent(event);
+        } catch (error) {
+          reportError2(error);
+        }
+        if (event._stopped) break;
+      }
+      const handler = this["on" + event.type];
+      if (typeof handler === "function") handler.call(this, event);
+      event.currentTarget = null;
+      return !event.defaultPrevented;
+    }
+  };
+  function reportError2(error) {
+    console.error(error instanceof Error ? `${error.message}
+${error.stack}` : String(error));
+  }
+  var AbortSignal = class _AbortSignal extends EventTarget {
+    constructor() {
+      super(...arguments);
+      this.aborted = false;
+      this.reason = void 0;
+      this.onabort = null;
+    }
+    throwIfAborted() {
+      if (this.aborted) throw this.reason;
+    }
+    /** @internal */
+    _abort(reason) {
+      if (this.aborted) return;
+      this.aborted = true;
+      this.reason = reason === void 0 ? new DOMException("This operation was aborted", "AbortError") : reason;
+      this.dispatchEvent(new Event("abort"));
+    }
+    static abort(reason) {
+      const signal = new _AbortSignal();
+      signal._abort(reason);
+      return signal;
+    }
+    static timeout(ms) {
+      const signal = new _AbortSignal();
+      setTimeout(() => signal._abort(new DOMException("The operation timed out.", "TimeoutError")), ms);
+      return signal;
+    }
+    static any(signals) {
+      const signal = new _AbortSignal();
+      for (const s of signals) {
+        if (s.aborted) {
+          signal._abort(s.reason);
+          break;
+        }
+        s.addEventListener("abort", () => signal._abort(s.reason), {
+          once: true
+        });
+      }
+      return signal;
+    }
+  };
+  var AbortController2 = class {
+    constructor() {
+      this.signal = new AbortSignal();
+    }
+    abort(reason) {
+      this.signal._abort(reason);
+    }
+  };
+
+  // js/web/encoding.ts
+  var TextEncoder = class {
+    constructor() {
+      this.encoding = "utf-8";
+    }
+    encode(input = "") {
+      return __web.encodeUTF8(String(input));
+    }
+    encodeInto(input, destination) {
+      const bytes = this.encode(input);
+      if (bytes.length <= destination.length) {
+        destination.set(bytes);
+        return {
+          read: input.length,
+          written: bytes.length
+        };
+      }
+      let read = 0;
+      let written = 0;
+      for (const char of input) {
+        const size = this.encode(char).length;
+        if (written + size > destination.length) break;
+        destination.set(this.encode(char), written);
+        written += size;
+        read += char.length;
+      }
+      return {
+        read,
+        written
+      };
+    }
+  };
+  var TextDecoder = class {
+    constructor(label = "utf-8", options = {}) {
+      this.encoding = "utf-8";
+      const name = String(label).trim().toLowerCase();
+      if (name !== "utf-8" && name !== "utf8" && name !== "unicode-1-1-utf-8") {
+        throw new RangeError(`TextDecoder: only UTF-8 is supported, not "${label}"`);
+      }
+      this.fatal = !!options.fatal;
+      this.ignoreBOM = !!options.ignoreBOM;
+    }
+    decode(input, _options) {
+      if (input === void 0) return "";
+      const bytes = input instanceof DataView ? new Uint8Array(input.buffer, input.byteOffset, input.byteLength) : input;
+      const text = __web.decodeUTF8(bytes, this.fatal);
+      if (text === null) throw new TypeError("TextDecoder: the encoded data was not valid UTF-8");
+      return !this.ignoreBOM && text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+    }
+  };
+  var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  function btoa(data) {
+    const s = String(data);
+    let out = "";
+    for (let i = 0; i < s.length; i += 3) {
+      const a = s.charCodeAt(i), b = s.charCodeAt(i + 1), c = s.charCodeAt(i + 2);
+      if (a > 255 || b > 255 || c > 255) throw new DOMExceptionLike("The string contains characters outside of the Latin1 range.", "InvalidCharacterError");
+      const n = a << 16 | (b || 0) << 8 | (c || 0);
+      out += alphabet[n >> 18 & 63] + alphabet[n >> 12 & 63] + (i + 1 < s.length ? alphabet[n >> 6 & 63] : "=") + (i + 2 < s.length ? alphabet[n & 63] : "=");
+    }
+    return out;
+  }
+  function atob(data) {
+    let s = String(data).replace(/[\t\n\f\r ]/g, "");
+    if (s.length % 4 === 0) s = s.replace(/==?$/, "");
+    if (s.length % 4 === 1 || /[^A-Za-z0-9+/]/.test(s)) {
+      throw new DOMExceptionLike("The string to be decoded is not correctly encoded.", "InvalidCharacterError");
+    }
+    let out = "";
+    let buffer = 0, bits = 0;
+    for (const char of s) {
+      buffer = buffer << 6 | alphabet.indexOf(char);
+      bits += 6;
+      if (bits >= 8) {
+        bits -= 8;
+        out += String.fromCharCode(buffer >> bits & 255);
+      }
+    }
+    return out;
+  }
+  var DOMExceptionLike = class extends Error {
+    constructor(message, name) {
+      super(message);
+      this.name = name;
+    }
+  };
+
+  // js/web/url.ts
+  var encode = (s) => encodeURIComponent(s).replace(/%20/g, "+").replace(/[!'()~]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+  var decode = (s) => {
+    try {
+      return decodeURIComponent(s.replace(/\+/g, " "));
+    } catch {
+      return s;
+    }
+  };
+  var URLSearchParams = class _URLSearchParams {
+    constructor(init = "") {
+      /** @internal */
+      this._list = [];
+      /** @internal */
+      this._url = null;
+      if (typeof init === "string") this._parse(init);
+      else if (init instanceof _URLSearchParams) this._list = init._list.map(([k, v]) => [k, v]);
+      else if (init && typeof init[Symbol.iterator] === "function") {
+        for (const pair of init) {
+          const [k, v] = [...pair];
+          if (v === void 0) throw new TypeError("URLSearchParams: each pair needs a name and a value");
+          this._list.push([String(k), String(v)]);
+        }
+      } else if (init && typeof init === "object") {
+        for (const key of Object.keys(init)) this._list.push([key, String(init[key])]);
+      }
+    }
+    /** @internal */
+    _parse(query) {
+      this._list = [];
+      for (const part of query.replace(/^\?/, "").split("&")) {
+        if (!part) continue;
+        const eq = part.indexOf("=");
+        this._list.push(eq < 0 ? [decode(part), ""] : [decode(part.slice(0, eq)), decode(part.slice(eq + 1))]);
+      }
+    }
+    _changed() {
+      if (this._url) this._url._setSearch(this.toString());
+    }
+    get size() {
+      return this._list.length;
+    }
+    append(name, value) {
+      this._list.push([String(name), String(value)]);
+      this._changed();
+    }
+    delete(name, value) {
+      this._list = this._list.filter(([k, v]) => k !== name || value !== void 0 && v !== String(value));
+      this._changed();
+    }
+    get(name) {
+      return this._list.find(([k]) => k === name)?.[1] ?? null;
+    }
+    getAll(name) {
+      return this._list.filter(([k]) => k === name).map(([, v]) => v);
+    }
+    has(name, value) {
+      return this._list.some(([k, v]) => k === name && (value === void 0 || v === String(value)));
+    }
+    set(name, value) {
+      const index = this._list.findIndex(([k]) => k === name);
+      if (index < 0) this._list.push([String(name), String(value)]);
+      else {
+        this._list[index] = [String(name), String(value)];
+        this._list = this._list.filter(([k], i) => k !== name || i === index);
+      }
+      this._changed();
+    }
+    sort() {
+      this._list.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+      this._changed();
+    }
+    forEach(callback, thisArg) {
+      for (const [k, v] of this._list) callback.call(thisArg, v, k, this);
+    }
+    *entries() {
+      for (const [k, v] of this._list) yield [k, v];
+    }
+    *keys() {
+      for (const [k] of this._list) yield k;
+    }
+    *values() {
+      for (const [, v] of this._list) yield v;
+    }
+    [Symbol.iterator]() {
+      return this.entries();
+    }
+    toString() {
+      return this._list.map(([k, v]) => encode(k) + "=" + encode(v)).join("&");
+    }
+  };
+  var URL = class _URL {
+    constructor(url, base) {
+      this._params = new URLSearchParams();
+      const parts = __web.parseURL(String(url), base === void 0 ? void 0 : String(base));
+      if (!parts) throw new TypeError(`Invalid URL: ${String(url)}`);
+      this._parts = parts;
+      this._params._parse(parts.search);
+      this._params._url = this;
+    }
+    static canParse(url, base) {
+      return __web.parseURL(String(url), base === void 0 ? void 0 : String(base)) !== null;
+    }
+    static parse(url, base) {
+      return _URL.canParse(url, base) ? new _URL(url, base) : null;
+    }
+    /** @internal */
+    _setSearch(query) {
+      this._parts.search = query ? "?" + query : "";
+    }
+    _reparse(href) {
+      const parts = __web.parseURL(href);
+      if (!parts) throw new TypeError(`Invalid URL: ${href}`);
+      this._parts = parts;
+      this._params._parse(parts.search);
+    }
+    get href() {
+      const p = this._parts;
+      const auth = p.username ? p.username + (p.password ? ":" + p.password : "") + "@" : "";
+      const authority = p.special || p.hostname ? "//" + auth + this.host : "";
+      return p.protocol + authority + p.pathname + p.search + p.hash;
+    }
+    set href(value) {
+      this._reparse(value);
+    }
+    get origin() {
+      return this._parts.special && this._parts.protocol !== "file:" ? this.protocol + "//" + this.host : "null";
+    }
+    get protocol() {
+      return this._parts.protocol;
+    }
+    set protocol(value) {
+      this._reparse(value.replace(/:?$/, ":") + this.href.slice(this.protocol.length));
+    }
+    get username() {
+      return this._parts.username;
+    }
+    set username(value) {
+      this._parts.username = encodeURIComponent(value);
+    }
+    get password() {
+      return this._parts.password;
+    }
+    set password(value) {
+      this._parts.password = encodeURIComponent(value);
+    }
+    get host() {
+      return this._parts.hostname + (this._parts.port ? ":" + this._parts.port : "");
+    }
+    set host(value) {
+      const [hostname, port = ""] = value.split(":");
+      this._parts.hostname = hostname.toLowerCase();
+      this._parts.port = port;
+    }
+    get hostname() {
+      return this._parts.hostname;
+    }
+    set hostname(value) {
+      this._parts.hostname = value.toLowerCase();
+    }
+    get port() {
+      return this._parts.port;
+    }
+    set port(value) {
+      this._parts.port = String(value);
+    }
+    get pathname() {
+      return this._parts.pathname;
+    }
+    set pathname(value) {
+      this._reparse(this.protocol + (this._parts.special || this.hostname ? "//" + this.host : "") + (value.startsWith("/") ? "" : "/") + value + this.search + this.hash);
+    }
+    get search() {
+      return this._parts.search === "?" ? "" : this._parts.search;
+    }
+    set search(value) {
+      const query = String(value).replace(/^\?/, "");
+      this._parts.search = query ? "?" + query : "";
+      this._params._parse(query);
+    }
+    get searchParams() {
+      return this._params;
+    }
+    get hash() {
+      return this._parts.hash === "#" ? "" : this._parts.hash;
+    }
+    set hash(value) {
+      const fragment = String(value).replace(/^#/, "");
+      this._parts.hash = fragment ? "#" + fragment : "";
+    }
+    toString() {
+      return this.href;
+    }
+    toJSON() {
+      return this.href;
+    }
+  };
+
+  // js/web/fetch.ts
+  var Headers = class _Headers {
+    constructor(init) {
+      this._map = /* @__PURE__ */ new Map();
+      if (init instanceof _Headers) init.forEach((v, k) => this.append(k, v));
+      else if (init && typeof init[Symbol.iterator] === "function") {
+        for (const [k, v] of init) this.append(k, v);
+      } else if (init) for (const k of Object.keys(init)) this.append(k, init[k]);
+    }
+    append(name, value) {
+      const key = name.toLowerCase();
+      const existing = this._map.get(key);
+      this._map.set(key, existing === void 0 ? String(value).trim() : `${existing}, ${String(value).trim()}`);
+    }
+    set(name, value) {
+      this._map.set(name.toLowerCase(), String(value).trim());
+    }
+    get(name) {
+      return this._map.get(name.toLowerCase()) ?? null;
+    }
+    getSetCookie() {
+      return this.get("set-cookie")?.split(/,\s*(?=[^;,]+=)/) ?? [];
+    }
+    has(name) {
+      return this._map.has(name.toLowerCase());
+    }
+    delete(name) {
+      this._map.delete(name.toLowerCase());
+    }
+    forEach(callback, thisArg) {
+      for (const [k, v] of this.entries()) callback.call(thisArg, v, k, this);
+    }
+    *entries() {
+      yield* [...this._map.entries()].sort(([a], [b]) => a < b ? -1 : 1);
+    }
+    *keys() {
+      for (const [k] of this.entries()) yield k;
+    }
+    *values() {
+      for (const [, v] of this.entries()) yield v;
+    }
+    [Symbol.iterator]() {
+      return this.entries();
+    }
+  };
+  var Blob = class _Blob {
+    constructor(parts = [], options = {}) {
+      const chunks = parts.map(toBytes);
+      this._bytes = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+      let offset = 0;
+      for (const chunk of chunks) {
+        this._bytes.set(chunk, offset);
+        offset += chunk.length;
+      }
+      this.type = (options.type ?? "").toLowerCase();
+    }
+    get size() {
+      return this._bytes.length;
+    }
+    async text() {
+      return __web.decodeUTF8(this._bytes, false);
+    }
+    async arrayBuffer() {
+      return this._bytes.slice().buffer;
+    }
+    async bytes() {
+      return this._bytes.slice();
+    }
+    slice(start, end, type) {
+      return new _Blob([this._bytes.slice(start, end)], {
+        type
+      });
+    }
+  };
+  function toBytes(part) {
+    if (typeof part === "string") return __web.encodeUTF8(part);
+    if (part instanceof Blob) return part._bytes;
+    if (part instanceof ArrayBuffer) return new Uint8Array(part);
+    return new Uint8Array(part.buffer, part.byteOffset, part.byteLength);
+  }
+  function extractBody(body) {
+    if (body == null) return {
+      data: null,
+      type: null
+    };
+    if (typeof body === "string") return {
+      data: body,
+      type: "text/plain;charset=UTF-8"
+    };
+    if (body instanceof URLSearchParams) return {
+      data: body.toString(),
+      type: "application/x-www-form-urlencoded;charset=UTF-8"
+    };
+    if (body instanceof Blob) return {
+      data: body._bytes,
+      type: body.type || null
+    };
+    if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) return {
+      data: toBytes(body),
+      type: null
+    };
+    const FormData = globalThis.FormData;
+    if (FormData && body instanceof FormData) {
+      throw new TypeError("fetch: FormData bodies aren't supported yet");
+    }
+    return {
+      data: String(body),
+      type: "text/plain;charset=UTF-8"
+    };
+  }
+  var Body = class {
+    constructor() {
+      /** @internal */
+      this._data = null;
+      this.bodyUsed = false;
+    }
+    get body() {
+      return null;
+    }
+    _consume() {
+      if (this.bodyUsed) throw new TypeError("Body has already been consumed.");
+      this.bodyUsed = true;
+      return this._data;
+    }
+    async text() {
+      const data = this._consume();
+      return data === null ? "" : typeof data === "string" ? data : __web.decodeUTF8(data, false);
+    }
+    async json() {
+      return JSON.parse(await this.text());
+    }
+    async bytes() {
+      const data = this._consume();
+      return data === null ? new Uint8Array() : typeof data === "string" ? __web.encodeUTF8(data) : data.slice();
+    }
+    async arrayBuffer() {
+      return (await this.bytes()).buffer;
+    }
+    async blob() {
+      return new Blob([await this.bytes()], {
+        type: this.headers.get("content-type") ?? ""
+      });
+    }
+    async formData() {
+      throw new TypeError("formData() isn't supported yet");
+    }
+  };
+  var Request = class _Request extends Body {
+    constructor(input, init = {}) {
+      super();
+      const source = input instanceof _Request ? input : null;
+      let url = source ? source.url : String(input);
+      try {
+        url = new globalThis.URL(url).href;
+      } catch {
+        throw new TypeError(`fetch: "${url}" isn't an absolute URL (there's no page to resolve it against)`);
+      }
+      this.url = url;
+      this.method = (init.method ?? source?.method ?? "GET").toUpperCase();
+      this.headers = new Headers(init.headers ?? source?.headers);
+      this.signal = init.signal ?? source?.signal ?? new AbortSignal();
+      const {
+        data,
+        type
+      } = extractBody(init.body !== void 0 ? init.body : source?._data ?? null);
+      if (data !== null && (this.method === "GET" || this.method === "HEAD")) {
+        throw new TypeError("Request with GET/HEAD method cannot have body.");
+      }
+      this._data = data;
+      if (type && !this.headers.has("content-type")) this.headers.set("content-type", type);
+    }
+    clone() {
+      return new _Request(this);
+    }
+  };
+  var Response = class _Response extends Body {
+    constructor(body = null, init = {}) {
+      super();
+      this.type = "basic";
+      this.url = "";
+      this.redirected = false;
+      this.status = init.status ?? 200;
+      if (this.status < 200 || this.status > 599) throw new RangeError(`Invalid status ${this.status}`);
+      this.statusText = init.statusText ?? "";
+      this.headers = new Headers(init.headers);
+      const {
+        data,
+        type
+      } = extractBody(body);
+      this._data = data;
+      if (type && !this.headers.has("content-type")) this.headers.set("content-type", type);
+    }
+    get ok() {
+      return this.status >= 200 && this.status < 300;
+    }
+    clone() {
+      if (this.bodyUsed) throw new TypeError("Response.clone: Body has already been consumed.");
+      const copy = new _Response(null, {
+        status: this.status,
+        statusText: this.statusText,
+        headers: this.headers
+      });
+      copy._data = this._data;
+      copy.url = this.url;
+      copy.redirected = this.redirected;
+      return copy;
+    }
+    static json(data, init = {}) {
+      const headers = new Headers(init.headers);
+      if (!headers.has("content-type")) headers.set("content-type", "application/json");
+      return new _Response(JSON.stringify(data), {
+        ...init,
+        headers
+      });
+    }
+    static error() {
+      const response = new _Response(null, {
+        status: 200
+      });
+      response.type = "error";
+      return response;
+    }
+    static redirect(url, status = 302) {
+      return new _Response(null, {
+        status,
+        headers: {
+          location: String(url)
+        }
+      });
+    }
+  };
+  var nextFetch = 1;
+  var pending = /* @__PURE__ */ new Map();
+  function fetch(input, init) {
+    return new Promise((resolve, reject) => {
+      const request = new Request(input, init);
+      const {
+        signal
+      } = request;
+      if (signal.aborted) return reject(signal.reason);
+      const id = nextFetch++;
+      pending.set(id, {
+        resolve,
+        reject,
+        signal
+      });
+      signal.addEventListener("abort", () => __web.abort(id), {
+        once: true
+      });
+      const body = request._data;
+      __web.fetch(id, {
+        method: request.method,
+        url: request.url,
+        headers: [...request.headers.entries()],
+        ...body === null ? {} : {
+          body
+        }
+      });
+    });
+  }
+  globalThis.__swiftjsx_fetchDone = (id, error, info, body) => {
+    const request = pending.get(id);
+    if (!request) return;
+    pending.delete(id);
+    if (error) {
+      request.reject(error.name === "AbortError" ? request.signal.reason ?? new DOMException(error.message, "AbortError") : new TypeError(error.message));
+      return;
+    }
+    const response = new Response(null, {
+      status: info.status,
+      statusText: info.statusText,
+      headers: info.headers
+    });
+    response._data = new Uint8Array(body);
+    response.url = info.url;
+    response.redirected = info.redirected;
+    request.resolve(response);
+  };
+
+  // js/web/index.ts
+  var g = globalThis;
+  var integerArrays = [Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, BigInt64Array, BigUint64Array];
+  var crypto = {
+    getRandomValues(array) {
+      if (!integerArrays.some((type) => array instanceof type)) {
+        throw new DOMException("getRandomValues: the array must be an integer typed array", "TypeMismatchError");
+      }
+      if (array.byteLength > 65536) throw new DOMException("getRandomValues: more than 65536 bytes", "QuotaExceededError");
+      __web.randomFill(array);
+      return array;
+    },
+    randomUUID() {
+      return __web.randomUUID();
+    }
+  };
+  var Storage = class {
+    constructor(backing) {
+      this.backing = backing;
+    }
+    getItem(key) {
+      return this.backing.get(String(key));
+    }
+    setItem(key, value) {
+      this.backing.set(String(key), String(value));
+    }
+    removeItem(key) {
+      this.backing.remove(String(key));
+    }
+    clear() {
+      this.backing.clear();
+    }
+    key(index) {
+      return this.backing.keys()[index] ?? null;
+    }
+    get length() {
+      return this.backing.keys().length;
+    }
+  };
+  var localStorage = new Storage({
+    get: (k) => __web.storage("get", k),
+    set: (k, v) => __web.storage("set", k, v),
+    remove: (k) => __web.storage("remove", k),
+    clear: () => __web.storage("clear"),
+    keys: () => __web.storage("keys")
+  });
+  var session = /* @__PURE__ */ new Map();
+  var sessionStorage = new Storage({
+    get: (k) => session.get(k) ?? null,
+    set: (k, v) => void session.set(k, v),
+    remove: (k) => void session.delete(k),
+    clear: () => session.clear(),
+    keys: () => [...session.keys()]
+  });
+  function structuredClone(value, seen = /* @__PURE__ */ new Map()) {
+    if (value === null || typeof value !== "object") {
+      if (typeof value === "function" || typeof value === "symbol") {
+        throw new DOMException(`${String(value)} could not be cloned.`, "DataCloneError");
+      }
+      return value;
+    }
+    if (seen.has(value)) return seen.get(value);
+    const v = value;
+    let copy;
+    if (v instanceof Date) copy = new Date(v.getTime());
+    else if (v instanceof RegExp) copy = new RegExp(v.source, v.flags);
+    else if (v instanceof ArrayBuffer) copy = v.slice(0);
+    else if (ArrayBuffer.isView(v)) {
+      const buffer = structuredClone(v.buffer, seen);
+      copy = v instanceof DataView ? new DataView(buffer, v.byteOffset, v.byteLength) : new v.constructor(buffer, v.byteOffset, v.length);
+    } else if (v instanceof Map) {
+      copy = /* @__PURE__ */ new Map();
+      seen.set(value, copy);
+      v.forEach((val, key) => copy.set(structuredClone(key, seen), structuredClone(val, seen)));
+      return copy;
+    } else if (v instanceof Set) {
+      copy = /* @__PURE__ */ new Set();
+      seen.set(value, copy);
+      v.forEach((val) => copy.add(structuredClone(val, seen)));
+      return copy;
+    } else if (v instanceof Error) {
+      copy = new v.constructor(v.message);
+      copy.stack = v.stack;
+    } else if (Array.isArray(v)) {
+      copy = [];
+      seen.set(value, copy);
+      v.forEach((item, i) => copy[i] = structuredClone(item, seen));
+      return copy;
+    } else {
+      copy = {};
+      seen.set(value, copy);
+      for (const key of Object.keys(v)) copy[key] = structuredClone(v[key], seen);
+      return copy;
+    }
+    seen.set(value, copy);
+    return copy;
+  }
+  var globals = {
+    Event,
+    CustomEvent,
+    EventTarget,
+    DOMException,
+    AbortController: AbortController2,
+    AbortSignal,
+    TextEncoder,
+    TextDecoder,
+    atob,
+    btoa,
+    URL,
+    URLSearchParams,
+    fetch,
+    Headers,
+    Request,
+    Response,
+    Blob,
+    crypto,
+    localStorage,
+    sessionStorage,
+    structuredClone: (value) => structuredClone(value),
+    navigator: {
+      userAgent: __web.userAgent,
+      language: __web.languages[0] ?? "en-US",
+      languages: __web.languages,
+      onLine: true,
+      product: "SwiftJSX"
+    },
+    // Many packages read process.env.* (esbuild replaces NODE_ENV in app code).
+    process: {
+      env: {
+        NODE_ENV: "development"
+      },
+      browser: true,
+      nextTick: (fn, ...args) => queueMicrotask(() => fn(...args))
+    }
+  };
+  for (const name of Object.keys(globals)) {
+    if (g[name] === void 0) g[name] = globals[name];
+  }
+  g.window = g.self = g.global = g;
+  var windowEvents = new EventTarget();
+  g.addEventListener = windowEvents.addEventListener.bind(windowEvents);
+  g.removeEventListener = windowEvents.removeEventListener.bind(windowEvents);
+  g.dispatchEvent = windowEvents.dispatchEvent.bind(windowEvents);
+  g.__swiftjsx_windowEvent = (type) => {
+    if (type === "online" || type === "offline") g.navigator.onLine = type === "online";
+    windowEvents.dispatchEvent(new Event(type));
+  };
+
   // js/refresh-setup.ts
   var RefreshRuntime = __toESM(require_runtime(), 1);
   RefreshRuntime.injectIntoGlobalHook(globalThis);
@@ -17323,7 +18179,7 @@
   };
   var nextId = 1;
   var nextCallback = 1;
-  var pending = [];
+  var pending2 = [];
   var instances = /* @__PURE__ */ new Map();
   var callbacks = /* @__PURE__ */ new Map();
   function serialize(inst, props) {
@@ -17407,7 +18263,7 @@
     createInstance(type, props) {
       const inst = new HostInstance(nextId++, type, props);
       instances.set(inst.id, inst);
-      pending.push({
+      pending2.push({
         op: "create",
         id: inst.id,
         type,
@@ -17420,7 +18276,7 @@
         id: nextId++,
         text
       };
-      pending.push({
+      pending2.push({
         op: "text",
         id: inst.id,
         text
@@ -17428,28 +18284,28 @@
       return inst;
     },
     appendInitialChild(parent, child) {
-      pending.push({
+      pending2.push({
         op: "append",
         parent: parent.id,
         child: child.id
       });
     },
     appendChild(parent, child) {
-      pending.push({
+      pending2.push({
         op: "append",
         parent: parent.id,
         child: child.id
       });
     },
     appendChildToContainer(_, child) {
-      pending.push({
+      pending2.push({
         op: "append",
         parent: 0,
         child: child.id
       });
     },
     insertBefore(parent, child, before) {
-      pending.push({
+      pending2.push({
         op: "insert",
         parent: parent.id,
         child: child.id,
@@ -17457,7 +18313,7 @@
       });
     },
     insertInContainerBefore(_, child, before) {
-      pending.push({
+      pending2.push({
         op: "insert",
         parent: 0,
         child: child.id,
@@ -17465,14 +18321,14 @@
       });
     },
     removeChild(parent, child) {
-      pending.push({
+      pending2.push({
         op: "remove",
         parent: parent.id,
         child: child.id
       });
     },
     removeChildFromContainer(_, child) {
-      pending.push({
+      pending2.push({
         op: "remove",
         parent: 0,
         child: child.id
@@ -17483,7 +18339,7 @@
       const diff = shallowDiff(inst, oldProps, newProps);
       if (!diff) return;
       if (inst.eventSeq !== void 0) diff.__seq = inst.ackedSeq = inst.eventSeq;
-      pending.push({
+      pending2.push({
         op: "update",
         id: inst.id,
         props: diff
@@ -17491,7 +18347,7 @@
     },
     commitTextUpdate(inst, _old, text) {
       inst.text = text;
-      pending.push({
+      pending2.push({
         op: "setText",
         id: inst.id,
         text
@@ -17512,14 +18368,14 @@
     getPublicInstance: (inst) => inst,
     prepareForCommit: () => null,
     resetAfterCommit() {
-      const ops = pending;
-      pending = [];
+      const ops = pending2;
+      pending2 = [];
       if (ops.length) __native.commit(ops, commitAnimation);
     },
     preparePortalMount() {
     },
     hideInstance(inst) {
-      pending.push({
+      pending2.push({
         op: "update",
         id: inst.id,
         props: {
@@ -17528,7 +18384,7 @@
       });
     },
     unhideInstance(inst) {
-      pending.push({
+      pending2.push({
         op: "update",
         id: inst.id,
         props: {

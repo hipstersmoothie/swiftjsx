@@ -2,6 +2,8 @@
 // React, the renderer and the component library; app bundles import them from
 // `__swiftjsx_modules` instead of bundling their own copies. That split is what
 // lets a hot update re-run just the app code against the same React instance.
+// Web APIs first: React and npm packages look for them when they load.
+import "./web";
 import "./refresh-setup";
 import * as React from "react";
 import * as JSXRuntime from "react/jsx-runtime";

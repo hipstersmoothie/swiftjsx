@@ -12,6 +12,7 @@ public final class JSXRuntime {
 
     @ObservationIgnored private var engine: JSEngine!
     @ObservationIgnored private(set) var worklets: WorkletRuntime!
+    @ObservationIgnored private var appEvents: AppEvents?
     @ObservationIgnored private var bundleURL: URL?
     @ObservationIgnored private var watcher: Timer?
     @ObservationIgnored private var lastModified: Date?
@@ -45,6 +46,8 @@ public final class JSXRuntime {
             report: { [weak self] message in self?.report(message) }
         )
         tree.worklets = worklets
+        let engine = engine!
+        appEvents = AppEvents { type in engine.call("__swiftjsx_windowEvent", [type]) }
     }
 
     /// Load an app bundle from disk. With `hotReload`, the file is watched and

@@ -174,6 +174,8 @@ final class JSEngine: @unchecked Sendable {
     private let vm: JSVirtualMachine
     private let nativeHost: NativeHost?
     private let nativeError: String?
+    /// In-flight `fetch` requests (WebHost.swift).
+    let fetches = FetchTasks()
 
     init(threading: JSThreading, native: NativeOptions? = nil, callbacks: EngineCallbacks) {
         self.threading = threading
@@ -247,6 +249,7 @@ final class JSEngine: @unchecked Sendable {
             }
             lock.withLock { _context = ctx }
             installHost(in: ctx)
+            installWeb(in: ctx)
             installNative(in: ctx)
             ctx.evaluateScript(Self.prelude)
             ctx.evaluateScript(runtime, withSourceURL: URL(string: "swiftjsx://runtime.js"))
