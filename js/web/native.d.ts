@@ -2,6 +2,9 @@
 declare const __web: {
   fetch(id: number, request: { method: string; url: string; headers: [string, string][]; body?: string | Uint8Array }): void;
   abort(id: number): void;
+  wsOpen(id: number, url: string, protocols: string[]): void;
+  wsSend(id: number, data: string | Uint8Array): void;
+  wsClose(id: number, code: number, reason: string): void;
   encodeUTF8(text: string): Uint8Array;
   /** null when `fatal` and the bytes aren't valid UTF-8. */
   decodeUTF8(bytes: ArrayBuffer | ArrayBufferView, fatal: boolean): string | null;

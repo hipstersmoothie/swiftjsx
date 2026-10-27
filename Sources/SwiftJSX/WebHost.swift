@@ -58,6 +58,21 @@ extension JSEngine {
             return JSValue(object: parts, in: ctx)
         }
 
+        sockets.engine = self
+        let wsOpen: @convention(block) (Int, String, JSValue) -> Void = { [weak self] id, url, protocols in
+            guard let url = URL(string: url) else { return }
+            self?.sockets.open(id, url: url, protocols: protocols.toArray() as? [String] ?? [])
+        }
+        let wsSend: @convention(block) (Int, JSValue) -> Void = { [weak self] id, data in
+            let message: URLSessionWebSocketTask.Message = data.isString ? .string(data.toString()) : .data(Self.bytes(of: data) ?? Data())
+            self?.sockets.send(id, message)
+        }
+        let wsClose: @convention(block) (Int, Int, String) -> Void = { [weak self] id, code, reason in
+            self?.sockets.close(id, code: code, reason: reason)
+        }
+        web.setObject(wsOpen, forKeyedSubscript: "wsOpen" as NSString)
+        web.setObject(wsSend, forKeyedSubscript: "wsSend" as NSString)
+        web.setObject(wsClose, forKeyedSubscript: "wsClose" as NSString)
         web.setObject(fetch, forKeyedSubscript: "fetch" as NSString)
         web.setObject(abort, forKeyedSubscript: "abort" as NSString)
         web.setObject(encode, forKeyedSubscript: "encodeUTF8" as NSString)

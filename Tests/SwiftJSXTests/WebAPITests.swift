@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import Testing
 @testable import SwiftJSX
 
@@ -33,6 +34,8 @@ final class MockServer: URLProtocol {
                 guard let self, !self.stopped else { return }
                 respond(200, [:], Data())
             }
+        case "/wsport":
+            respond(200, [:], Data(String(EchoServer.shared.port).utf8))
         case "/fail":
             client?.urlProtocol(self, didFailWithError: URLError(.cannotConnectToHost))
         default:
@@ -55,6 +58,41 @@ final class MockServer: URLProtocol {
             data.append(buffer, count: count)
         }
         return data
+    }
+}
+
+/// A WebSocket echo server on localhost (sends every message back as is).
+final class EchoServer: @unchecked Sendable {
+    static let shared = EchoServer()
+    private(set) var port: UInt16 = 0
+    private let listener: NWListener
+
+    init() {
+        let parameters = NWParameters.tcp
+        parameters.defaultProtocolStack.applicationProtocols.insert(NWProtocolWebSocket.Options(), at: 0)
+        listener = try! NWListener(using: parameters, on: .any)
+        let ready = DispatchSemaphore(value: 0)
+        listener.stateUpdateHandler = { state in if case .ready = state { ready.signal() } }
+        listener.newConnectionHandler = { connection in
+            connection.start(queue: .global())
+            Self.echo(connection)
+        }
+        listener.start(queue: .global())
+        ready.wait()
+        port = listener.port?.rawValue ?? 0
+    }
+
+    private static func echo(_ connection: NWConnection) {
+        connection.receiveMessage { data, context, _, error in
+            guard error == nil, let context else { return }
+            let metadata = context.protocolMetadata(definition: NWProtocolWebSocket.definition) as? NWProtocolWebSocket.Metadata
+            if metadata?.opcode == .close {
+                connection.send(content: nil, contentContext: context, isComplete: true, completion: .contentProcessed { _ in connection.cancel() })
+                return
+            }
+            let reply = NWConnection.ContentContext(identifier: "echo", metadata: [NWProtocolWebSocket.Metadata(opcode: metadata?.opcode ?? .text)])
+            connection.send(content: data, contentContext: reply, isComplete: true, completion: .contentProcessed { _ in echo(connection) })
+        }
     }
 }
 

@@ -29,7 +29,7 @@ public struct ReactView: View {
 struct Children: View {
     let node: Node
     var body: some View {
-        ForEach(node.children.filter { !$0.isPresentation }) { NodeView(node: $0) }
+        ForEach(node.children.filter { !$0.isAttachment }) { NodeView(node: $0) }
     }
 }
 
@@ -44,6 +44,10 @@ struct NodeView: View {
         content.modifier(Decorations(node: node))
     }
 
+    /// Controls that take `tint` get it on the control itself (a Button in
+    /// `<SwipeActions>` must stay a plain Button for its tint to color the action).
+    private static let tinted: Set<String> = ["Toggle", "Slider", "ProgressView", "Stepper", "Picker"]
+
     private func fire(_ event: String, _ payload: Any? = nil) {
         runtime?.dispatch(node.id, event, payload)
     }
@@ -51,6 +55,14 @@ struct NodeView: View {
     private static func number(_ v: Any?) -> Double? { (v as? NSNumber)?.doubleValue }
 
     @ViewBuilder private var content: some View {
+        if Self.tinted.contains(node.type) {
+            control.tint(node.string("tint").flatMap(color))
+        } else {
+            control
+        }
+    }
+
+    @ViewBuilder private var control: some View {
         switch node.type {
         case "#text":
             Text(node.text)
@@ -165,6 +177,7 @@ struct NodeView: View {
                 if let title = node.string("title") { Text(title) } else { Children(node: node) }
             }
             .modifier(ButtonStyleModifier(style: node.string("buttonStyle")))
+            .tint(node.string("tint").flatMap(color))
 
         case "TextField":
             TextFieldHost(node: node)

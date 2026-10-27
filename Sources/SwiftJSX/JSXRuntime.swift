@@ -203,14 +203,3 @@ public final class JSXRuntime {
     }
     private static var runtimeScripts: [String: String] = [:]
 }
-
-private func unitPoint(_ name: String?) -> UnitPoint? {
-    switch name {
-    case "top": .top
-    case "center": .center
-    case "bottom": .bottom
-    case "leading": .leading
-    case "trailing": .trailing
-    default: nil
-    }
-}

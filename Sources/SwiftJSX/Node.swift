@@ -51,7 +51,7 @@ public final class Node: Identifiable {
         case foreground, tap, ref, transform
         case doubleTap, longPress, drag, magnify, rotate
         case accessibility, accessibilityElement
-        case refresh
+        case refresh, swipeActions, contextMenu
     }
 
     /// Called after props or children change.
@@ -59,10 +59,13 @@ public final class Node: Identifiable {
         for (key, feature) in Self.featureKeys where !features.contains(feature) && has(key) {
             features.insert(feature)
         }
+        for child in children where child.type == "SwipeActions" || child.type == "ContextMenu" {
+            features.insert(child.type == "SwipeActions" ? .swipeActions : .contextMenu)
+        }
         guard !decorated else { return }
         if Self.alwaysDecorated.contains(type) || props.keys.contains(where: Self.modifierKeys.contains)
             || animatedProps.keys.contains(where: Self.modifierKeys.contains) || has("animatedStyle")
-            || has("__ref") || children.contains(where: \.isPresentation) {
+            || has("__ref") || children.contains(where: \.isAttachment) {
             decorated = true
         }
     }
@@ -99,6 +102,9 @@ public final class Node: Identifiable {
 
     /// Sheets and alerts aren't laid out; their parent presents them.
     var isPresentation: Bool { Self.presentationTypes.contains(type) }
+    /// Children that aren't laid out but modify their parent: presentations,
+    /// `<SwipeActions>`, `<ContextMenu>`.
+    var isAttachment: Bool { isPresentation || type == "SwipeActions" || type == "ContextMenu" }
     static let presentationTypes: Set<String> = ["Sheet", "Alert", "ConfirmationDialog"]
 
     init(id: Int, type: String, props: [String: Any] = [:], text: String = "") {
@@ -200,7 +206,7 @@ public final class NodeTree {
                         child.parent = parent
                     }
                 }
-                if child.isPresentation { parent.updateDecorated() }
+                if child.isAttachment { parent.updateDecorated() }
             case "update":
                 guard let node = nodes[id] else { continue }
                 let changes = op["props"] as? [String: Any] ?? [:]

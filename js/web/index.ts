@@ -6,6 +6,7 @@ import { AbortController, AbortSignal, CustomEvent, DOMException, Event, EventTa
 import { TextDecoder, TextEncoder, atob, btoa } from "./encoding";
 import { URL, URLSearchParams } from "./url";
 import { Blob, Headers, Request, Response, fetch } from "./fetch";
+import { WebSocket, MessageEvent, CloseEvent } from "./websocket";
 
 const g = globalThis as any;
 
@@ -124,6 +125,7 @@ const globals: Record<string, unknown> = {
   TextEncoder, TextDecoder, atob, btoa,
   URL, URLSearchParams,
   fetch, Headers, Request, Response, Blob,
+  WebSocket, MessageEvent, CloseEvent,
   crypto, localStorage, sessionStorage,
   structuredClone: (value: unknown) => structuredClone(value),
   navigator: {

@@ -16,6 +16,9 @@ export type Font =
 
 export type Dimension = number | "infinity";
 
+/** SwiftUI materials: translucent, blurred backgrounds. */
+export type Material = "ultraThinMaterial" | "thinMaterial" | "regularMaterial" | "thickMaterial" | "ultraThickMaterial" | "bar";
+
 /**
  * SwiftUI modifiers, as props. They're applied in a fixed, CSS-box-model-ish
  * order: padding → frame → background → cornerRadius → border → shadow →
@@ -24,7 +27,8 @@ export type Dimension = number | "infinity";
 export interface Modifiers {
   padding?: number | boolean | { top?: number; leading?: number; bottom?: number; trailing?: number; horizontal?: number; vertical?: number };
   frame?: { width?: number; height?: number; minWidth?: number; maxWidth?: Dimension; minHeight?: number; maxHeight?: Dimension; alignment?: Alignment };
-  background?: Color;
+  /** A color, a material, or a linear gradient (top to bottom unless `start`/`end` say otherwise). */
+  background?: Color | Material | { gradient: Color[]; start?: Alignment; end?: Alignment };
   foregroundStyle?: Color;
   font?: Font;
   fontWeight?: "ultraLight" | "thin" | "light" | "regular" | "medium" | "semibold" | "bold" | "heavy" | "black";
@@ -159,7 +163,7 @@ export const Image = host<Modifiers & ImageSource>("Image");
 export const Label = host<Modifiers & { title: string; systemImage: string }>("Label");
 export const Spacer = host<Modifiers & { minLength?: number }>("Spacer");
 export const Divider = host<Modifiers>("Divider");
-export const ProgressView = host<Modifiers & { value?: number; total?: number; label?: string }>("ProgressView");
+export const ProgressView = host<Modifiers & { value?: number; total?: number; label?: string; tint?: Color }>("ProgressView");
 
 export const Button = host<
   Modifiers & WithChildren & {
@@ -167,6 +171,8 @@ export const Button = host<
     title?: string;
     role?: "destructive" | "cancel";
     buttonStyle?: "automatic" | "bordered" | "borderedProminent" | "borderless" | "plain";
+    /** Accent color of the button (and its background in `<SwipeActions>`). */
+    tint?: Color;
   }
 >("Button");
 
@@ -181,8 +187,8 @@ export const TextField = host<
     secure?: boolean;
   }
 >("TextField");
-export const Toggle = host<Modifiers & WithChildren & { value: boolean; onChange: (value: boolean) => void; label?: string }>("Toggle");
-export const Slider = host<Modifiers & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number }>("Slider");
+export const Toggle = host<Modifiers & WithChildren & { value: boolean; onChange: (value: boolean) => void; label?: string; tint?: Color }>("Toggle");
+export const Slider = host<Modifiers & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; tint?: Color }>("Slider");
 export const Stepper = host<Modifiers & WithChildren & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; label?: string }>("Stepper");
 export const Picker = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string }[]; label?: string; pickerStyle?: "menu" | "segmented" | "inline" }>("Picker");
 
@@ -244,7 +250,25 @@ export const NavigationSplitViewHost = host<
 >("NavigationSplitView");
 
 /** Sets the navigation title and toolbar for whatever screen it's rendered in. */
-export const Screen = host<Modifiers & WithChildren & { title?: string; titleDisplayMode?: "automatic" | "inline" | "large" }>("Screen");
+export const Screen = host<
+  Modifiers & WithChildren & {
+    title?: string;
+    titleDisplayMode?: "automatic" | "inline" | "large";
+    /** A search field in the navigation bar (controlled with `onSearchTextChange`). */
+    searchText?: string;
+    onSearchTextChange?: (text: string) => void;
+    searchPrompt?: string;
+  }
+>("Screen");
+
+/**
+ * Buttons revealed by swiping a row of a `<List>` (put it inside the row).
+ * Give buttons `tint` or `role="destructive"` for their color.
+ */
+export const SwipeActions = host<WithChildren & { edge?: "leading" | "trailing"; allowsFullSwipe?: boolean }>("SwipeActions");
+
+/** Buttons shown when the parent element is long-pressed. */
+export const ContextMenu = host<WithChildren>("ContextMenu");
 
 export const ToolbarItem = host<WithChildren & { placement?: "automatic" | "primaryAction" | "cancellationAction" | "confirmationAction" | "principal" | "navigation" }>("ToolbarItem");
 

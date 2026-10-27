@@ -60,7 +60,7 @@ struct Modifiers: ViewModifier {
             .modifier(ForegroundModifier(node: node))
             .padding(padding)
             .modifier(FrameModifier(frame: node.dict("frame")))
-            .background(node.string("background").flatMap(color) ?? .clear)
+            .background(backgroundStyle(node.prop("background")))
             .clipShape(CornerClip(radius: node.cgFloat("cornerRadius") ?? 0))
             .overlay {
                 if let border = node.dict("border") {
@@ -77,6 +77,7 @@ struct Modifiers: ViewModifier {
             .modifier(TapModifier(node: node) { runtime?.fire(node, "onTapGesture") })
             .modifier(Interactions(node: node))
             .modifier(RefreshModifier(node: node))
+            .modifier(AttachedActions(node: node))
     }
 
     private var padding: EdgeInsets {
@@ -119,6 +120,51 @@ struct Interactions: ViewModifier {
                 .modifier(TransformModifier(node: node))
                 .modifier(GestureModifiers(node: node))
                 .modifier(AccessibilityModifier(node: node))
+        }
+    }
+}
+
+/// `<SwipeActions edge>` and `<ContextMenu>` children: buttons shown when
+/// the row is swiped (in a List) or long-pressed.
+struct AttachedActions: ViewModifier {
+    let node: Node
+
+    func body(content: Content) -> some View {
+        content
+            .modifier(Swipe(node: node))
+            .modifier(Menu(node: node))
+    }
+
+    private struct Swipe: ViewModifier {
+        let node: Node
+        func body(content: Content) -> some View {
+            if node.features.contains(.swipeActions) {
+                let sets = node.children.filter { $0.type == "SwipeActions" }
+                let leading = sets.first { $0.string("edge") == "leading" }
+                let trailing = sets.first { $0.string("edge") != "leading" }
+                content
+                    .swipeActions(edge: .trailing, allowsFullSwipe: trailing?.bool("allowsFullSwipe") ?? false) {
+                        if let trailing { Children(node: trailing) }
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: leading?.bool("allowsFullSwipe") ?? false) {
+                        if let leading { Children(node: leading) }
+                    }
+            } else {
+                content
+            }
+        }
+    }
+
+    private struct Menu: ViewModifier {
+        let node: Node
+        func body(content: Content) -> some View {
+            if node.features.contains(.contextMenu) {
+                content.contextMenu {
+                    if let menu = node.children.first(where: { $0.type == "ContextMenu" }) { Children(node: menu) }
+                }
+            } else {
+                content
+            }
         }
     }
 }
@@ -228,6 +274,50 @@ struct PickerStyleModifier: ViewModifier {
 }
 
 // MARK: - Prop value parsing
+
+/// `background`: a color, a material ("thinMaterial"…), or
+/// `{ gradient: [colors], start?, end? }` (a linear gradient, top to bottom by default).
+func backgroundStyle(_ value: Any?) -> AnyShapeStyle {
+    switch value {
+    case let name as String:
+        if let material = material(name) { return AnyShapeStyle(material) }
+        return AnyShapeStyle(color(name) ?? .clear)
+    case let spec as [String: Any]:
+        let colors = (spec["gradient"] as? [Any] ?? []).compactMap { ($0 as? String).flatMap(color) }
+        return AnyShapeStyle(LinearGradient(colors: colors.isEmpty ? [.clear] : colors,
+                                            startPoint: unitPoint(spec["start"] as? String) ?? .top,
+                                            endPoint: unitPoint(spec["end"] as? String) ?? .bottom))
+    default:
+        return AnyShapeStyle(Color.clear)
+    }
+}
+
+func material(_ name: String) -> Material? {
+    switch name {
+    case "ultraThinMaterial": .ultraThinMaterial
+    case "thinMaterial": .thinMaterial
+    case "regularMaterial": .regularMaterial
+    case "thickMaterial": .thickMaterial
+    case "ultraThickMaterial": .ultraThickMaterial
+    case "bar": .bar
+    default: nil
+    }
+}
+
+func unitPoint(_ name: String?) -> UnitPoint? {
+    switch name {
+    case "top": .top
+    case "center": .center
+    case "bottom": .bottom
+    case "leading": .leading
+    case "trailing": .trailing
+    case "topLeading": .topLeading
+    case "topTrailing": .topTrailing
+    case "bottomLeading": .bottomLeading
+    case "bottomTrailing": .bottomTrailing
+    default: nil
+    }
+}
 
 func color(_ name: String) -> Color? {
     switch name {

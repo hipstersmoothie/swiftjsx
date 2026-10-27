@@ -13,7 +13,7 @@ struct NavigationStackHost: View {
     @State private var pages = PageCache()
 
     var body: some View {
-        let children = node.children.filter { !$0.isPresentation }
+        let children = node.children.filter { !$0.isAttachment }
         let pushed = children.dropFirst().map(\.id)
         let _ = pages.remember(children)
 
@@ -55,8 +55,9 @@ struct ScreenHost: View {
     var body: some View {
         let items = node.children.filter { $0.type == "ToolbarItem" }
         VStack(spacing: 0) {
-            ForEach(node.children.filter { $0.type != "ToolbarItem" && !$0.isPresentation }) { NodeView(node: $0) }
+            ForEach(node.children.filter { $0.type != "ToolbarItem" && !$0.isAttachment }) { NodeView(node: $0) }
         }
+        .modifier(SearchableModifier(node: node))
         .navigationTitle(node.string("title") ?? "")
         #if os(iOS)
         .navigationBarTitleDisplayMode(titleDisplayMode(node.string("titleDisplayMode")))
@@ -67,6 +68,31 @@ struct ScreenHost: View {
                     HStack { Children(node: item) }
                 }
             }
+        }
+    }
+}
+
+/// `searchText` / `onSearchTextChange` / `searchPrompt` on a `<Screen>`: the
+/// navigation bar's search field. Shows what the user typed until React's
+/// `searchText` catches up.
+struct SearchableModifier: ViewModifier {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+    @State private var typed: String?
+
+    func body(content: Content) -> some View {
+        if node.has("onSearchTextChange") || node.has("searchText") {
+            content
+                .searchable(text: Binding(
+                    get: { typed ?? node.string("searchText") ?? "" },
+                    set: { text in
+                        typed = text
+                        runtime?.dispatch(node.id, "onSearchTextChange", text)
+                    }
+                ), prompt: node.string("searchPrompt").map { Text($0) })
+                .onChange(of: node.string("searchText")) { _, text in if text == typed { typed = nil } }
+        } else {
+            content
         }
     }
 }

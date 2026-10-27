@@ -17715,6 +17715,98 @@ ${error.stack}` : String(error));
     request.resolve(response);
   };
 
+  // js/web/websocket.ts
+  var MessageEvent = class extends Event {
+    constructor(type, init = {}) {
+      super(type);
+      this.data = init.data;
+      this.origin = init.origin ?? "";
+    }
+  };
+  var CloseEvent = class extends Event {
+    constructor(type, init = {}) {
+      super(type);
+      this.code = init.code ?? 0;
+      this.reason = init.reason ?? "";
+      this.wasClean = !!init.wasClean;
+    }
+  };
+  var nextSocket = 1;
+  var sockets = /* @__PURE__ */ new Map();
+  var _WebSocket = class _WebSocket extends EventTarget {
+    constructor(url, protocols = []) {
+      super();
+      this.CONNECTING = 0;
+      this.OPEN = 1;
+      this.CLOSING = 2;
+      this.CLOSED = 3;
+      this.readyState = 0;
+      this.protocol = "";
+      this.extensions = "";
+      this.bufferedAmount = 0;
+      this.binaryType = "blob";
+      this.onopen = null;
+      this.onmessage = null;
+      this.onerror = null;
+      this.onclose = null;
+      /** @internal */
+      this._id = nextSocket++;
+      const parsed = new globalThis.URL(String(url));
+      if (parsed.protocol === "http:") parsed.protocol = "ws:";
+      if (parsed.protocol === "https:") parsed.protocol = "wss:";
+      if (parsed.protocol !== "ws:" && parsed.protocol !== "wss:") {
+        throw new DOMException(`WebSocket: "${url}" isn't a ws: or wss: URL`, "SyntaxError");
+      }
+      this.url = parsed.href;
+      sockets.set(this._id, this);
+      __web.wsOpen(this._id, this.url, typeof protocols === "string" ? [protocols] : protocols);
+    }
+    send(data) {
+      if (this.readyState === _WebSocket.CONNECTING) throw new DOMException("WebSocket is still connecting", "InvalidStateError");
+      if (this.readyState !== _WebSocket.OPEN) return;
+      if (typeof data === "string") __web.wsSend(this._id, data);
+      else if (data instanceof Blob) __web.wsSend(this._id, data._bytes);
+      else __web.wsSend(this._id, data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+    }
+    close(code = 1e3, reason = "") {
+      if (this.readyState >= _WebSocket.CLOSING) return;
+      this.readyState = _WebSocket.CLOSING;
+      __web.wsClose(this._id, code, reason);
+    }
+  };
+  _WebSocket.CONNECTING = 0;
+  _WebSocket.OPEN = 1;
+  _WebSocket.CLOSING = 2;
+  _WebSocket.CLOSED = 3;
+  var WebSocket = _WebSocket;
+  globalThis.__swiftjsx_wsEvent = (id, type, payload) => {
+    const socket = sockets.get(id);
+    if (!socket) return;
+    switch (type) {
+      case "open":
+        socket.readyState = WebSocket.OPEN;
+        socket.protocol = payload;
+        socket.dispatchEvent(new Event("open"));
+        break;
+      case "message": {
+        const data = typeof payload === "string" || socket.binaryType === "arraybuffer" ? payload : new Blob([payload]);
+        socket.dispatchEvent(new MessageEvent("message", {
+          data,
+          origin: new globalThis.URL(socket.url).origin
+        }));
+        break;
+      }
+      case "error":
+        socket.dispatchEvent(new Event("error"));
+        break;
+      case "close":
+        socket.readyState = WebSocket.CLOSED;
+        sockets.delete(id);
+        socket.dispatchEvent(new CloseEvent("close", payload));
+        break;
+    }
+  };
+
   // js/web/index.ts
   var g = globalThis;
   var integerArrays = [Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, BigInt64Array, BigUint64Array];
@@ -17830,6 +17922,9 @@ ${error.stack}` : String(error));
     Request,
     Response,
     Blob,
+    WebSocket,
+    MessageEvent,
+    CloseEvent,
     crypto,
     localStorage,
     sessionStorage,
@@ -17886,6 +17981,7 @@ ${error.stack}` : String(error));
     Alert: () => Alert,
     Button: () => Button,
     ConfirmationDialog: () => ConfirmationDialog,
+    ContextMenu: () => ContextMenu,
     Divider: () => Divider,
     Form: () => Form,
     HStack: () => HStack,
@@ -17911,6 +18007,7 @@ ${error.stack}` : String(error));
     Spacer: () => Spacer,
     SplitColumn: () => SplitColumn,
     Stepper: () => Stepper,
+    SwipeActions: () => SwipeActions,
     Tab: () => Tab,
     TabView: () => TabView,
     Text: () => Text,
@@ -18576,6 +18673,8 @@ ${e.stack}` : String(e);
   var SplitColumn = host("SplitColumn");
   var NavigationSplitViewHost = host("NavigationSplitView");
   var Screen = host("Screen");
+  var SwipeActions = host("SwipeActions");
+  var ContextMenu = host("ContextMenu");
   var ToolbarItem = host("ToolbarItem");
   var Sheet = host("Sheet");
   var Alert = host("Alert");

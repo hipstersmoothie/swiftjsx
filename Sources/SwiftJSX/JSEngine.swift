@@ -176,6 +176,8 @@ final class JSEngine: @unchecked Sendable {
     private let nativeError: String?
     /// In-flight `fetch` requests (WebHost.swift).
     let fetches = FetchTasks()
+    /// Open `WebSocket`s (WebSockets.swift).
+    let sockets = WebSocketHub()
 
     init(threading: JSThreading, native: NativeOptions? = nil, callbacks: EngineCallbacks) {
         self.threading = threading

@@ -57,6 +57,42 @@ const checks: Checks = {
     await rejects(response.text(), "TypeError");
     eq(await (await new Response("héllo").blob()).size, 6);
   },
+  async "websocket echo"() {
+    const port = await (await fetch("https://mock.test/wsport")).text();
+    const socket = new WebSocket(`ws://localhost:${port}`);
+    socket.binaryType = "arraybuffer";
+    const events: string[] = [];
+    await new Promise<void>((resolve, reject) => {
+      socket.onerror = () => reject(new Error("socket error"));
+      socket.onopen = () => {
+        events.push("open");
+        socket.send("hello");
+        socket.send(new Uint8Array([1, 2, 3]));
+      };
+      socket.onmessage = (event) => {
+        events.push(typeof event.data === "string" ? `text:${event.data}` : `binary:${new Uint8Array(event.data as ArrayBuffer).join(",")}`);
+        if (events.length === 3) socket.close(1000, "done");
+      };
+      socket.addEventListener("close", (event) => {
+        events.push(`close:${(event as CloseEvent).code}`);
+        resolve();
+      });
+    });
+    eq(events.join(" "), "open text:hello binary:1,2,3 close:1000");
+    eq(socket.readyState, WebSocket.CLOSED);
+  },
+  async "websocket refused"() {
+    const socket = new WebSocket("ws://localhost:1");
+    const events: string[] = [];
+    await new Promise<void>((resolve) => {
+      socket.onerror = () => events.push("error");
+      socket.onclose = (event) => {
+        events.push(`close:${event.code}:${event.wasClean}`);
+        resolve();
+      };
+    });
+    eq(events.join(" "), "error close:1006:false");
+  },
   "headers"() {
     const headers = new Headers({ "Content-Type": "a" });
     headers.append("x-multi", "1");

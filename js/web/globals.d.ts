@@ -5,6 +5,7 @@ import type * as Events from "./events";
 import type * as Encoding from "./encoding";
 import type * as Urls from "./url";
 import type * as Fetch from "./fetch";
+import type * as Sockets from "./websocket";
 
 type WebStorage = {
   getItem(key: string): string | null;
@@ -52,6 +53,13 @@ declare global {
   type Response = Fetch.Response;
   var Blob: typeof Fetch.Blob;
   interface Blob extends Fetch.Blob {}
+
+  var WebSocket: typeof Sockets.WebSocket;
+  type WebSocket = Sockets.WebSocket;
+  var MessageEvent: typeof Sockets.MessageEvent;
+  type MessageEvent<T = unknown> = Sockets.MessageEvent<T>;
+  var CloseEvent: typeof Sockets.CloseEvent;
+  type CloseEvent = Sockets.CloseEvent;
 
   var crypto: {
     getRandomValues<T extends ArrayBufferView>(array: T): T;
