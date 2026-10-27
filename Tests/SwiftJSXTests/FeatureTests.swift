@@ -228,3 +228,49 @@ struct CompilerTests {
         #expect(parseAnimation(42) == nil)
     }
 }
+
+@MainActor
+@Suite struct WorkletTests {
+    private func offset(_ node: Node) -> [Double] {
+        let o = node.dict("offset") ?? [:]
+        return [(o["x"] as? NSNumber)?.doubleValue ?? .nan, (o["y"] as? NSNumber)?.doubleValue ?? .nan]
+    }
+
+    private func drag(_ x: Double, _ y: Double) -> [String: Any] {
+        ["translation": ["x": x, "y": y], "location": ["x": 0, "y": 0], "startLocation": ["x": 0, "y": 0],
+         "velocity": ["x": 0, "y": 0], "predictedEndTranslation": ["x": x, "y": y]]
+    }
+
+    @Test func gestureWorkletsUpdateStylesSynchronously() async throws {
+        // JS on its own thread, as in the app: nothing below waits for it
+        // except the runOnJS / sync-back checks.
+        let runtime = try fixture("Worklets", threading: .background)
+        #expect(await eventually { runtime.find("VStack") { $0.string("accessibilityIdentifier") == "card" } != nil })
+        let card = try #require(runtime.find("VStack") { $0.string("accessibilityIdentifier") == "card" })
+        #expect(offset(card) == [0, 0])
+        #expect(card.features.contains(.transform))
+
+        // Runs on the main thread inside the "touch event": updated on return.
+        runtime.fire(card, "onDrag", drag(150, 80))
+        #expect(offset(card) == [100, 80])  // clamped by the captured LIMIT
+        #expect(card.double("opacity") == 0.5)
+        #expect(runtime.error == nil)
+
+        // Worklet → JS thread → React, and the value synced back for JS reads.
+        runtime.press("Read")
+        #expect(await eventually { runtime.texts().contains("read 100,80") })
+
+        runtime.fire(card, "onDragEnd", drag(150, 80))
+        #expect(offset(card) == [0, 0])
+        #expect(card.double("opacity") == 1)
+        #expect(await eventually { runtime.texts().contains("drops 1") })
+    }
+
+    @Test func jsThreadWritesReachTheMainThread() async throws {
+        let runtime = try fixture("Worklets", threading: .background)
+        #expect(await eventually { runtime.find("VStack") { $0.string("accessibilityIdentifier") == "card" } != nil })
+        let card = try #require(runtime.find("VStack") { $0.string("accessibilityIdentifier") == "card" })
+        runtime.press("Set from JS")
+        #expect(await eventually { offset(card) == [5, 5] })
+    }
+}

@@ -13,6 +13,7 @@ import {
 } from "react-reconciler/constants";
 import { createContext, type ReactNode } from "react";
 import type { AnimationSpec } from "./components";
+import { isWorkletProp, jsFunction, retainFunctions, serializeWorkletProp } from "./worklets";
 
 type Props = Record<string, any>;
 type TextInstance = { id: number; text: string };
@@ -50,6 +51,10 @@ export class HostInstance {
   eventSeq: number | undefined;
   /** …and the last one Swift has been told about. */
   ackedSeq: number | undefined;
+  /** Serialized worklet props, to diff by content (closures change, functions don't compare). */
+  worklets: Map<string, string> | undefined;
+  /** JS functions captured by this instance's worklets (callable from the main thread). */
+  functionIds: Set<number> | undefined;
   constructor(readonly id: number, readonly type: string, public props: Props) {}
 
   /** Focus a TextField. */
@@ -85,17 +90,38 @@ const callbacks = new Map<number, (value: unknown) => void>();
 
 // Functions can't cross the bridge. Swift sees `onPress: true` and calls back
 // into __dispatch(id, "onPress", payload); we look up the live handler here.
-function serialize(props: Props): Props {
+// Worklets (and animated styles) are the exception: they're sent as code plus
+// captured values, to run on the main thread.
+function serialize(inst: HostInstance, props: Props): Props {
   const out: Props = {};
   for (const key in props) {
     if (key === "children" || key === "key" || key === "ref") continue;
     const v = props[key];
-    if (v === undefined) continue;
+    if (v === undefined || isWorkletProp(v)) continue;
     out[key] = typeof v === "function" ? true : v;
   }
+  Object.assign(out, serializeWorklets(inst, props));
   // Swift only tracks layout (for measure()) on nodes that have a ref.
   if (props.ref != null) out.__ref = true;
   return out;
+}
+
+/** Serializes the worklet props, and returns the ones whose content changed since last time. */
+function serializeWorklets(inst: HostInstance, props: Props): Props {
+  const ids = new Set<number>();
+  const changed: Props = {};
+  const json = new Map<string, string>();
+  for (const key in props) {
+    if (!isWorkletProp(props[key])) continue;
+    const value = serializeWorkletProp(props[key], ids);
+    const text = JSON.stringify(value);
+    json.set(key, text);
+    if (inst.worklets?.get(key) !== text) changed[key] = value;
+  }
+  if (ids.size || inst.functionIds?.size) retainFunctions(inst.functionIds, ids);
+  inst.functionIds = ids;
+  inst.worklets = json.size ? json : undefined;
+  return changed;
 }
 
 // `frame={{ width: 10 }}` is a new object every render; compare by value so we
@@ -113,12 +139,12 @@ function same(a: unknown, b: unknown): boolean {
   return false;
 }
 
-function shallowDiff(oldProps: Props, newProps: Props): Props | null {
-  const changed: Props = {};
-  let any = false;
+function shallowDiff(inst: HostInstance, oldProps: Props, newProps: Props): Props | null {
+  const changed: Props = serializeWorklets(inst, newProps);
+  let any = Object.keys(changed).length > 0;
   for (const key in newProps) {
-    if (key === "children" || key === "ref") continue;
-    if (!same(oldProps[key], newProps[key])) {
+    if (key === "children" || key === "ref" || isWorkletProp(newProps[key])) continue;
+    if (!same(oldProps[key], newProps[key]) || isWorkletProp(oldProps[key])) {
       // `undefined` doesn't survive the bridge; null tells Swift to drop the prop.
       const v = newProps[key];
       changed[key] = typeof v === "function" ? true : v === undefined ? null : v;
@@ -158,7 +184,7 @@ const hostConfig: any = {
   createInstance(type: string, props: Props): HostInstance {
     const inst = new HostInstance(nextId++, type, props);
     instances.set(inst.id, inst);
-    pending.push({ op: "create", id: inst.id, type, props: serialize(props) });
+    pending.push({ op: "create", id: inst.id, type, props: serialize(inst, props) });
     return inst;
   },
   createTextInstance(text: string): TextInstance {
@@ -189,7 +215,7 @@ const hostConfig: any = {
   },
   commitUpdate(inst: HostInstance, _type: string, oldProps: Props, newProps: Props) {
     inst.props = newProps;
-    const diff = shallowDiff(oldProps, newProps);
+    const diff = shallowDiff(inst, oldProps, newProps);
     if (!diff) return;
     // Lets controlled native inputs ignore stale echoes (see Controlled.swift).
     if (inst.eventSeq !== undefined) diff.__seq = inst.ackedSeq = inst.eventSeq;
@@ -201,6 +227,7 @@ const hostConfig: any = {
   },
   detachDeletedInstance(inst: HostInstance) {
     instances.delete(inst.id);
+    if (inst.functionIds?.size) retainFunctions(inst.functionIds, new Set());
   },
   clearContainer() {},
   resetTextContent() {},
@@ -315,6 +342,19 @@ function acknowledgeLater(inst: HostInstance, seq: number) {
     __native.commit([{ op: "update", id: inst.id, props: { __seq: seq } }]);
   });
 }
+
+// A worklet called a JS-thread function (e.g. a state setter).
+(globalThis as any).__swiftjsx_callJS = (id: number, args: unknown[]) => {
+  const fn = jsFunction(id);
+  if (!fn) return;
+  const prev = currentPriority;
+  currentPriority = DiscreteEventPriority;
+  try {
+    fn(...args);
+  } finally {
+    currentPriority = prev;
+  }
+};
 
 (globalThis as any).__resolveCommand = (cb: number, value: unknown) => {
   callbacks.get(cb)?.(value);

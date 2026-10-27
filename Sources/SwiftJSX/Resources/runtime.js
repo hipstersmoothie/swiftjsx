@@ -17065,18 +17065,222 @@
     VirtualList: () => VirtualList,
     ZStack: () => ZStack,
     isNativeAvailable: () => isNativeAvailable,
+    makeMutable: () => makeMutable,
     native: () => native,
     onMain: () => onMain,
     render: () => render,
+    runOnJS: () => runOnJS,
+    useAnimatedStyle: () => useAnimatedStyle,
     useNativeValue: () => useNativeValue,
     useNavigation: () => useNavigation,
-    withAnimation: () => withAnimation
+    useSharedValue: () => useSharedValue,
+    withAnimation: () => withAnimation,
+    withSpring: () => withSpring,
+    withTiming: () => withTiming
   });
 
   // js/renderer.ts
   var import_react_reconciler = __toESM(require_react_reconciler(), 1);
   var import_constants = __toESM(require_constants(), 1);
+  var import_react2 = __toESM(require_react(), 1);
+
+  // js/worklets.ts
+  var import_compiler_runtime = __toESM(require_compiler_runtime(), 1);
   var import_react = __toESM(require_react(), 1);
+  globalThis.__swiftjsx_worklet = (fn, code, closure) => {
+    fn.__worklet = {
+      code,
+      closure
+    };
+    return fn;
+  };
+  var send = (message) => __native.command(0, "worklet", message, 0);
+  var Shared = class {
+    constructor(__shared, _value) {
+      this.__shared = __shared;
+      this._value = _value;
+    }
+    get value() {
+      return this._value;
+    }
+    /** Assign a value, or an animation (`withSpring(…)`, `withTiming(…)`). */
+    set value(v) {
+      this._value = isAnimation(v) ? v.to : v;
+      send({
+        type: "set",
+        id: this.__shared,
+        value: v
+      });
+    }
+    get() {
+      return this.value;
+    }
+    set(v) {
+      this.value = v;
+    }
+  };
+  var nextShared = 1;
+  var live = /* @__PURE__ */ new Map();
+  function makeMutable(initial) {
+    const shared = new Shared(nextShared++, initial);
+    live.set(shared.__shared, shared);
+    send({
+      type: "set",
+      id: shared.__shared,
+      value: initial
+    });
+    return shared;
+  }
+  function useSharedValue(initial) {
+    const $ = (0, import_compiler_runtime.c)(6);
+    if ($[0] !== "1d93727551b85d34ac23171b46cea1d617eafcf519449a0bb63dfa7415cb92ed") {
+      for (let $i = 0; $i < 6; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "1d93727551b85d34ac23171b46cea1d617eafcf519449a0bb63dfa7415cb92ed";
+    }
+    let t0;
+    if ($[1] !== initial) {
+      t0 = () => makeMutable(initial);
+      $[1] = initial;
+      $[2] = t0;
+    } else {
+      t0 = $[2];
+    }
+    const [shared] = (0, import_react.useState)(t0);
+    let t1;
+    let t2;
+    if ($[3] !== shared) {
+      t1 = () => {
+        live.set(shared.__shared, shared);
+        send({
+          type: "set",
+          id: shared.__shared,
+          value: shared._value
+        });
+        return () => {
+          live.delete(shared.__shared);
+          send({
+            type: "delete",
+            id: shared.__shared
+          });
+        };
+      };
+      t2 = [shared];
+      $[3] = shared;
+      $[4] = t1;
+      $[5] = t2;
+    } else {
+      t1 = $[4];
+      t2 = $[5];
+    }
+    (0, import_react.useEffect)(t1, t2);
+    return shared;
+  }
+  globalThis.__swiftjsx_sharedValues = (values) => {
+    for (const id in values) {
+      const shared = live.get(Number(id));
+      if (shared) shared._value = values[id];
+    }
+  };
+  var isAnimation = (v) => !!v && typeof v === "object" && v.__animate === true;
+  function builtin(name, fn) {
+    fn.__builtin = name;
+    return fn;
+  }
+  var withSpring = builtin("withSpring", (to, config) => ({
+    __animate: true,
+    to,
+    animation: {
+      type: "spring",
+      ...config
+    }
+  }));
+  var withTiming = builtin("withTiming", (to, config = {}) => ({
+    __animate: true,
+    to,
+    animation: {
+      type: config.easing ?? "easeInOut",
+      duration: config.duration ?? 0.3,
+      delay: config.delay
+    }
+  }));
+  var runOnJS = builtin("runOnJS", (fn) => fn);
+  function useAnimatedStyle(fn) {
+    if (!fn.__worklet) {
+      throw new Error("useAnimatedStyle: the callback wasn't compiled as a worklet. Build with scripts/build.mjs, which runs the worklets Babel pass.");
+    }
+    return {
+      __animatedStyle: fn
+    };
+  }
+  var jsFunctions = /* @__PURE__ */ new Map();
+  var functionIds = /* @__PURE__ */ new WeakMap();
+  var functionRefs = /* @__PURE__ */ new Map();
+  var nextFunction = 1;
+  function isWorkletProp(v) {
+    return typeof v === "function" && !!v.__worklet || !!v && typeof v === "object" && "__animatedStyle" in v;
+  }
+  function serializeWorkletProp(v, ids) {
+    const fn = typeof v === "function" ? v : v.__animatedStyle;
+    const {
+      code,
+      closure
+    } = fn.__worklet;
+    const out = {};
+    for (const key in closure) out[key] = serializeCaptured(closure[key], ids);
+    return {
+      __worklet: {
+        code,
+        closure: out
+      }
+    };
+  }
+  function serializeCaptured(v, ids) {
+    if (v instanceof Shared) return {
+      __shared: v.__shared
+    };
+    if (typeof v === "function") {
+      const fn = v;
+      if (fn.__builtin) return {
+        __builtin: fn.__builtin
+      };
+      if (fn.__worklet) return serializeWorkletProp(fn, ids);
+      let id = functionIds.get(fn);
+      if (id === void 0) functionIds.set(fn, id = nextFunction++);
+      jsFunctions.set(id, fn);
+      ids.add(id);
+      return {
+        __jsFunction: id
+      };
+    }
+    if (Array.isArray(v)) return v.map((x) => serializeCaptured(x, ids));
+    if (v && typeof v === "object") {
+      if (Object.getPrototypeOf(v) !== Object.prototype) {
+        throw new Error(`A worklet captured a ${v.constructor?.name ?? "non-plain"} object; worklets can capture plain data, shared values and functions.`);
+      }
+      const out = {};
+      for (const key in v) out[key] = serializeCaptured(v[key], ids);
+      return out;
+    }
+    return v;
+  }
+  function retainFunctions(previous, next) {
+    for (const id of next) functionRefs.set(id, (functionRefs.get(id) ?? 0) + 1);
+    for (const id of previous ?? []) {
+      const refs = (functionRefs.get(id) ?? 1) - 1;
+      if (refs > 0) functionRefs.set(id, refs);
+      else {
+        functionRefs.delete(id);
+        jsFunctions.delete(id);
+      }
+    }
+  }
+  function jsFunction(id) {
+    return jsFunctions.get(id);
+  }
+
+  // js/renderer.ts
   var HostInstance = class _HostInstance {
     constructor(id, type, props) {
       this.id = id;
@@ -17122,16 +17326,33 @@
   var pending = [];
   var instances = /* @__PURE__ */ new Map();
   var callbacks = /* @__PURE__ */ new Map();
-  function serialize(props) {
+  function serialize(inst, props) {
     const out = {};
     for (const key in props) {
       if (key === "children" || key === "key" || key === "ref") continue;
       const v = props[key];
-      if (v === void 0) continue;
+      if (v === void 0 || isWorkletProp(v)) continue;
       out[key] = typeof v === "function" ? true : v;
     }
+    Object.assign(out, serializeWorklets(inst, props));
     if (props.ref != null) out.__ref = true;
     return out;
+  }
+  function serializeWorklets(inst, props) {
+    const ids = /* @__PURE__ */ new Set();
+    const changed = {};
+    const json = /* @__PURE__ */ new Map();
+    for (const key in props) {
+      if (!isWorkletProp(props[key])) continue;
+      const value = serializeWorkletProp(props[key], ids);
+      const text = JSON.stringify(value);
+      json.set(key, text);
+      if (inst.worklets?.get(key) !== text) changed[key] = value;
+    }
+    if (ids.size || inst.functionIds?.size) retainFunctions(inst.functionIds, ids);
+    inst.functionIds = ids;
+    inst.worklets = json.size ? json : void 0;
+    return changed;
   }
   function same(a, b) {
     if (a === b) return true;
@@ -17145,12 +17366,12 @@
     }
     return false;
   }
-  function shallowDiff(oldProps, newProps) {
-    const changed = {};
-    let any = false;
+  function shallowDiff(inst, oldProps, newProps) {
+    const changed = serializeWorklets(inst, newProps);
+    let any = Object.keys(changed).length > 0;
     for (const key in newProps) {
-      if (key === "children" || key === "ref") continue;
-      if (!same(oldProps[key], newProps[key])) {
+      if (key === "children" || key === "ref" || isWorkletProp(newProps[key])) continue;
+      if (!same(oldProps[key], newProps[key]) || isWorkletProp(oldProps[key])) {
         const v = newProps[key];
         changed[key] = typeof v === "function" ? true : v === void 0 ? null : v;
         any = true;
@@ -17190,7 +17411,7 @@
         op: "create",
         id: inst.id,
         type,
-        props: serialize(props)
+        props: serialize(inst, props)
       });
       return inst;
     },
@@ -17259,7 +17480,7 @@
     },
     commitUpdate(inst, _type, oldProps, newProps) {
       inst.props = newProps;
-      const diff = shallowDiff(oldProps, newProps);
+      const diff = shallowDiff(inst, oldProps, newProps);
       if (!diff) return;
       if (inst.eventSeq !== void 0) diff.__seq = inst.ackedSeq = inst.eventSeq;
       pending.push({
@@ -17278,6 +17499,7 @@
     },
     detachDeletedInstance(inst) {
       instances.delete(inst.id);
+      if (inst.functionIds?.size) retainFunctions(inst.functionIds, /* @__PURE__ */ new Set());
     },
     clearContainer() {
     },
@@ -17352,7 +17574,7 @@
     waitForCommitToBeReady: () => null,
     getSuspendedCommitReason: () => null,
     NotPendingTransition: null,
-    HostTransitionContext: (0, import_react.createContext)(null),
+    HostTransitionContext: (0, import_react2.createContext)(null),
     resetFormInstance() {
     },
     bindToConsole: (methodName, args) => console[methodName].bind(console, ...args)
@@ -17398,6 +17620,17 @@
       }]);
     });
   }
+  globalThis.__swiftjsx_callJS = (id, args) => {
+    const fn = jsFunction(id);
+    if (!fn) return;
+    const prev = currentPriority;
+    currentPriority = import_constants.DiscreteEventPriority;
+    try {
+      fn(...args);
+    } finally {
+      currentPriority = prev;
+    }
+  };
   globalThis.__resolveCommand = (cb, value) => {
     callbacks.get(cb)?.(value);
     callbacks.delete(cb);
@@ -17466,12 +17699,12 @@ ${e.stack}` : String(e);
   var ConfirmationDialog = host("ConfirmationDialog");
 
   // js/navigation.tsx
-  var import_compiler_runtime = __toESM(require_compiler_runtime(), 1);
-  var import_react2 = __toESM(require_react(), 1);
+  var import_compiler_runtime2 = __toESM(require_compiler_runtime(), 1);
+  var import_react3 = __toESM(require_react(), 1);
   var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
-  var NavigationContext = (0, import_react2.createContext)(null);
+  var NavigationContext = (0, import_react3.createContext)(null);
   function Navigator(t0) {
-    const $ = (0, import_compiler_runtime.c)(22);
+    const $ = (0, import_compiler_runtime2.c)(22);
     if ($[0] !== "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c") {
       for (let $i = 0; $i < 22; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -17499,8 +17732,8 @@ ${e.stack}` : String(e);
     } else {
       t1 = $[4];
     }
-    const [stack, setStack] = (0, import_react2.useState)(t1);
-    const lastKey = (0, import_react2.useRef)(0);
+    const [stack, setStack] = (0, import_react3.useState)(t1);
+    const lastKey = (0, import_react3.useRef)(0);
     let t2;
     let t3;
     let t4;
@@ -17590,21 +17823,21 @@ ${e.stack}` : String(e);
     return s_0.slice(0, -1);
   }
   function useNavigation() {
-    const $ = (0, import_compiler_runtime.c)(1);
+    const $ = (0, import_compiler_runtime2.c)(1);
     if ($[0] !== "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
       $[0] = "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c";
     }
-    const nav = (0, import_react2.useContext)(NavigationContext);
+    const nav = (0, import_react3.useContext)(NavigationContext);
     if (!nav) {
       throw new Error("useNavigation() must be used inside <Navigator>");
     }
     return nav;
   }
   function NavigationSplitView(t0) {
-    const $ = (0, import_compiler_runtime.c)(22);
+    const $ = (0, import_compiler_runtime2.c)(22);
     if ($[0] !== "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c") {
       for (let $i = 0; $i < 22; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -17693,13 +17926,13 @@ ${e.stack}` : String(e);
   }
 
   // js/virtual-list.tsx
-  var import_compiler_runtime2 = __toESM(require_compiler_runtime(), 1);
-  var import_react3 = __toESM(require_react(), 1);
+  var import_compiler_runtime3 = __toESM(require_compiler_runtime(), 1);
+  var import_react4 = __toESM(require_react(), 1);
   var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
   var VirtualListHost = "VirtualList";
   var VirtualRow = "VirtualRow";
   function VirtualList(t0) {
-    const $ = (0, import_compiler_runtime2.c)(25);
+    const $ = (0, import_compiler_runtime3.c)(25);
     if ($[0] !== "a03a6f05d6a6e966a868cc44350c818510f09085b08fb4d5bbd7a675142a24e7") {
       for (let $i = 0; $i < 25; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -17750,8 +17983,8 @@ ${e.stack}` : String(e);
     } else {
       t4 = $[9];
     }
-    const [range, setRange] = (0, import_react3.useState)(t4);
-    const previousFirst = (0, import_react3.useRef)(0);
+    const [range, setRange] = (0, import_react4.useState)(t4);
+    const previousFirst = (0, import_react4.useRef)(0);
     let t5;
     if ($[10] !== data.length || $[11] !== overscan) {
       t5 = (t62) => {
@@ -17819,8 +18052,8 @@ ${e.stack}` : String(e);
   }
 
   // js/native.ts
-  var import_compiler_runtime3 = __toESM(require_compiler_runtime(), 1);
-  var import_react4 = __toESM(require_react(), 1);
+  var import_compiler_runtime4 = __toESM(require_compiler_runtime(), 1);
+  var import_react5 = __toESM(require_react(), 1);
   var host2 = globalThis;
   function isNativeAvailable() {
     return host2.native != null;
@@ -17859,7 +18092,7 @@ ${e.stack}` : String(e);
     });
   }
   function useNativeValue(read, t0) {
-    const $ = (0, import_compiler_runtime3.c)(18);
+    const $ = (0, import_compiler_runtime4.c)(18);
     if ($[0] !== "fcb0f4a58da0d33f9f8e7799a34358983f1d8341f1e6562b16f6363200fcacb2") {
       for (let $i = 0; $i < 18; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -17881,7 +18114,7 @@ ${e.stack}` : String(e);
       mainThread: t2
     } = options;
     const mainThread = t2 === void 0 ? true : t2;
-    const [value, setValue] = (0, import_react4.useState)(void 0);
+    const [value, setValue] = (0, import_react5.useState)(void 0);
     let t3;
     if ($[3] !== notifications) {
       t3 = notifications == null ? [] : Array.isArray(notifications) ? notifications : [notifications];
@@ -17908,21 +18141,21 @@ ${e.stack}` : String(e);
     } else {
       t5 = $[8];
     }
-    const readNow = (0, import_react4.useEffectEvent)(t5);
+    const readNow = (0, import_react5.useEffectEvent)(t5);
     let t6;
     if ($[9] !== mainThread || $[10] !== names || $[11] !== poll || $[12] !== readNow) {
       t6 = () => {
-        let live = true;
+        let live2 = true;
         const refresh = () => {
           const result = mainThread ? onMain(readNow) : Promise.resolve().then(readNow);
-          result.then((v) => live && setValue(() => v)).catch(_temp3);
+          result.then((v) => live2 && setValue(() => v)).catch(_temp3);
         };
         refresh();
         const center = native.NSNotificationCenter.defaultCenter;
         const tokens = names.map((name) => center.addObserverForNameObjectQueueUsingBlock(name, null, null, () => setTimeout(refresh, 0)));
         const timer = poll ? setInterval(refresh, poll) : void 0;
         return () => {
-          live = false;
+          live2 = false;
           tokens.forEach((t) => center.removeObserver(t));
           if (timer) {
             clearInterval(timer);
@@ -17947,7 +18180,7 @@ ${e.stack}` : String(e);
     } else {
       t7 = $[17];
     }
-    (0, import_react4.useEffect)(t6, t7);
+    (0, import_react5.useEffect)(t6, t7);
     return value;
   }
   function _temp3(e) {

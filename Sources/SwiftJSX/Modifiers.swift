@@ -74,12 +74,12 @@ struct Modifiers: ViewModifier {
             .disabled(node.bool("disabled"))
             .transition(transition(node.string("transition")))
             .onAppear { if node.has("onAppear") { runtime?.dispatch(node.id, "onAppear") } }
-            .modifier(TapModifier(node: node) { runtime?.dispatch(node.id, "onTapGesture") })
+            .modifier(TapModifier(node: node) { runtime?.fire(node, "onTapGesture") })
             .modifier(Interactions(node: node))
     }
 
     private var padding: EdgeInsets {
-        switch node.props["padding"] {
+        switch node.prop("padding") {
         case let n as NSNumber where !(n === kCFBooleanTrue || n === kCFBooleanFalse):
             let v = CGFloat(n.doubleValue)
             return EdgeInsets(top: v, leading: v, bottom: v, trailing: v)

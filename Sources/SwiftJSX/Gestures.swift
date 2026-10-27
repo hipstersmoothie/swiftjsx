@@ -51,7 +51,7 @@ struct GestureModifiers: ViewModifier {
     }
 
     private func fire(_ event: String, _ payload: Any? = nil) {
-        if node.has(event) { runtime?.dispatch(node.id, event, payload) }
+        if node.has(event) { runtime?.fire(node, event, payload) }
     }
 
     private func drag(_ value: DragGesture.Value) -> [String: Any] {
@@ -107,7 +107,7 @@ struct AccessibilityModifier: ViewModifier {
                 .accessibilityValue(Text(value ?? ""), isEnabled: value != nil)
                 .accessibilityIdentifier(identifier ?? "", isEnabled: identifier != nil)
                 .accessibilityHidden(node.bool("accessibilityHidden"), isEnabled: node.has("accessibilityHidden"))
-                .accessibilityAddTraits(traits(node.props["accessibilityTraits"]))
+                .accessibilityAddTraits(traits(node.prop("accessibilityTraits")))
                 .accessibilitySortPriority(node.double("accessibilitySortPriority") ?? 0)
         } else {
             content

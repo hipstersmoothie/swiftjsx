@@ -11,6 +11,7 @@ public final class JSXRuntime {
     public private(set) var error: String?
 
     @ObservationIgnored private var engine: JSEngine!
+    @ObservationIgnored private(set) var worklets: WorkletRuntime!
     @ObservationIgnored private var bundleURL: URL?
     @ObservationIgnored private var watcher: Timer?
     @ObservationIgnored private var lastModified: Date?
@@ -37,6 +38,13 @@ public final class JSXRuntime {
             command: { [weak self] id, name, args, callback in self?.handleCommand(id, name, args, callback) },
             fatal: { [weak self] message in self?.report(message) }
         ))
+        worklets = WorkletRuntime(
+            tree: tree,
+            callJS: { [weak self] id, args in self?.engine.call("__swiftjsx_callJS", [id, args]) },
+            syncToJS: { [weak self] values in self?.engine.call("__swiftjsx_sharedValues", [values]) },
+            report: { [weak self] message in self?.report(message) }
+        )
+        tree.worklets = worklets
     }
 
     /// Load an app bundle from disk. With `hotReload`, the file is watched and
@@ -90,11 +98,23 @@ public final class JSXRuntime {
         engine.dispatch(id, event, payload, seq: seq)
     }
 
+    /// Delivers a gesture event: a worklet handler runs right here on the main
+    /// thread; a regular one is dispatched to React on the JS thread.
+    func fire(_ node: Node, _ event: String, _ payload: Any? = nil) {
+        if WorkletRuntime.isWorklet(node.props[event]) {
+            worklets.run(node, event, payload)
+        } else {
+            dispatch(node.id, event, payload)
+        }
+    }
+
     // MARK: Refs
 
     private func handleCommand(_ id: Int, _ name: String, _ args: [String: Any], _ callback: Int) {
         guard let node = tree.node(id) else { return }
         switch name {
+        case "worklet":
+            worklets.handle(args)
         case "focus", "blur":
             node.focusRequest = FocusRequest(seq: node.focusRequest.seq + 1, focused: name == "focus")
         case "scrollTo":

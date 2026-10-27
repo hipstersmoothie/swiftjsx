@@ -24,6 +24,7 @@
 
 import * as esbuild from "esbuild";
 import { transformAsync } from "@babel/core";
+import workletsPlugin from "./worklets-plugin.mjs";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -78,9 +79,9 @@ const useRuntimeModules = {
  *    useMemo/useCallback/memo by hand.
  *  - react-refresh (app code only): registers components with React Refresh.
  */
-function babel({ refresh, dev = true }) {
+function babel({ refresh, dev = true, worklets = false }) {
   return {
-    name: refresh ? "babel-app" : dev ? "babel-runtime" : "babel-production",
+    name: refresh ? "babel-app" : dev ? "babel-runtime" : worklets ? "babel-app-production" : "babel-production",
     setup(build) {
       const stats = { compiled: 0, skipped: 0 };
       build.onStart(() => {
@@ -95,7 +96,12 @@ function babel({ refresh, dev = true }) {
         const source = await readFile(args.path, "utf8");
         const file = path.relative(process.cwd(), args.path);
         const options = { filename: args.path, babelrc: false, configFile: false, parserOpts: { plugins: ["jsx", "typescript"] } };
-        const compiled = await transformAsync(source, {
+        // Worklets first, while useAnimatedStyle's callback is still inline
+        // (the compiler hoists it into a memoized temporary).
+        const input = worklets && /worklet|useAnimatedStyle/.test(source)
+          ? (await transformAsync(source, { ...options, plugins: [workletsPlugin] })).code
+          : source;
+        const compiled = await transformAsync(input, {
           ...options,
           plugins: [["babel-plugin-react-compiler", reactCompilerOptions(file, stats, dev)]],
         });
@@ -166,7 +172,7 @@ const app = await esbuild.context({
   outfile: "build/app.js",
   jsx: "automatic",
   jsxDev: true,
-  plugins: [useRuntimeModules, babel({ refresh: true })],
+  plugins: [useRuntimeModules, babel({ refresh: true, worklets: true })],
 });
 
 const fixtures = await esbuild.context({
@@ -176,7 +182,7 @@ const fixtures = await esbuild.context({
   outdir: "build/tests",
   jsx: "automatic",
   jsxDev: true,
-  plugins: [useRuntimeModules, babel({ refresh: true })],
+  plugins: [useRuntimeModules, babel({ refresh: true, worklets: true })],
 });
 
 const runtimeProduction = await esbuild.context({
@@ -194,7 +200,7 @@ const appProduction = await esbuild.context({
   outfile: "build/app.production.js",
   banner: { js: PRODUCTION_BANNER },
   jsx: "automatic",
-  plugins: [useRuntimeModules, babel({ refresh: false, dev: false })],
+  plugins: [useRuntimeModules, babel({ refresh: false, dev: false, worklets: true })],
 });
 
 // One fixture in production mode, to test the production runtime.
@@ -205,7 +211,7 @@ const fixturesProduction = await esbuild.context({
   outdir: "build/tests",
   banner: { js: PRODUCTION_BANNER },
   jsx: "automatic",
-  plugins: [useRuntimeModules, babel({ refresh: false, dev: false })],
+  plugins: [useRuntimeModules, babel({ refresh: false, dev: false, worklets: true })],
 });
 
 if (watch) {

@@ -78,6 +78,11 @@ export interface Modifiers {
   /** "combine": read the children as one element; "ignore": hide them (set a label); "contain": a container. */
   accessibilityElement?: "combine" | "ignore" | "contain";
 
+  /**
+   * Props computed on the main thread from shared values (`useAnimatedStyle`).
+   * They override this element's props with the same name.
+   */
+  animatedStyle?: import("./worklets").AnimatedStyle;
   /** Imperative handle: `focus()`, `blur()`, `scrollTo()`, `measure()`. */
   ref?: Ref<HostInstance>;
 }

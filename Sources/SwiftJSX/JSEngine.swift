@@ -280,9 +280,14 @@ final class JSEngine: @unchecked Sendable {
     }
 
     func resolve(callback: Int, value: Any) {
-        let args = UncheckedSendable([callback, value] as [Any])
+        call("__resolveCommand", [callback, value])
+    }
+
+    /// Calls a global JS function on the JS thread.
+    func call(_ function: String, _ arguments: [Any]) {
+        let args = UncheckedSendable(arguments)
         perform { ctx in
-            ctx.objectForKeyedSubscript("__resolveCommand")?.call(withArguments: args.value)
+            ctx.objectForKeyedSubscript(function)?.call(withArguments: args.value)
         }
     }
 

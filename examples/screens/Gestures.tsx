@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { Screen, VStack, HStack, Text, Image, Spacer } from "swiftjsx";
+import { useState, type ComponentProps } from "react";
+import {
+  Screen, VStack, HStack, Text, Image, Spacer, Picker,
+  useSharedValue, useAnimatedStyle, withSpring, runOnJS,
+} from "swiftjsx";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -10,6 +13,8 @@ export function GesturesDemo() {
   const [angle, setAngle] = useState({ base: 0, live: 0 });
   const [liked, setLiked] = useState(false);
   const [status, setStatus] = useState("Double-tap the heart, long-press the bell");
+  const [mode, setMode] = useState("worklet");
+  const dropped = (distance: number) => setStatus(`Dropped ${Math.round(distance)} pt away`);
 
   return (
     <Screen title="Gestures">
@@ -72,32 +77,95 @@ export function GesturesDemo() {
 
         <Spacer />
 
-        {/* Follows the finger, springs back on release. */}
-        <VStack
-          spacing={6}
-          padding={20}
-          background={dragging ? "blue" : "indigo"}
-          cornerRadius={20}
-          shadow={dragging ? 16 : 4}
-          offset={drag}
-          scale={dragging ? 1.05 : 1}
-          animation={dragging ? undefined : "spring"}
-          onDrag={({ translation }) => {
-            setDragging(true);
-            setDrag(translation);
-          }}
-          onDragEnd={({ translation }) => {
-            setDragging(false);
-            setDrag({ x: 0, y: 0 });
-            setStatus(`Dropped ${Math.round(Math.hypot(translation.x, translation.y))} pt away`);
-          }}
-          accessibilityElement="combine"
-          accessibilityIdentifier="drag-card"
-        >
-          <Image systemName="hand.draw" font="title" foregroundStyle="white" />
-          <Text font="headline" foregroundStyle="white">Drag me</Text>
-        </VStack>
+        <Picker
+          value={mode}
+          onChange={setMode}
+          pickerStyle="segmented"
+          options={[
+            { value: "worklet", label: "Main thread" },
+            { value: "react", label: "React state" },
+          ]}
+        />
+        {mode === "worklet" ? <WorkletCard onDropped={dropped} /> : <ReactCard onDropped={dropped} />}
       </VStack>
     </Screen>
+  );
+}
+
+type CardProps = { onDropped: (distance: number) => void };
+
+/**
+ * Worklets: the drag handlers run on the main thread inside the touch event,
+ * so the card moves in the same frame as the finger. React doesn't render
+ * during the drag at all.
+ */
+function WorkletCard({ onDropped }: CardProps) {
+  const offset = useSharedValue({ x: 0, y: 0 });
+  const dragging = useSharedValue(false);
+  const style = useAnimatedStyle(() => ({
+    offset: offset.get(),
+    scale: dragging.get() ? 1.05 : 1,
+    shadow: dragging.get() ? 16 : 4,
+    background: dragging.get() ? "blue" : "indigo",
+  }));
+
+  return (
+    <Card
+      label="Drag me (main thread)"
+      animatedStyle={style}
+      onDrag={(e) => {
+        "worklet";
+        if (!dragging.get()) dragging.set(withSpring(true, { duration: 0.25 }));
+        offset.set(e.translation);
+      }}
+      onDragEnd={(e) => {
+        "worklet";
+        dragging.set(withSpring(false));
+        offset.set(withSpring({ x: 0, y: 0 }, { bounce: 0.3 }));
+        runOnJS(onDropped)(Math.hypot(e.translation.x, e.translation.y));
+      }}
+    />
+  );
+}
+
+/** The same card driven by React state: each move is a render on the JS thread. */
+function ReactCard({ onDropped }: CardProps) {
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  return (
+    <Card
+      label="Drag me (React state)"
+      background={dragging ? "blue" : "indigo"}
+      shadow={dragging ? 16 : 4}
+      offset={drag}
+      scale={dragging ? 1.05 : 1}
+      animation={dragging ? undefined : "spring"}
+      onDrag={({ translation }) => {
+        setDragging(true);
+        setDrag(translation);
+      }}
+      onDragEnd={({ translation }) => {
+        setDragging(false);
+        setDrag({ x: 0, y: 0 });
+        onDropped(Math.hypot(translation.x, translation.y));
+      }}
+    />
+  );
+}
+
+function Card({ label, ...props }: { label: string } & Omit<ComponentProps<typeof VStack>, "children">) {
+  return (
+    <VStack
+      spacing={6}
+      padding={20}
+      background="indigo"
+      cornerRadius={20}
+      accessibilityElement="combine"
+      accessibilityIdentifier="drag-card"
+      {...props}
+    >
+      <Image systemName="hand.draw" font="title" foregroundStyle="white" />
+      <Text font="headline" foregroundStyle="white">{label}</Text>
+    </VStack>
   );
 }

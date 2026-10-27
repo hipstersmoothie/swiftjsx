@@ -13,6 +13,9 @@ public final class Node: Identifiable {
     /// The JSX tag (`"VStack"`, `"Button"`…), or `"#text"` for raw strings.
     public let type: String
     public internal(set) var props: [String: Any]
+    /// Props computed by an animated style on the main thread (see
+    /// `WorkletRuntime`). They override `props` with the same key.
+    public private(set) var animatedProps: [String: Any] = [:]
     public internal(set) var text: String
     public internal(set) var children: [Node] = []
     @ObservationIgnored weak var parent: Node?
@@ -57,6 +60,7 @@ public final class Node: Identifiable {
         }
         guard !decorated else { return }
         if Self.alwaysDecorated.contains(type) || props.keys.contains(where: Self.modifierKeys.contains)
+            || animatedProps.keys.contains(where: Self.modifierKeys.contains) || has("animatedStyle")
             || has("__ref") || children.contains(where: \.isPresentation) {
             decorated = true
         }
@@ -108,14 +112,23 @@ public final class Node: Identifiable {
         type == "#text" ? text : children.map(\.textContent).joined()
     }
 
-    // MARK: Typed prop access
+    func setAnimatedProps(_ new: [String: Any]) {
+        guard !(new as NSDictionary).isEqual(to: animatedProps) else { return }
+        animatedProps = new
+        updateDecorated()
+    }
 
-    func string(_ key: String) -> String? { props[key] as? String }
-    func bool(_ key: String) -> Bool { (props[key] as? Bool) ?? false }
-    func double(_ key: String) -> Double? { (props[key] as? NSNumber)?.doubleValue }
+    // MARK: Typed prop access (animated props first)
+
+    func prop(_ key: String) -> Any? {
+        animatedProps.isEmpty ? props[key] : animatedProps[key] ?? props[key]
+    }
+    func string(_ key: String) -> String? { prop(key) as? String }
+    func bool(_ key: String) -> Bool { (prop(key) as? Bool) ?? false }
+    func double(_ key: String) -> Double? { (prop(key) as? NSNumber)?.doubleValue }
     func cgFloat(_ key: String) -> CGFloat? { double(key).map { CGFloat($0) } }
-    func dict(_ key: String) -> [String: Any]? { props[key] as? [String: Any] }
-    func has(_ key: String) -> Bool { props[key] != nil }
+    func dict(_ key: String) -> [String: Any]? { prop(key) as? [String: Any] }
+    func has(_ key: String) -> Bool { prop(key) != nil }
 }
 
 struct FocusRequest: Equatable {
@@ -139,6 +152,8 @@ enum ScrollEdge: Hashable { case top, end }
 public final class NodeTree {
     public let root = Node(id: 0, type: "#root")
     private var nodes: [Int: Node] = [:]
+    /// Runs `animatedStyle` worklets for nodes that have one.
+    var worklets: WorkletRuntime?
 
     init() { reset() }
 
@@ -159,8 +174,10 @@ public final class NodeTree {
             switch kind {
             case "create":
                 let node = Node(id: id, type: op["type"] as? String ?? "?", props: clean(op["props"]))
-                node.updateDecorated()
                 nodes[id] = node
+                // Before the first render, so the style's props are there from the start.
+                if node.has("animatedStyle") { worklets?.setStyle(node, node.props["animatedStyle"]) }
+                node.updateDecorated()
             case "text":
                 nodes[id] = Node(id: id, type: "#text", text: op["text"] as? String ?? "")
             case "append", "insert", "remove":
@@ -194,6 +211,7 @@ public final class NodeTree {
                         node.props[key] = value is NSNull ? nil : value
                     }
                 }
+                if changes.keys.contains("animatedStyle") { worklets?.setStyle(node, node.props["animatedStyle"]) }
                 node.updateDecorated()
             case "setText":
                 guard let node = nodes[id] else { continue }
@@ -206,6 +224,9 @@ public final class NodeTree {
 
     private func forget(_ node: Node) {
         nodes[node.id] = nil
+        if node.has("animatedStyle") || node.props.values.contains(where: WorkletRuntime.isWorklet) {
+            worklets?.removeStyle(node)
+        }
         node.children.forEach(forget)
     }
 
