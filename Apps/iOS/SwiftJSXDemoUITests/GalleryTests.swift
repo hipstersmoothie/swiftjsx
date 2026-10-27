@@ -183,11 +183,11 @@ final class GalleryTests: XCTestCase {
 
     func testChat() {
         openApp("Chat")
-        let conversation = app.buttons.element(boundBy: 0)
-        XCTAssert(app.buttons.firstMatch.waitForExistence(timeout: 5))
+        let conversation = element("conversation-row")
+        XCTAssert(conversation.waitForExistence(timeout: 5))
+        sleep(2)  // connect
         snapshot("chat-list")
-        let rows = app.buttons.matching(NSPredicate(format: "label CONTAINS ' '"))
-        (rows.count > 0 ? rows.element(boundBy: 0) : conversation).tap()
+        conversation.tap()
         let input = app.textFields["message-input"]
         XCTAssert(input.waitForExistence(timeout: 5))
         input.tap()
