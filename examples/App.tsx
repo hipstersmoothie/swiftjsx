@@ -5,6 +5,7 @@ import { TodosApp } from "./apps/todos/App";
 import { WeatherApp } from "./apps/weather/App";
 import { PokedexApp } from "./apps/pokedex/App";
 import { ChatApp } from "./apps/chat/App";
+import { FlashcardsApp } from "./apps/flashcards/App";
 import { HooksDemo } from "./screens/Hooks";
 import { NavigationDemo } from "./screens/Navigation";
 import { VirtualListDemo } from "./screens/VirtualListDemo";
@@ -37,6 +38,7 @@ const apps: Demo[] = [
   { title: "Todos", subtitle: "zustand + localStorage, swipe actions, search", icon: "checklist", color: "blue", screen: () => <TodosApp /> },
   { title: "Weather", subtitle: "Open-Meteo, zod, gradients, materials", icon: "cloud.sun.fill", color: "cyan", screen: () => <WeatherApp /> },
   { title: "Chat", subtitle: "WebSocket echo bot, bubbles, offline queue", icon: "bubble.left.and.bubble.right.fill", color: "green", screen: () => <ChatApp /> },
+  { title: "Flashcards", subtitle: "worklet swipe stack, spaced repetition", icon: "rectangle.stack.fill", color: "purple", screen: () => <FlashcardsApp /> },
   { title: "Pokédex", subtitle: "PokeAPI, image grid, infinite loading", icon: "circle.grid.3x3.fill", color: "red", screen: () => <PokedexApp /> },
 ];
 
