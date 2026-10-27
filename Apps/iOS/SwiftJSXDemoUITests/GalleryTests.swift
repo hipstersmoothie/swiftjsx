@@ -15,6 +15,14 @@ final class GalleryTests: XCTestCase {
         app.buttons.containing(.staticText, identifier: demo).firstMatch.tap()
     }
 
+    /// Saved in the result bundle (see Apps/iOS/README.md for exporting them).
+    private func snapshot(_ name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     private func label(_ identifier: String) -> XCUIElement {
         app.staticTexts[identifier]
     }
@@ -101,5 +109,29 @@ final class GalleryTests: XCTestCase {
         // The "button" trait makes it a button to accessibility.
         app.buttons["Photo 10"].tap()
         XCTAssert(app.images["Photo 10, large"].waitForExistence(timeout: 10))
+    }
+
+    // MARK: Toy apps (live network)
+
+    private func openApp(_ name: String) {
+        app.buttons.containing(.staticText, identifier: name).firstMatch.tap()
+    }
+
+    func testHackerNews() {
+        openApp("Hacker News")
+        let firstStory = app.buttons.containing(NSPredicate(format: "label CONTAINS '▲'")).firstMatch
+        XCTAssert(firstStory.waitForExistence(timeout: 15), "no stories loaded")
+        snapshot("hn-feed")
+        firstStory.tap()
+        XCTAssert(app.buttons["Read article"].waitForExistence(timeout: 10) || app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'points'")).firstMatch.exists)
+        sleep(3)  // comments
+        snapshot("hn-story")
+        app.buttons["Save"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.tabBars.buttons["Saved"].tap()
+        XCTAssert(app.buttons.containing(NSPredicate(format: "label CONTAINS '▲'")).firstMatch.waitForExistence(timeout: 5))
+        snapshot("hn-saved")
+        app.buttons.containing(NSPredicate(format: "label CONTAINS '▲'")).firstMatch.tap()
+        app.buttons["Unsave"].tap()
     }
 }

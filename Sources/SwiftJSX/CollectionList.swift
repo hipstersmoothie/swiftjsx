@@ -20,10 +20,21 @@ struct CollectionList: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> UICollectionView {
-        var configuration = UICollectionLayoutListConfiguration(appearance: Self.appearance(node))
+        let appearance = Self.appearance(node)
+        var configuration = UICollectionLayoutListConfiguration(appearance: appearance)
         configuration.backgroundColor = .clear
-        let view = TrackedCollectionView(frame: .zero, collectionViewLayout: UICollectionViewCompositionalLayout.list(using: configuration))
+        let layout = UICollectionViewCompositionalLayout { _, environment in
+            let section = NSCollectionLayoutSection.list(using: configuration, layoutEnvironment: environment)
+            // UIKit's default top padding for a grouped section is about twice
+            // SwiftUI List's; match List.
+            if appearance != .plain { section.contentInsets.top = 16 }
+            return section
+        }
+        let view = TrackedCollectionView(frame: .zero, collectionViewLayout: layout)
         view.backgroundColor = .clear
+        // SwiftUI already lays the list out inside the safe area; registering it
+        // as the content scroll view would make UIKit inset it a second time.
+        view.contentInsetAdjustmentBehavior = .never
         view.allowsSelection = false
         view.selfSizingInvalidation = .enabledIncludingConstraints
         view.register(UICollectionViewListCell.self, forCellWithReuseIdentifier: "row")

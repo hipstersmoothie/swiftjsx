@@ -1,5 +1,6 @@
-import type { ReactElement } from "react";
-import { render, Navigator, useNavigation, Screen, List, Section, Button, HStack, VStack, Text, Image } from "swiftjsx";
+import { useState, type ReactElement } from "react";
+import { render, Navigator, useNavigation, Screen, List, Section, Button, HStack, VStack, Text, Image, Sheet } from "swiftjsx";
+import { HackerNewsApp } from "./apps/hacker-news/App";
 import { HooksDemo } from "./screens/Hooks";
 import { NavigationDemo } from "./screens/Navigation";
 import { VirtualListDemo } from "./screens/VirtualListDemo";
@@ -26,22 +27,42 @@ const demos: Demo[] = [
   { title: "Native", subtitle: "Objective-C APIs from JS, onMain()", icon: "cpu", color: "indigo", screen: () => <NativeDemo /> },
 ];
 
+// Toy apps: whole apps (own tabs and navigation), shown in a sheet.
+const apps: Demo[] = [
+  { title: "Hacker News", subtitle: "fetch, TanStack Query, infinite lists, comments", icon: "newspaper", color: "orange", screen: () => <HackerNewsApp /> },
+];
+
+function Row({ demo, onPress }: { demo: Demo; onPress(): void }) {
+  return (
+    <Button buttonStyle="plain" onPress={onPress}>
+      <HStack spacing={14} padding={{ vertical: 4 }}>
+        <Image systemName={demo.icon} foregroundStyle="white" frame={{ width: 32, height: 32 }} background={demo.color} cornerRadius={8} />
+        <VStack alignment="leading" spacing={2}>
+          <Text font="headline">{demo.title}</Text>
+          <Text font="caption" foregroundStyle="secondary">{demo.subtitle}</Text>
+        </VStack>
+      </HStack>
+    </Button>
+  );
+}
+
 function Home() {
   const nav = useNavigation();
+  const [app, setApp] = useState<Demo | null>(null);
   return (
     <Screen title="SwiftJSX">
+      <Sheet isPresented={app !== null} onDismiss={() => setApp(null)} detents={["large"]}>
+        {app?.screen()}
+      </Sheet>
       <List>
+        <Section header="Apps" footer="Small complete apps built with SwiftJSX and npm packages. Swipe down to close.">
+          {apps.map((demo) => (
+            <Row key={demo.title} demo={demo} onPress={() => setApp(demo)} />
+          ))}
+        </Section>
         <Section header="Demos" footer="Edit examples/ with `npm run dev` running: changes apply instantly and keep state.">
           {demos.map((demo) => (
-            <Button key={demo.title} buttonStyle="plain" onPress={() => nav.push(demo.screen())}>
-              <HStack spacing={14} padding={{ vertical: 4 }}>
-                <Image systemName={demo.icon} foregroundStyle="white" frame={{ width: 32, height: 32 }} background={demo.color} cornerRadius={8} />
-                <VStack alignment="leading" spacing={2}>
-                  <Text font="headline">{demo.title}</Text>
-                  <Text font="caption" foregroundStyle="secondary">{demo.subtitle}</Text>
-                </VStack>
-              </HStack>
-            </Button>
+            <Row key={demo.title} demo={demo} onPress={() => nav.push(demo.screen())} />
           ))}
         </Section>
       </List>
