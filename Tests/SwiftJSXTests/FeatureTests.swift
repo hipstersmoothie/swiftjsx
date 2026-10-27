@@ -206,3 +206,25 @@ struct CompilerTests {
         #expect(!prod.contains("react-refresh"))
     }
 }
+
+@MainActor
+@Suite(.serialized) struct AnimationTests {
+    @Test func withAnimationTagsOnlyItsOwnCommit() async throws {
+        let runtime = try fixture("Animation")
+        let before = SwiftJSXDiagnostics.animatedCommits
+        runtime.press("Animated")
+        // flushSync: the commit has already happened when the handler returns.
+        #expect(runtime.texts().contains("open"))
+        #expect(SwiftJSXDiagnostics.animatedCommits == before + 1)
+        runtime.press("Plain")
+        #expect(runtime.texts().contains("count 1"))
+        #expect(SwiftJSXDiagnostics.animatedCommits == before + 1)
+    }
+
+    @Test func parsesAnimationSpecs() {
+        #expect(parseAnimation("spring") != nil)
+        #expect(parseAnimation(["type": "easeInOut", "duration": 0.6, "delay": 0.1]) != nil)
+        #expect(parseAnimation(nil) == nil)
+        #expect(parseAnimation(42) == nil)
+    }
+}

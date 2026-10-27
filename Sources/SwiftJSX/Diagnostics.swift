@@ -20,6 +20,8 @@ public enum SwiftJSXDiagnostics {
     /// Op batches (React commits) applied to the tree, and ops in them.
     public internal(set) static var commits = 0
     public internal(set) static var ops = 0
+    /// Commits that ran inside a JS `withAnimation`.
+    public internal(set) static var animatedCommits = 0
 
     static func countRenderedRows(in root: Node) {
         func find(_ node: Node) -> Node? {

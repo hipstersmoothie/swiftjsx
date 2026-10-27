@@ -1,4 +1,4 @@
-export { render, HostInstance } from "./renderer";
+export { render, withAnimation, HostInstance } from "./renderer";
 export type { Frame, ScrollTarget, ScrollOptions } from "./renderer";
 export * from "./components";
 export { Navigator, useNavigation, NavigationSplitView, type Navigation } from "./navigation";

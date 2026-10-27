@@ -17069,7 +17069,8 @@
     onMain: () => onMain,
     render: () => render,
     useNativeValue: () => useNativeValue,
-    useNavigation: () => useNavigation
+    useNavigation: () => useNavigation,
+    withAnimation: () => withAnimation
   });
 
   // js/renderer.ts
@@ -17291,7 +17292,7 @@
     resetAfterCommit() {
       const ops = pending;
       pending = [];
-      if (ops.length) __native.commit(ops);
+      if (ops.length) __native.commit(ops, commitAnimation);
     },
     preparePortalMount() {
     },
@@ -17357,6 +17358,16 @@
     bindToConsole: (methodName, args) => console[methodName].bind(console, ...args)
   };
   var reconciler = (0, import_react_reconciler.default)(hostConfig);
+  var commitAnimation;
+  function withAnimation(animation, fn) {
+    const previous = commitAnimation;
+    commitAnimation = animation;
+    try {
+      return reconciler.flushSyncFromReconciler(fn);
+    } finally {
+      commitAnimation = previous;
+    }
+  }
   reconciler.injectIntoDevTools();
   globalThis.__dispatch = (id, event, payload, seq) => {
     const inst = instances.get(id);

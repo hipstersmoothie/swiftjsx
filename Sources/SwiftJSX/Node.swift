@@ -188,7 +188,7 @@ public final class NodeTree {
                 // An update that changes `animation` too is animated (or not)
                 // by the new value: `animation={dragging ? undefined : "spring"}`
                 // follows the finger, then springs back on release.
-                let animation: String?? = changes.keys.contains("animation") ? .some(changes["animation"] as? String) : nil
+                let animation: Any?? = changes.keys.contains("animation") ? .some(changes["animation"].flatMap { $0 is NSNull ? nil : $0 }) : nil
                 animating(node, animation) {
                     for (key, value) in changes {
                         node.props[key] = value is NSNull ? nil : value
@@ -211,22 +211,12 @@ public final class NodeTree {
 
     /// Mutations to a node that has an `animation` prop (or whose parent does)
     /// run inside `withAnimation`, so `transition` and implicit animations work.
-    private func animating(_ node: Node, _ override: String?? = nil, _ body: () -> Void) {
-        let name = override ?? node.string("animation") ?? node.parent?.string("animation")
-        if let animation = name.map(Self.animation) {
+    private func animating(_ node: Node, _ override: Any?? = nil, _ body: () -> Void) {
+        let spec = override ?? node.props["animation"] ?? node.parent?.props["animation"]
+        if let animation = parseAnimation(spec) {
             withAnimation(animation, body)
         } else {
             body()
-        }
-    }
-
-    static func animation(_ name: String) -> Animation {
-        switch name {
-        case "spring": .spring
-        case "bouncy": .bouncy
-        case "easeInOut": .easeInOut
-        case "linear": .linear
-        default: .default
         }
     }
 

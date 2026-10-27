@@ -12,6 +12,7 @@ import {
   NoEventPriority,
 } from "react-reconciler/constants";
 import { createContext, type ReactNode } from "react";
+import type { AnimationSpec } from "./components";
 
 type Props = Record<string, any>;
 type TextInstance = { id: number; text: string };
@@ -28,7 +29,7 @@ export type Op =
 
 // Provided by Swift (see JSEngine.swift).
 declare const __native: {
-  commit(ops: Op[]): void;
+  commit(ops: Op[], animation?: AnimationSpec): void;
   /** Imperative call on a native view; `callback` > 0 expects `__resolveCommand`. */
   command(id: number, name: string, args: unknown, callback: number): void;
   log(level: string, message: string): void;
@@ -212,7 +213,7 @@ const hostConfig: any = {
   resetAfterCommit() {
     const ops = pending;
     pending = [];
-    if (ops.length) __native.commit(ops);
+    if (ops.length) __native.commit(ops, commitAnimation);
   },
   preparePortalMount() {},
   hideInstance(inst: HostInstance) {
@@ -260,6 +261,26 @@ const hostConfig: any = {
 };
 
 const reconciler = Reconciler(hostConfig);
+
+let commitAnimation: AnimationSpec | undefined;
+
+/**
+ * Like SwiftUI's `withAnimation`: state updates made in `fn` render right
+ * away (as with `flushSync`), and SwiftUI animates everything that commit
+ * changes: layout, insertions with a `transition`, colors, offsets…
+ *
+ *   withAnimation("spring", () => setExpanded(true));
+ *   withAnimation({ type: "easeInOut", duration: 0.6 }, () => setStep(2));
+ */
+export function withAnimation<T>(animation: AnimationSpec, fn: () => T): T {
+  const previous = commitAnimation;
+  commitAnimation = animation;
+  try {
+    return (reconciler as any).flushSyncFromReconciler(fn);
+  } finally {
+    commitAnimation = previous;
+  }
+}
 // Registers with the React Refresh hook (installed by refresh-setup.ts).
 (reconciler as any).injectIntoDevTools();
 

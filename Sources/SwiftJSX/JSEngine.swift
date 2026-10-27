@@ -39,7 +39,8 @@ public struct NativeOptions: Sendable {
 
 /// Results from JS, delivered on the main thread.
 struct EngineCallbacks: Sendable {
-    var commit: @MainActor @Sendable ([[String: Any]]) -> Void
+    /// Ops of one React commit, and the animation it runs in (`withAnimation` in JS).
+    var commit: @MainActor @Sendable ([[String: Any]], Any?) -> Void
     var command: @MainActor @Sendable (_ id: Int, _ name: String, _ args: [String: Any], _ callback: Int) -> Void
     var fatal: @MainActor @Sendable (String) -> Void
 }
@@ -291,9 +292,10 @@ final class JSEngine: @unchecked Sendable {
         let native = JSValue(newObjectIn: ctx)!
         let callbacks = self.callbacks
 
-        let commit: @convention(block) (JSValue) -> Void = { [weak self] ops in
+        let commit: @convention(block) (JSValue, JSValue) -> Void = { [weak self] ops, animation in
             let list = UncheckedSendable(ops.toArray() as? [[String: Any]] ?? [])
-            self?.toMain { callbacks.commit(list.value) }
+            let spec = UncheckedSendable(animation.isUndefined || animation.isNull ? nil : animation.toObject())
+            self?.toMain { callbacks.commit(list.value, spec.value) }
         }
         let command: @convention(block) (Int, String, JSValue, Int) -> Void = { [weak self] id, name, args, callback in
             let dict = UncheckedSendable(args.isObject ? (args.toDictionary() as? [String: Any] ?? [:]) : [:])

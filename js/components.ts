@@ -34,8 +34,8 @@ export interface Modifiers {
   shadow?: number | { radius: number; x?: number; y?: number; color?: Color };
   opacity?: number;
   disabled?: boolean;
-  /** Animate changes to this view with SwiftUI's default spring. */
-  animation?: "default" | "spring" | "bouncy" | "easeInOut" | "linear";
+  /** Animate every change to this view (and its children's insertions/removals). */
+  animation?: AnimationSpec;
   /** Like `key`, but for SwiftUI transitions when the view is inserted/removed. */
   transition?: "opacity" | "scale" | "slide" | "move";
   onAppear?: () => void;
@@ -81,6 +81,22 @@ export interface Modifiers {
   /** Imperative handle: `focus()`, `blur()`, `scrollTo()`, `measure()`. */
   ref?: Ref<HostInstance>;
 }
+
+export type AnimationCurve = "default" | "spring" | "bouncy" | "snappy" | "smooth" | "easeInOut" | "easeIn" | "easeOut" | "linear";
+/** A SwiftUI animation: a curve name, or a curve with options. Durations are in seconds. */
+export type AnimationSpec =
+  | AnimationCurve
+  | {
+      type: AnimationCurve;
+      duration?: number;
+      /** Springs: 0 = no overshoot, up to ~1 = very bouncy. */
+      bounce?: number;
+      delay?: number;
+      speed?: number;
+      repeatCount?: number;
+      repeatForever?: boolean;
+      autoreverses?: boolean;
+    };
 
 type Point = { x: number; y: number };
 /** Positions are in window coordinates; `translation` is from where the drag started. */
