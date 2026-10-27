@@ -45,6 +45,14 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
 
 - **Hooks are just React.** `useState`, `useReducer`, `useEffect`, context, custom hooks,
   transitions — anything that works in react-dom.
+- **Web APIs.** `fetch` (with `AbortController`), `WebSocket`, `URL`/`URLSearchParams`,
+  `TextEncoder`/`TextDecoder`, `atob`/`btoa`, `structuredClone`, `crypto.getRandomValues`
+  and `randomUUID`, `localStorage`/`sessionStorage`, `EventTarget`. Networking runs on
+  `URLSession` off the JS thread; `window` fires `focus`, `visibilitychange`, `online` and
+  `offline` from the app's lifecycle. There's no DOM (`document`).
+- **npm packages.** Install and import them as usual; the build bundles them. Tested here:
+  zustand (with `persist` to `localStorage`), jotai, TanStack Query, SWR, axios, zod,
+  date-fns, immer and nanoid.
 - **React Compiler.** All your components and hooks (and the library's) are auto-memoized
   at build time — no `memo`, `useMemo` or `useCallback` needed. The build prints
   `React Compiler → build/app.js: 10 memoized, 0 skipped`, plus the file, line and reason
@@ -64,6 +72,10 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
 - **Navigation.** `<Navigator>` + `useNavigation()` (`push(<Screen…/>)`, `pop`, `popToRoot`)
   on a real `NavigationStack` — swipe-back works and is reported back to React.
   `<Screen title>` + `<ToolbarItem>` set the title and toolbar.
+- **Lists and search.** `onRefresh` (pull to refresh; the spinner waits for your
+  promise), `onEndReached` on `VirtualList`, `<SwipeActions>` and `<ContextMenu>` children
+  on rows, and `searchText`/`onSearchTextChange` on `<Screen>` for the search field.
+  `openURL(url, { inApp })` opens links in Safari or an in-app Safari sheet.
 - **Tabs and split views.** `<TabView selection onSelectionChange>` with `<Tab title
   systemImage badge>` children (controlled or not; `tabViewStyle="page"` for a pager).
   `<NavigationSplitView sidebar={…} detail={…}>` shows columns on iPad and Mac and a stack
@@ -111,6 +123,8 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   The build compiles worklets to source plus the values they capture; a small second
   JSContext on the main thread runs them. `withSpring`/`withTiming` hand the change to
   SwiftUI, which animates it natively.
+- **Styling.** `background` takes colors, materials (`"thinMaterial"`) and gradients
+  (`{ gradient: ["blue", "purple"] }`); controls take `tint`; `Text` takes `lineLimit`.
 - **Images.** `<Image systemName>` (SF Symbols), `<Image name>` (asset catalog), and
   `<Image src="https://…" contentMode="fill">`. URL images are cached in memory, requested
   once even when several views want them, and decoded off the main thread. They fire

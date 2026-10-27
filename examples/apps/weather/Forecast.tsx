@@ -1,0 +1,182 @@
+// The detail screen's sections: hourly strip, 10-day list, and detail tiles,
+// on frosted cards over the condition gradient.
+import { Fragment, type ReactNode } from "react";
+import { VStack, HStack, ZStack, ScrollView, LazyVGrid, Text, Image, Label, Divider, Spacer, type Color } from "swiftjsx";
+import type { Day, Forecast } from "./api";
+import { conditionLabel, conditionSymbol, symbolColor, temperatureColor } from "./conditions";
+import { useTemperature, useWindSpeed, hourLabel, weekday, clockTime } from "./format";
+
+// White at reduced opacity: "secondary" is a fixed gray, not relative to the white text.
+export const dim: Color = "#ffffffb3";
+const faint: Color = "#ffffff40";
+
+function Card({ title, icon, children }: { title: string; icon: string; children: ReactNode }) {
+  return (
+    <VStack
+      alignment="leading"
+      spacing={10}
+      padding={14}
+      frame={{ maxWidth: "infinity", alignment: "leading" }}
+      background="ultraThinMaterial"
+      cornerRadius={16}
+    >
+      <Label title={title.toUpperCase()} systemImage={icon} font="caption" fontWeight="semibold" foregroundStyle={dim} />
+      {children}
+    </VStack>
+  );
+}
+
+export function HourlyForecast({ forecast }: { forecast: Forecast }) {
+  const temp = useTemperature();
+  const thisHour = forecast.current.time.slice(0, 13); // "2026-10-27T14"
+  const start = Math.max(0, forecast.hours.findIndex((hour) => hour.time.startsWith(thisHour)));
+  const hours = forecast.hours.slice(start, start + 24);
+
+  return (
+    <Card title="Hourly forecast" icon="clock">
+      <Text font="subheadline">{summary(forecast)}</Text>
+      <Divider />
+      <ScrollView axis="horizontal">
+        <HStack spacing={24} padding={{ horizontal: 4, bottom: 4 }}>
+          {hours.map((hour, i) => {
+            const symbol = conditionSymbol(hour.code, hour.isDay);
+            return (
+              <VStack key={hour.time} spacing={10} accessibilityElement="combine">
+                <Text font="subheadline" fontWeight="semibold">{i === 0 ? "Now" : hourLabel(hour.time)}</Text>
+                <Image systemName={symbol} font="title3" foregroundStyle={symbolColor(symbol)} frame={{ height: 28 }} accessibilityLabel={conditionLabel(hour.code)} />
+                <Text font="title3" fontWeight="medium">{temp(hour.temperature)}</Text>
+              </VStack>
+            );
+          })}
+        </HStack>
+      </ScrollView>
+    </Card>
+  );
+}
+
+/** "Rain expected around 4PM.", like the header of the system app's hourly card. */
+function summary({ current, days, hours }: Forecast) {
+  const now = conditionLabel(current.code);
+  const next = hours.find((hour) => hour.time > current.time && conditionLabel(hour.code) !== now);
+  if (next && next.time.slice(0, 10) === days[0].date) return `${conditionLabel(next.code)} expected around ${hourLabel(next.time)}.`;
+  return `${now} conditions for the rest of the day.`;
+}
+
+export function DailyForecast({ forecast }: { forecast: Forecast }) {
+  const { days, current } = forecast;
+  const low = Math.min(...days.map((day) => day.min));
+  const high = Math.max(...days.map((day) => day.max));
+
+  return (
+    <Card title="10-day forecast" icon="calendar">
+      {days.map((day, i) => (
+        <Fragment key={day.date}>
+          <Divider />
+          <DayRow day={day} label={i === 0 ? "Today" : weekday(day.date)} low={low} high={high} current={i === 0 ? current.temperature : undefined} />
+        </Fragment>
+      ))}
+    </Card>
+  );
+}
+
+function DayRow({ day, label, low, high, current }: { day: Day; label: string; low: number; high: number; current?: number }) {
+  const temp = useTemperature();
+  const symbol = conditionSymbol(day.code);
+  const rainy = (day.precipitation ?? 0) >= 20;
+  return (
+    <HStack spacing={12} accessibilityElement="combine">
+      <Text font="title3" fontWeight="medium" frame={{ width: 60, alignment: "leading" }}>{label}</Text>
+      <VStack spacing={0} frame={{ width: 34 }}>
+        <Image systemName={symbol} font="body" foregroundStyle={symbolColor(symbol)} accessibilityLabel={conditionLabel(day.code)} />
+        {rainy ? <Text font="caption2" fontWeight="bold" foregroundStyle="#81cfff">{day.precipitation}%</Text> : null}
+      </VStack>
+      <Spacer minLength={0} />
+      <Text font="title3" fontWeight="medium" monospacedDigit foregroundStyle={dim} frame={{ width: 40, alignment: "trailing" }} accessibilityLabel={`Low ${temp(day.min)}`}>
+        {temp(day.min)}
+      </Text>
+      <TemperatureBar min={day.min} max={day.max} low={low} high={high} current={current} />
+      <Text font="title3" fontWeight="medium" monospacedDigit frame={{ width: 40, alignment: "trailing" }} accessibilityLabel={`High ${temp(day.max)}`}>
+        {temp(day.max)}
+      </Text>
+    </HStack>
+  );
+}
+
+// There's no GeometryReader, so the bar has a fixed width and positions are
+// computed in points: the day's range is a capsule within the week's range.
+const barWidth = 88;
+const barHeight = 5;
+
+function TemperatureBar({ min, max, low, high, current }: { min: number; max: number; low: number; high: number; current?: number }) {
+  const x = (celsius: number) => ((celsius - low) / Math.max(high - low, 1)) * barWidth;
+  return (
+    <ZStack alignment="leading" frame={{ width: barWidth, height: 8 }} accessibilityHidden>
+      <VStack frame={{ width: barWidth, height: barHeight }} background={faint} cornerRadius={barHeight / 2} />
+      <VStack
+        frame={{ width: Math.max(x(max) - x(min), barHeight), height: barHeight }}
+        background={{ gradient: [temperatureColor(min), temperatureColor(max)], start: "leading", end: "trailing" }}
+        cornerRadius={barHeight / 2}
+        offset={{ x: x(min) }}
+      />
+      {current === undefined ? null : (
+        <VStack frame={{ width: 8, height: 8 }} background="white" cornerRadius={4} shadow={{ radius: 1, color: "#00000066" }} offset={{ x: x(current) - 4 }} />
+      )}
+    </ZStack>
+  );
+}
+
+export function DetailTiles({ forecast }: { forecast: Forecast }) {
+  const temp = useTemperature();
+  const wind = useWindSpeed();
+  const { current, days } = forecast;
+  const [today, tomorrow] = days;
+
+  return (
+    <LazyVGrid columns={2} spacing={12}>
+      <Tile icon="thermometer.medium" title="Feels like" value={temp(current.feelsLike)} note={feelsLikeNote(current.temperature, current.feelsLike)} />
+      <Tile icon="humidity.fill" title="Humidity" value={`${Math.round(current.humidity)}%`} note={humidityNote(current.humidity)} />
+      <Tile icon="wind" title="Wind" value={wind(current.windSpeed)} note={windNote(current.windSpeed)} />
+      <Tile icon="umbrella.fill" title="Precipitation" value={`${today.precipitation ?? 0}%`} note="Chance of rain or snow today." />
+      <Tile icon="sunrise.fill" title="Sunrise" value={clockTime(today.sunrise)} note={`Sunset: ${clockTime(today.sunset)}`} />
+      <Tile icon="sunset.fill" title="Sunset" value={clockTime(today.sunset)} note={tomorrow ? `Sunrise tomorrow: ${clockTime(tomorrow.sunrise)}` : ""} />
+    </LazyVGrid>
+  );
+}
+
+function Tile({ icon, title, value, note }: { icon: string; title: string; value: string; note: string }) {
+  return (
+    <VStack
+      alignment="leading"
+      spacing={8}
+      padding={14}
+      frame={{ height: 150, maxWidth: "infinity", alignment: "topLeading" }}
+      background="ultraThinMaterial"
+      cornerRadius={16}
+      accessibilityElement="combine"
+    >
+      <Label title={title.toUpperCase()} systemImage={icon} font="caption" fontWeight="semibold" foregroundStyle={dim} />
+      <Text font="title" fontWeight="medium" monospacedDigit>{value}</Text>
+      <Spacer minLength={0} />
+      <Text font="footnote">{note}</Text>
+    </VStack>
+  );
+}
+
+function feelsLikeNote(actual: number, feelsLike: number) {
+  if (Math.abs(feelsLike - actual) < 2) return "Similar to the actual temperature.";
+  return feelsLike < actual ? "Wind is making it feel cooler." : "Humidity is making it feel warmer.";
+}
+
+function humidityNote(humidity: number) {
+  if (humidity < 30) return "The air is dry.";
+  if (humidity < 65) return "Comfortable humidity.";
+  return "It feels muggy.";
+}
+
+function windNote(kmh: number) {
+  if (kmh < 6) return "Calm.";
+  if (kmh < 20) return "A light breeze.";
+  if (kmh < 40) return "Breezy.";
+  if (kmh < 62) return "Strong winds.";
+  return "Gale-force winds.";
+}

@@ -134,4 +134,86 @@ final class GalleryTests: XCTestCase {
         app.buttons.containing(NSPredicate(format: "label CONTAINS '▲'")).firstMatch.tap()
         app.buttons["Unsave"].tap()
     }
+
+    private func element(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier].firstMatch
+    }
+
+    func testTodos() {
+        openApp("Todos")
+        let firstList = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Inbox'")).firstMatch
+        if firstList.waitForExistence(timeout: 5) { firstList.tap() }
+        let field = app.textFields["new-todo"]
+        XCTAssert(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("Buy oat milk\n")
+        let row = app.staticTexts["Buy oat milk"]
+        XCTAssert(row.waitForExistence(timeout: 5))
+        snapshot("todos-list")
+        row.swipeLeft()
+        snapshot("todos-swipe")
+        let delete = app.buttons["Delete"]
+        if delete.waitForExistence(timeout: 3) { delete.tap() }
+        XCTAssert(row.waitForNonExistence(timeout: 5))
+    }
+
+    func testWeather() {
+        openApp("Weather")
+        let city = element("city-row")
+        XCTAssert(city.waitForExistence(timeout: 20), "no cities")
+        sleep(2)
+        snapshot("weather-cities")
+        city.tap()
+        XCTAssert(element("current-temp").waitForExistence(timeout: 20))
+        sleep(2)
+        snapshot("weather-detail")
+    }
+
+    func testPokedex() {
+        openApp("Pokédex")
+        let card = element("pokemon-card")
+        XCTAssert(card.waitForExistence(timeout: 20), "no pokemon")
+        sleep(3)
+        snapshot("pokedex-grid")
+        card.tap()
+        XCTAssert(element("pokemon-name").waitForExistence(timeout: 20))
+        sleep(2)
+        snapshot("pokedex-detail")
+    }
+
+    func testChat() {
+        openApp("Chat")
+        let conversation = app.buttons.element(boundBy: 0)
+        XCTAssert(app.buttons.firstMatch.waitForExistence(timeout: 5))
+        snapshot("chat-list")
+        let rows = app.buttons.matching(NSPredicate(format: "label CONTAINS ' '"))
+        (rows.count > 0 ? rows.element(boundBy: 0) : conversation).tap()
+        let input = app.textFields["message-input"]
+        XCTAssert(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("Hello from SwiftJSX")
+        app.buttons["send-button"].tap()
+        XCTAssert(app.staticTexts["Hello from SwiftJSX"].waitForExistence(timeout: 5))
+        sleep(4)  // echo + bot reply
+        snapshot("chat-conversation")
+    }
+
+    func testFlashcards() {
+        openApp("Flashcards")
+        let deck = element("deck-row")
+        XCTAssert(deck.waitForExistence(timeout: 5))
+        snapshot("flashcards-decks")
+        deck.tap()
+        let card = element("study-card")
+        XCTAssert(card.waitForExistence(timeout: 5))
+        snapshot("flashcards-card")
+        card.tap()
+        sleep(1)
+        snapshot("flashcards-flipped")
+        app.buttons["got-it"].tap()
+        let start = card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: -300, dy: 0)))
+        sleep(1)
+        snapshot("flashcards-after-swipe")
+    }
 }

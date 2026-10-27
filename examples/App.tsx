@@ -1,6 +1,9 @@
 import { useState, type ReactElement } from "react";
 import { render, Navigator, useNavigation, Screen, List, Section, Button, HStack, VStack, Text, Image, Sheet } from "swiftjsx";
 import { HackerNewsApp } from "./apps/hacker-news/App";
+import { TodosApp } from "./apps/todos/App";
+import { WeatherApp } from "./apps/weather/App";
+import { PokedexApp } from "./apps/pokedex/App";
 import { HooksDemo } from "./screens/Hooks";
 import { NavigationDemo } from "./screens/Navigation";
 import { VirtualListDemo } from "./screens/VirtualListDemo";
@@ -30,6 +33,9 @@ const demos: Demo[] = [
 // Toy apps: whole apps (own tabs and navigation), shown in a sheet.
 const apps: Demo[] = [
   { title: "Hacker News", subtitle: "fetch, TanStack Query, infinite lists, comments", icon: "newspaper", color: "orange", screen: () => <HackerNewsApp /> },
+  { title: "Todos", subtitle: "zustand + localStorage, swipe actions, search", icon: "checklist", color: "blue", screen: () => <TodosApp /> },
+  { title: "Weather", subtitle: "Open-Meteo, zod, gradients, materials", icon: "cloud.sun.fill", color: "cyan", screen: () => <WeatherApp /> },
+  { title: "Pokédex", subtitle: "PokeAPI, image grid, infinite loading", icon: "circle.grid.3x3.fill", color: "red", screen: () => <PokedexApp /> },
 ];
 
 function Row({ demo, onPress }: { demo: Demo; onPress(): void }) {
