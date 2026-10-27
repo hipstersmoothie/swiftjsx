@@ -182,17 +182,4 @@ Adding a component = one `case` in `NodeView.swift` + one line in `components.ts
 
 ## Known gaps
 
-- The compiler uses Babel 7 (`babel-plugin-react-compiler` 1.0 is built against Babel 7's
-  AST; under Babel 8 it rejects some valid code, e.g. destructuring defaults).
-- `foregroundStyle`, gestures, transforms, accessibility props and refs are attached the
-  first time a view uses them and then stay (always-on, idle gestures doubled scroll hitches
-  in long lists). So the *first* time one of them appears on a view that's already mounted,
-  that view's SwiftUI state resets once. Props present from mount (the usual case) never
-  reset it.
-- Gesture updates go to React and back: a drag tracks the finger with about a frame of
-  latency. There's no native-driven animation (like Reanimated worklets) yet.
-- No `Canvas`, maps, video, or custom fonts yet.
-- Native backend: NativeScript's runtime is an alpha; its metadata generator (LLVM 17)
-  misses some declarations in current SDKs (e.g. `NSProcessInfo.lowPowerModeEnabled` on
-  macOS). Long synchronous JS still delays main-thread native callbacks: keep work sliced.
-  The JS thread must never block on main.
+See [TODO.md](TODO.md).
