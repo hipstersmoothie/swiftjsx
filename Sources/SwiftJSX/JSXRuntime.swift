@@ -13,6 +13,8 @@ public final class JSXRuntime {
     @ObservationIgnored private var engine: JSEngine!
     @ObservationIgnored private(set) var worklets: WorkletRuntime!
     @ObservationIgnored private var appEvents: AppEvents?
+    @ObservationIgnored private var waiting: [Int: CheckedContinuation<Void, Never>] = [:]
+    @ObservationIgnored private var nextWait = 1
     @ObservationIgnored private var bundleURL: URL?
     @ObservationIgnored private var watcher: Timer?
     @ObservationIgnored private var lastModified: Date?
@@ -101,6 +103,17 @@ public final class JSXRuntime {
         engine.dispatch(id, event, payload, seq: seq)
     }
 
+    /// Delivers an event and waits until the handler (and the promise it
+    /// returns, if any) is done. For `onRefresh`.
+    func dispatchAndWait(_ id: Int, _ event: String, _ payload: Any? = nil) async {
+        await withCheckedContinuation { continuation in
+            let callback = nextWait
+            nextWait += 1
+            waiting[callback] = continuation
+            engine.dispatch(id, event, payload, seq: nil, callback: callback)
+        }
+    }
+
     /// Delivers a gesture event: a worklet handler runs right here on the main
     /// thread; a regular one is dispatched to React on the JS thread.
     func fire(_ node: Node, _ event: String, _ payload: Any? = nil) {
@@ -118,6 +131,10 @@ public final class JSXRuntime {
         switch name {
         case "worklet":
             worklets.handle(args)
+        case "eventDone":
+            if let callback = (args["callback"] as? NSNumber)?.intValue { waiting.removeValue(forKey: callback)?.resume() }
+        case "openURL":
+            if let url = (args["url"] as? String).flatMap(URL.init(string:)) { openExternal(url, inApp: args["inApp"] as? Bool ?? false) }
         case "focus", "blur":
             node.focusRequest = FocusRequest(seq: node.focusRequest.seq + 1, focused: name == "focus")
         case "scrollTo":

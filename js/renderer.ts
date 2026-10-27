@@ -315,7 +315,8 @@ export function withAnimation<T>(animation: AnimationSpec, fn: () => T): T {
 
 // Called by Swift when a native control fires an event. `seq` is set for
 // events from controlled inputs.
-(globalThis as any).__dispatch = (id: number, event: string, payload: unknown, seq?: number) => {
+// `callback` (onRefresh…): Swift waits until the handler's promise settles.
+(globalThis as any).__dispatch = (id: number, event: string, payload: unknown, seq?: number, callback?: number) => {
   const inst = instances.get(id);
   const handler = inst?.props[event];
   if (seq != null && inst) {
@@ -323,15 +324,32 @@ export function withAnimation<T>(animation: AnimationSpec, fn: () => T): T {
     acknowledgeLater(inst, seq);
     if (event === "onChange" && typeof payload === "string") payload = rebase(inst, payload);
   }
-  if (typeof handler !== "function") return;
+  const done = () => callback != null && __native.command(0, "eventDone", { callback }, 0);
+  if (typeof handler !== "function") return done();
   const prev = currentPriority;
   currentPriority = DiscreteEventPriority;
+  let result: unknown;
   try {
-    handler(payload);
+    result = handler(payload);
+  } catch (error) {
+    done();
+    throw error;
   } finally {
     currentPriority = prev;
   }
+  if (callback != null) Promise.resolve(result).then(done, (error) => {
+    done();
+    console.error(error instanceof Error ? `${error.message}\n${error.stack}` : String(error));
+  });
 };
+
+/**
+ * Opens a URL: web links in Safari, or in an in-app Safari sheet with
+ * `{ inApp: true }`; other schemes (tel:, mailto:, app links) with the system.
+ */
+export function openURL(url: string, options: { inApp?: boolean } = {}) {
+  __native.command(0, "openURL", { url: String(url), inApp: !!options.inApp }, 0);
+}
 
 // Typing faster than the JS round trip: the input builds each keystroke on
 // what it shows, which may be text React rejected or transformed ("12a" when

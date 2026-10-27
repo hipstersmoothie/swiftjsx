@@ -17924,6 +17924,7 @@ ${error.stack}` : String(error));
     makeMutable: () => makeMutable,
     native: () => native,
     onMain: () => onMain,
+    openURL: () => openURL,
     render: () => render,
     runOnJS: () => runOnJS,
     useAnimatedStyle: () => useAnimatedStyle,
@@ -18447,7 +18448,7 @@ ${error.stack}` : String(error));
     }
   }
   reconciler.injectIntoDevTools();
-  globalThis.__dispatch = (id, event, payload, seq) => {
+  globalThis.__dispatch = (id, event, payload, seq, callback) => {
     const inst = instances.get(id);
     const handler = inst?.props[event];
     if (seq != null && inst) {
@@ -18455,15 +18456,33 @@ ${error.stack}` : String(error));
       acknowledgeLater(inst, seq);
       if (event === "onChange" && typeof payload === "string") payload = rebase(inst, payload);
     }
-    if (typeof handler !== "function") return;
+    const done = () => callback != null && __native.command(0, "eventDone", {
+      callback
+    }, 0);
+    if (typeof handler !== "function") return done();
     const prev = currentPriority;
     currentPriority = import_constants.DiscreteEventPriority;
+    let result;
     try {
-      handler(payload);
+      result = handler(payload);
+    } catch (error) {
+      done();
+      throw error;
     } finally {
       currentPriority = prev;
     }
+    if (callback != null) Promise.resolve(result).then(done, (error) => {
+      done();
+      console.error(error instanceof Error ? `${error.message}
+${error.stack}` : String(error));
+    });
   };
+  function openURL(url, options = {}) {
+    __native.command(0, "openURL", {
+      url: String(url),
+      inApp: !!options.inApp
+    }, 0);
+  }
   function rebase(inst, text) {
     const shown = inst.nativeText;
     const value = inst.props.value;
@@ -18796,19 +18815,21 @@ ${e.stack}` : String(e);
   var VirtualListHost = "VirtualList";
   var VirtualRow = "VirtualRow";
   function VirtualList(t0) {
-    const $ = (0, import_compiler_runtime3.c)(25);
-    if ($[0] !== "fe95c9ae85f6c65ed46d6e85090e4e91984713914be181bc47b43aceefba611f") {
-      for (let $i = 0; $i < 25; $i += 1) {
+    const $ = (0, import_compiler_runtime3.c)(29);
+    if ($[0] !== "209aadb1143c41a3709414ea132b16b328b6d7ff6154138af6c5e9da993d4109") {
+      for (let $i = 0; $i < 29; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "fe95c9ae85f6c65ed46d6e85090e4e91984713914be181bc47b43aceefba611f";
+      $[0] = "209aadb1143c41a3709414ea132b16b328b6d7ff6154138af6c5e9da993d4109";
     }
     let data;
     let keyExtractor;
+    let onEndReached;
     let renderItem;
     let rest;
     let t1;
     let t2;
+    let t3;
     if ($[1] !== t0) {
       ({
         data,
@@ -18816,46 +18837,58 @@ ${e.stack}` : String(e);
         keyExtractor,
         estimatedItemHeight: t1,
         overscan: t2,
+        onEndReached,
+        onEndReachedThreshold: t3,
         ...rest
       } = t0);
       $[1] = t0;
       $[2] = data;
       $[3] = keyExtractor;
-      $[4] = renderItem;
-      $[5] = rest;
-      $[6] = t1;
-      $[7] = t2;
+      $[4] = onEndReached;
+      $[5] = renderItem;
+      $[6] = rest;
+      $[7] = t1;
+      $[8] = t2;
+      $[9] = t3;
     } else {
       data = $[2];
       keyExtractor = $[3];
-      renderItem = $[4];
-      rest = $[5];
-      t1 = $[6];
-      t2 = $[7];
+      onEndReached = $[4];
+      renderItem = $[5];
+      rest = $[6];
+      t1 = $[7];
+      t2 = $[8];
+      t3 = $[9];
     }
     const estimatedItemHeight = t1 === void 0 ? 44 : t1;
     const overscan = t2 === void 0 ? 10 : t2;
-    const t3 = Math.min(data.length, overscan * 4);
-    let t4;
-    if ($[8] !== t3) {
-      t4 = {
-        start: 0,
-        end: t3
-      };
-      $[8] = t3;
-      $[9] = t4;
-    } else {
-      t4 = $[9];
-    }
-    const [range, setRange] = (0, import_react4.useState)(t4);
-    const previousFirst = (0, import_react4.useRef)(0);
+    const onEndReachedThreshold = t3 === void 0 ? 10 : t3;
+    const t4 = Math.min(data.length, overscan * 4);
     let t5;
-    if ($[10] !== data.length || $[11] !== overscan) {
-      t5 = (t62) => {
+    if ($[10] !== t4) {
+      t5 = {
+        start: 0,
+        end: t4
+      };
+      $[10] = t4;
+      $[11] = t5;
+    } else {
+      t5 = $[11];
+    }
+    const [range, setRange] = (0, import_react4.useState)(t5);
+    const previousFirst = (0, import_react4.useRef)(0);
+    const endReachedAt = (0, import_react4.useRef)(-1);
+    let t6;
+    if ($[12] !== data.length || $[13] !== onEndReached || $[14] !== onEndReachedThreshold || $[15] !== overscan) {
+      t6 = (t72) => {
         const {
           first,
           last
-        } = t62;
+        } = t72;
+        if (onEndReached && last >= data.length - 1 - onEndReachedThreshold && endReachedAt.current !== data.length) {
+          endReachedAt.current = data.length;
+          onEndReached();
+        }
         const down = first >= previousFirst.current;
         previousFirst.current = first;
         setRange((r) => {
@@ -18877,42 +18910,44 @@ ${e.stack}` : String(e);
           };
         });
       };
-      $[10] = data.length;
-      $[11] = overscan;
-      $[12] = t5;
+      $[12] = data.length;
+      $[13] = onEndReached;
+      $[14] = onEndReachedThreshold;
+      $[15] = overscan;
+      $[16] = t6;
     } else {
-      t5 = $[12];
+      t6 = $[16];
     }
-    const onRangeChange = t5;
+    const onRangeChange = t6;
     let rows;
-    if ($[13] !== data || $[14] !== keyExtractor || $[15] !== range.end || $[16] !== range.start || $[17] !== renderItem) {
+    if ($[17] !== data || $[18] !== keyExtractor || $[19] !== range.end || $[20] !== range.start || $[21] !== renderItem) {
       rows = [];
       const end = Math.min(range.end, data.length);
       for (let i = range.start; i < end; i++) {
         rows.push(/* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VirtualRow, { index: i, children: renderItem(data[i], i) }, keyExtractor ? keyExtractor(data[i], i) : i));
       }
-      $[13] = data;
-      $[14] = keyExtractor;
-      $[15] = range.end;
-      $[16] = range.start;
-      $[17] = renderItem;
-      $[18] = rows;
+      $[17] = data;
+      $[18] = keyExtractor;
+      $[19] = range.end;
+      $[20] = range.start;
+      $[21] = renderItem;
+      $[22] = rows;
     } else {
-      rows = $[18];
+      rows = $[22];
     }
-    let t6;
-    if ($[19] !== data.length || $[20] !== estimatedItemHeight || $[21] !== onRangeChange || $[22] !== rest || $[23] !== rows) {
-      t6 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, children: rows });
-      $[19] = data.length;
-      $[20] = estimatedItemHeight;
-      $[21] = onRangeChange;
-      $[22] = rest;
-      $[23] = rows;
-      $[24] = t6;
+    let t7;
+    if ($[23] !== data.length || $[24] !== estimatedItemHeight || $[25] !== onRangeChange || $[26] !== rest || $[27] !== rows) {
+      t7 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, children: rows });
+      $[23] = data.length;
+      $[24] = estimatedItemHeight;
+      $[25] = onRangeChange;
+      $[26] = rest;
+      $[27] = rows;
+      $[28] = t7;
     } else {
-      t6 = $[24];
+      t7 = $[28];
     }
-    return t6;
+    return t7;
   }
 
   // js/native.ts

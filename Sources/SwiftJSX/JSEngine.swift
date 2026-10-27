@@ -275,8 +275,8 @@ final class JSEngine: @unchecked Sendable {
 
     // MARK: Calls into JS
 
-    func dispatch(_ id: Int, _ event: String, _ payload: Any?, seq: Int?) {
-        let args = UncheckedSendable([id, event, payload ?? NSNull(), seq ?? NSNull()] as [Any])
+    func dispatch(_ id: Int, _ event: String, _ payload: Any?, seq: Int?, callback: Int? = nil) {
+        let args = UncheckedSendable([id, event, payload ?? NSNull(), seq ?? NSNull(), callback ?? NSNull()] as [Any])
         perform { ctx in
             ctx.objectForKeyedSubscript("__dispatch")?.call(withArguments: args.value)
         }

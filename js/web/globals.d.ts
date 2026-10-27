@@ -16,12 +16,14 @@ type WebStorage = {
 };
 
 declare global {
+  // @types/react declares empty Event / EventTarget / Blob interfaces for
+  // projects without DOM types; these merge into them.
   var Event: typeof Events.Event;
-  type Event = Events.Event;
+  interface Event extends Events.Event {}
   var CustomEvent: typeof Events.CustomEvent;
   type CustomEvent<T = unknown> = Events.CustomEvent<T>;
   var EventTarget: typeof Events.EventTarget;
-  type EventTarget = Events.EventTarget;
+  interface EventTarget extends Events.EventTarget {}
   var DOMException: typeof Events.DOMException;
   type DOMException = Events.DOMException;
   var AbortController: typeof Events.AbortController;
@@ -49,7 +51,7 @@ declare global {
   var Response: typeof Fetch.Response;
   type Response = Fetch.Response;
   var Blob: typeof Fetch.Blob;
-  type Blob = Fetch.Blob;
+  interface Blob extends Fetch.Blob {}
 
   var crypto: {
     getRandomValues<T extends ArrayBufferView>(array: T): T;
@@ -58,6 +60,9 @@ declare global {
   var localStorage: WebStorage;
   var sessionStorage: WebStorage;
   function structuredClone<T>(value: T): T;
+  /** The global object (there's no DOM). */
+  var window: typeof globalThis;
+  var self: typeof globalThis;
   var navigator: { userAgent: string; language: string; languages: string[]; onLine: boolean; product: string };
   function addEventListener(type: "focus" | "blur" | "visibilitychange" | "online" | "offline" | (string & {}), listener: (event: Event) => void): void;
   function removeEventListener(type: string, listener: (event: Event) => void): void;

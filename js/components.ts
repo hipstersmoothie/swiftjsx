@@ -39,6 +39,11 @@ export interface Modifiers {
   /** Like `key`, but for SwiftUI transitions when the view is inserted/removed. */
   transition?: "opacity" | "scale" | "slide" | "move";
   onAppear?: () => void;
+  /**
+   * Pull to refresh, on a List, ScrollView or VirtualList (or a view around
+   * one). Return a promise: the spinner stays until it settles.
+   */
+  onRefresh?: () => void | Promise<unknown>;
 
   // Transforms, applied after the box (background, border, shadow) like CSS.
   /** Move the view without affecting layout, in points. */
@@ -124,7 +129,17 @@ export const List = host<Modifiers & WithChildren>("List");
 export const Form = host<Modifiers & WithChildren>("Form");
 export const Section = host<Modifiers & WithChildren & { header?: string; footer?: string }>("Section");
 
-export const Text = host<Modifiers & WithChildren & { strikethrough?: boolean; italic?: boolean; monospacedDigit?: boolean }>("Text");
+export const Text = host<
+  Modifiers & WithChildren & {
+    strikethrough?: boolean;
+    italic?: boolean;
+    monospacedDigit?: boolean;
+    /** Maximum lines; the rest is truncated with "…". */
+    lineLimit?: number;
+    /** Alignment of wrapped lines. */
+    textAlignment?: "leading" | "center" | "trailing";
+  }
+>("Text");
 type ImageSource =
   /** An SF Symbol. Sized like text unless `resizable`. */
   | { systemName: string; resizable?: boolean; imageScale?: "small" | "medium" | "large"; contentMode?: "fit" | "fill" }

@@ -32,6 +32,10 @@ export type VirtualListProps<T> = Omit<Modifiers, "ref"> & {
   listStyle?: "list" | "stack";
   /** iOS, listStyle="list": "insetGrouped" (default), "grouped" or "plain". */
   listAppearance?: "insetGrouped" | "grouped" | "plain";
+  /** Called when the visible rows come within `onEndReachedThreshold` rows of the end (once per data length). */
+  onEndReached?: () => void;
+  /** Rows from the end at which `onEndReached` fires (default 10). */
+  onEndReachedThreshold?: number;
   /** `ref.current.scrollTo(index)` scrolls to a row, even one not rendered yet. */
   ref?: Ref<HostInstance>;
 };
@@ -52,13 +56,20 @@ export function VirtualList<T>({
   keyExtractor,
   estimatedItemHeight = 44,
   overscan = 10,
+  onEndReached,
+  onEndReachedThreshold = 10,
   ...rest
 }: VirtualListProps<T>) {
   const [range, setRange] = useState<Range>({ start: 0, end: Math.min(data.length, overscan * 4) });
   const previousFirst = useRef(0);
+  const endReachedAt = useRef(-1);
 
   const onRangeChange = useCallback(
     ({ first, last }: { first: number; last: number }) => {
+      if (onEndReached && last >= data.length - 1 - onEndReachedThreshold && endReachedAt.current !== data.length) {
+        endReachedAt.current = data.length;
+        onEndReached();
+      }
       const down = first >= previousFirst.current;
       previousFirst.current = first;
       setRange((r) => {
@@ -76,7 +87,7 @@ export function VirtualList<T>({
           : { start: Math.max(0, first - ahead), end: Math.min(data.length, last + behind + 1) };
       });
     },
-    [overscan, data.length],
+    [overscan, data.length, onEndReached, onEndReachedThreshold],
   );
 
   const rows: ReactNode[] = [];

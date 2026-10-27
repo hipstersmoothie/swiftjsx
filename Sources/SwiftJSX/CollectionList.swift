@@ -39,6 +39,21 @@ struct CollectionList: UIViewRepresentable {
         let layoutChanged = coordinator.layout != layout
         coordinator.update(self)
         if countChanged || layoutChanged { view.reloadData() }
+        // Pull to refresh: `onRefresh` on the list (or an ancestor) sets the
+        // environment's refresh action, as it would for a SwiftUI List.
+        coordinator.refresh = context.environment.refresh
+        if coordinator.refresh != nil, view.refreshControl == nil {
+            let control = UIRefreshControl()
+            control.addAction(UIAction { [weak coordinator, weak control] _ in
+                Task { @MainActor in
+                    await coordinator?.refresh?()
+                    control?.endRefreshing()
+                }
+            }, for: .valueChanged)
+            view.refreshControl = control
+        } else if coordinator.refresh == nil {
+            view.refreshControl = nil
+        }
         if let request = node.scrollRequest, request.seq != coordinator.lastScroll {
             coordinator.lastScroll = request.seq
             coordinator.scroll(view, request)
@@ -80,6 +95,7 @@ struct CollectionList: UIViewRepresentable {
         var count = 0
         var layout = SlotLayout(fixed: nil, estimated: 44)
         var lastScroll = 0
+        var refresh: RefreshAction?
         private var node: Node?
         private var runtime: JSXRuntime?
         private let visible = VisibleRange()

@@ -62,6 +62,8 @@ struct NodeView: View {
             Group {
                 if node.bool("monospacedDigit") { text.monospacedDigit() } else { text }
             }
+            .lineLimit(node.double("lineLimit").map { Int($0) })
+            .multilineTextAlignment(textAlignment(node.string("textAlignment")))
             .contentTransition(node.has("animation") ? .numericText() : .identity)
 
         case "VStack":

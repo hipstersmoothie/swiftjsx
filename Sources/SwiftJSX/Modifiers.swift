@@ -76,6 +76,7 @@ struct Modifiers: ViewModifier {
             .onAppear { if node.has("onAppear") { runtime?.dispatch(node.id, "onAppear") } }
             .modifier(TapModifier(node: node) { runtime?.fire(node, "onTapGesture") })
             .modifier(Interactions(node: node))
+            .modifier(RefreshModifier(node: node))
     }
 
     private var padding: EdgeInsets {
@@ -118,6 +119,23 @@ struct Interactions: ViewModifier {
                 .modifier(TransformModifier(node: node))
                 .modifier(GestureModifiers(node: node))
                 .modifier(AccessibilityModifier(node: node))
+        }
+    }
+}
+
+/// `onRefresh`: pull to refresh on the scroll view or list inside. The
+/// spinner stays until the handler's promise settles.
+struct RefreshModifier: ViewModifier {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+
+    func body(content: Content) -> some View {
+        if node.features.contains(.refresh) {
+            content.refreshable {
+                if node.has("onRefresh") { await runtime?.dispatchAndWait(node.id, "onRefresh") }
+            }
+        } else {
+            content
         }
     }
 }
@@ -304,6 +322,14 @@ func alignment(_ name: String?) -> Alignment? {
     case "bottomLeading": .bottomLeading
     case "bottomTrailing": .bottomTrailing
     default: nil
+    }
+}
+
+func textAlignment(_ name: String?) -> TextAlignment {
+    switch name {
+    case "center": .center
+    case "trailing": .trailing
+    default: .leading
     }
 }
 

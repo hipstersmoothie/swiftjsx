@@ -51,6 +51,7 @@ public final class Node: Identifiable {
         case foreground, tap, ref, transform
         case doubleTap, longPress, drag, magnify, rotate
         case accessibility, accessibilityElement
+        case refresh
     }
 
     /// Called after props or children change.
@@ -81,6 +82,7 @@ public final class Node: Identifiable {
         ("accessibilityIdentifier", .accessibility), ("accessibilityTraits", .accessibility),
         ("accessibilitySortPriority", .accessibility),
         ("accessibilityElement", .accessibility), ("accessibilityElement", .accessibilityElement),
+        ("onRefresh", .refresh),
     ]
 
     static let modifierKeys: Set<String> = Set([
