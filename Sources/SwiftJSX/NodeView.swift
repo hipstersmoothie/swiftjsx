@@ -167,7 +167,9 @@ struct NodeView: View {
                     if let label = node.string("label") { Text(label) }
                 }
             } else {
-                ProgressView()
+                ProgressView {
+                    if let label = node.string("label") { Text(label) }
+                }
             }
 
         case "Button":

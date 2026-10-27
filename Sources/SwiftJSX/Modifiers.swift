@@ -74,6 +74,7 @@ struct Modifiers: ViewModifier {
             .disabled(node.bool("disabled"))
             .transition(transition(node.string("transition")))
             .onAppear { if node.has("onAppear") { runtime?.dispatch(node.id, "onAppear") } }
+            .onDisappear { if node.has("onDisappear") { runtime?.dispatch(node.id, "onDisappear") } }
             // Interactions (incl. double tap) inside the single tap, so a view
             // with both waits for the double tap before firing the single one.
             .modifier(Interactions(node: node))

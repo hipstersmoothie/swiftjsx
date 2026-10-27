@@ -9,7 +9,8 @@ struct ScrollViewHost: View {
         ScrollViewReader { proxy in
             ScrollView(horizontal ? .horizontal : .vertical) {
                 Group {
-                    if horizontal { HStack { Children(node: node) } } else { VStack { Children(node: node) } }
+                    let spacing = node.cgFloat("spacing")
+                    if horizontal { HStack(spacing: spacing) { Children(node: node) } } else { VStack(spacing: spacing) { Children(node: node) } }
                 }
                 .background(alignment: horizontal ? .leading : .top) {
                     Color.clear.frame(width: 1, height: 1).id(ScrollEdge.top)
@@ -19,6 +20,8 @@ struct ScrollViewHost: View {
                 }
             }
             .onChange(of: node.scrollRequest) { _, request in scroll(proxy, request) }
+            // A scrollTo from before the scroll view appeared (a mount effect).
+            .onAppear { scroll(proxy, node.scrollRequest) }
         }
     }
 }
@@ -110,6 +113,7 @@ private struct VirtualStack<Slots: View>: View {
             let jump = { scroll(to: request, spacing: spacing) }
             if request.animated { withAnimation(.default, jump) } else { jump() }
         }
+        .onAppear { if let request = node.scrollRequest { scroll(to: request, spacing: spacing) } }
     }
 
     private func scroll(to request: ScrollRequest, spacing: CGFloat) {

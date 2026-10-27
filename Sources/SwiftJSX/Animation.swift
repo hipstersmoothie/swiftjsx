@@ -11,13 +11,15 @@ func parseAnimation(_ value: Any?) -> Animation? {
     case let spec as [String: Any]:
         func number(_ key: String) -> Double? { (spec[key] as? NSNumber)?.doubleValue }
         var animation = namedAnimation(spec["type"] as? String ?? "default", duration: number("duration"), bounce: number("bounce"))
-        if let delay = number("delay") { animation = animation.delay(delay) }
         if let speed = number("speed") { animation = animation.speed(speed) }
         if let count = number("repeatCount") {
             animation = animation.repeatCount(Int(count), autoreverses: spec["autoreverses"] as? Bool ?? true)
         } else if spec["repeatForever"] as? Bool == true {
             animation = animation.repeatForever(autoreverses: spec["autoreverses"] as? Bool ?? true)
         }
+        // After repeating, so a looping animation waits once (staggered dots)
+        // rather than before every cycle.
+        if let delay = number("delay") { animation = animation.delay(delay) }
         return animation
     default:
         return nil

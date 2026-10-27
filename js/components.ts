@@ -43,6 +43,9 @@ export interface Modifiers {
   /** Like `key`, but for SwiftUI transitions when the view is inserted/removed. */
   transition?: "opacity" | "scale" | "slide" | "move";
   onAppear?: () => void;
+  onDisappear?: () => void;
+  /** Invisible but still laid out (like CSS `visibility: hidden`). */
+  hidden?: boolean;
   /**
    * Pull to refresh, on a List, ScrollView or VirtualList (or a view around
    * one). Return a promise: the spinner stays until it settles.
@@ -128,7 +131,8 @@ const host = <P,>(tag: string) => tag as unknown as FC<P>;
 export const VStack = host<Modifiers & WithChildren & { spacing?: number; alignment?: "leading" | "center" | "trailing" }>("VStack");
 export const HStack = host<Modifiers & WithChildren & { spacing?: number; alignment?: "top" | "center" | "bottom" | "firstTextBaseline" }>("HStack");
 export const ZStack = host<Modifiers & WithChildren & { alignment?: Alignment }>("ZStack");
-export const ScrollView = host<Modifiers & WithChildren & { axis?: "vertical" | "horizontal" }>("ScrollView");
+/** Children are stacked in a VStack (HStack when horizontal) with `spacing` between them (SwiftUI's default if unset). */
+export const ScrollView = host<Modifiers & WithChildren & { axis?: "vertical" | "horizontal"; spacing?: number }>("ScrollView");
 export const List = host<Modifiers & WithChildren>("List");
 export const Form = host<Modifiers & WithChildren>("Form");
 export const Section = host<Modifiers & WithChildren & { header?: string; footer?: string }>("Section");
@@ -138,6 +142,7 @@ export const Text = host<
     strikethrough?: boolean;
     italic?: boolean;
     monospacedDigit?: boolean;
+    // With an `animation` prop, changing digits roll (numeric content transition).
     /** Maximum lines; the rest is truncated with "…". */
     lineLimit?: number;
     /** Alignment of wrapped lines. */
@@ -163,6 +168,7 @@ export const Image = host<Modifiers & ImageSource>("Image");
 export const Label = host<Modifiers & { title: string; systemImage: string }>("Label");
 export const Spacer = host<Modifiers & { minLength?: number }>("Spacer");
 export const Divider = host<Modifiers>("Divider");
+/** A spinner, or a bar when `value` is set. */
 export const ProgressView = host<Modifiers & { value?: number; total?: number; label?: string; tint?: Color }>("ProgressView");
 
 export const Button = host<
