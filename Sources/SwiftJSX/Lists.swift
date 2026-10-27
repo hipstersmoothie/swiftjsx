@@ -41,16 +41,23 @@ struct VirtualListHost: View {
         let layout = SlotLayout(fixed: node.cgFloat("itemHeight"), estimated: node.cgFloat("estimatedItemHeight") ?? 44)
         SwiftJSXDiagnostics.virtualListBodies += 1
 
-        return ScrollViewReader { proxy in
+        #if os(iOS)
+        // listStyle="list" on iOS: a UICollectionView list with SwiftUI cells.
+        // SwiftUI's List looks a row up by walking its ForEach from the start,
+        // so its cells get slower the further down you are (unusable after
+        // jumping to row 50,000 of 100k); UIKit finds cells by index.
+        if node.string("listStyle") == "list" {
+            return AnyView(CollectionList(node: node, count: count, layout: layout, runtime: runtime)
+                .background { CollectionList.background(node).ignoresSafeArea() })
+        }
+        #endif
+        if node.string("listStyle") != "list" {
+            return AnyView(VirtualStack(node: node, count: count, layout: layout) { slots(count: count, layout: $0) })
+        }
+        // listStyle="list" off iOS: SwiftUI's List.
+        return AnyView(ScrollViewReader { proxy in
             Group {
-                // Default: a LazyVStack. SwiftUI's List looks a row up by walking
-                // its ForEach from the start, so cells get slower the further
-                // down you are (unusable after jumping to row 50,000 of 100k).
-                if node.string("listStyle") != "list" {
-                    ScrollView {
-                        LazyVStack(spacing: node.cgFloat("spacing")) { slots(count: count, layout: layout) }
-                    }
-                } else if let fixed = layout.fixed {
+                if let fixed = layout.fixed {
                     // Rows exactly as tall as the list estimates, so self-sizing
                     // never disagrees with the estimate (see VirtualSlot).
                     List { slots(count: count, layout: layout) }
@@ -60,7 +67,7 @@ struct VirtualListHost: View {
                 }
             }
             .onChange(of: node.scrollRequest) { _, request in scroll(proxy, request) }
-        }
+        })
     }
 
     private func slots(count: Int, layout: SlotLayout) -> some View {
@@ -73,6 +80,54 @@ struct VirtualListHost: View {
 
     private func report(_ first: Int, _ last: Int) {
         runtime?.dispatch(node.id, "onRangeChange", ["first": first, "last": last])
+    }
+}
+
+/// The default VirtualList: a LazyVStack in a ScrollView.
+///
+/// `scrollTo(index)` sets the offset directly (`index × (row height +
+/// spacing)`) instead of using ScrollViewReader: `ScrollViewProxy.scrollTo`
+/// finds a row by searching the lazy stack's rows from the top, which froze
+/// the main thread for ~10 s when jumping to row 50,000 of 100k. With
+/// `itemHeight` the jump is exact; otherwise it uses `estimatedItemHeight`.
+private struct VirtualStack<Slots: View>: View {
+    let node: Node
+    let count: Int
+    let layout: SlotLayout
+    @ViewBuilder let slots: (SlotLayout) -> Slots
+    @State private var position = ScrollPosition()
+    @State private var viewport: CGFloat = 0
+
+    var body: some View {
+        let spacing = node.cgFloat("spacing") ?? 0
+        ScrollView {
+            LazyVStack(spacing: spacing) { slots(layout) }
+        }
+        .scrollPosition($position)
+        .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height } action: { _, height in viewport = height }
+        .onChange(of: node.scrollRequest) { _, request in
+            guard let request else { return }
+            let jump = { scroll(to: request, spacing: spacing) }
+            if request.animated { withAnimation(.default, jump) } else { jump() }
+        }
+    }
+
+    private func scroll(to request: ScrollRequest, spacing: CGFloat) {
+        switch request.target.base {
+        case let edge as ScrollEdge:
+            position.scrollTo(edge: edge == .top ? .top : .bottom)
+        case let index as Int:
+            let row = layout.fixed ?? layout.estimated
+            let top = CGFloat(min(max(index, 0), max(count - 1, 0))) * (row + spacing)
+            let y: CGFloat = switch request.anchor {
+            case .center?: top - (viewport - row) / 2
+            case .bottom?: top - (viewport - row)
+            default: top
+            }
+            position.scrollTo(y: max(0, y))
+        default:
+            break
+        }
     }
 }
 

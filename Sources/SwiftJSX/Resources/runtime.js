@@ -17597,6 +17597,7 @@
     if (seq != null && inst) {
       inst.eventSeq = seq;
       acknowledgeLater(inst, seq);
+      if (event === "onChange" && typeof payload === "string") payload = rebase(inst, payload);
     }
     if (typeof handler !== "function") return;
     const prev = currentPriority;
@@ -17607,6 +17608,13 @@
       currentPriority = prev;
     }
   };
+  function rebase(inst, text) {
+    const shown = inst.nativeText;
+    const value = inst.props.value;
+    inst.nativeText = text;
+    if (shown === void 0 || typeof value !== "string" || shown === value || !text.startsWith(shown)) return text;
+    return value + text.slice(shown.length);
+  }
   function acknowledgeLater(inst, seq) {
     Promise.resolve().then(() => {
       if (!instances.has(inst.id) || inst.eventSeq !== seq || (inst.ackedSeq ?? 0) >= seq) return;
@@ -17933,11 +17941,11 @@ ${e.stack}` : String(e);
   var VirtualRow = "VirtualRow";
   function VirtualList(t0) {
     const $ = (0, import_compiler_runtime3.c)(25);
-    if ($[0] !== "a03a6f05d6a6e966a868cc44350c818510f09085b08fb4d5bbd7a675142a24e7") {
+    if ($[0] !== "fe95c9ae85f6c65ed46d6e85090e4e91984713914be181bc47b43aceefba611f") {
       for (let $i = 0; $i < 25; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "a03a6f05d6a6e966a868cc44350c818510f09085b08fb4d5bbd7a675142a24e7";
+      $[0] = "fe95c9ae85f6c65ed46d6e85090e4e91984713914be181bc47b43aceefba611f";
     }
     let data;
     let keyExtractor;

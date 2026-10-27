@@ -102,6 +102,20 @@ struct BackgroundThreadTests {
         #expect(field.string("value") == "123")
     }
 
+    @Test func fastTypingAfterARejectedCharacterIsRebased() async throws {
+        let runtime = try fixture("Inputs", threading: .background)
+        #expect(await eventually { runtime.find("TextField") != nil })
+        let field = try #require(runtime.find("TextField") { $0.string("placeholder") == "Digits" })
+        // Keystrokes as the field sends them before JS answers: each is built
+        // on the previous one, including the rejected "a".
+        for (seq, text) in ["12a", "12a3", "12a34"].enumerated() {
+            field.sentSeq = seq + 1
+            runtime.dispatch(field.id, "onChange", text, seq: seq + 1)
+        }
+        #expect(await eventually { field.ackSeq == 3 })
+        #expect(field.string("value") == "1234")
+    }
+
     @Test func modifierWrappersAreSticky() async throws {
         let runtime = try fixture("Inputs")
         let dimmedField = try #require(runtime.find("TextField") { $0.string("placeholder") == "Dimmed" })

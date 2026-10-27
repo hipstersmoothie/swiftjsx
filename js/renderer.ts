@@ -51,6 +51,8 @@ export class HostInstance {
   eventSeq: number | undefined;
   /** …and the last one Swift has been told about. */
   ackedSeq: number | undefined;
+  /** Text the native input showed in its last onChange (before any rebase). */
+  nativeText: string | undefined;
   /** Serialized worklet props, to diff by content (closures change, functions don't compare). */
   worklets: Map<string, string> | undefined;
   /** JS functions captured by this instance's worklets (callable from the main thread). */
@@ -319,6 +321,7 @@ export function withAnimation<T>(animation: AnimationSpec, fn: () => T): T {
   if (seq != null && inst) {
     inst.eventSeq = seq;
     acknowledgeLater(inst, seq);
+    if (event === "onChange" && typeof payload === "string") payload = rebase(inst, payload);
   }
   if (typeof handler !== "function") return;
   const prev = currentPriority;
@@ -329,6 +332,19 @@ export function withAnimation<T>(animation: AnimationSpec, fn: () => T): T {
     currentPriority = prev;
   }
 };
+
+// Typing faster than the JS round trip: the input builds each keystroke on
+// what it shows, which may be text React rejected or transformed ("12a" when
+// the field only accepts digits). React DOM restores the field before the next
+// keystroke; here we do the equivalent by moving the new keystrokes onto
+// React's value: "12a" → rejected, value "12"; then "12a3" becomes "123".
+function rebase(inst: HostInstance, text: string): string {
+  const shown = inst.nativeText;
+  const value = inst.props.value;
+  inst.nativeText = text;
+  if (shown === undefined || typeof value !== "string" || shown === value || !text.startsWith(shown)) return text;
+  return value + text.slice(shown.length);
+}
 
 // A controlled input's edit is acknowledged by the commit that renders it
 // (`__seq` above). If the handler rejects the edit (no state change, or the

@@ -77,8 +77,9 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   in the scroll direction. Pass `itemHeight` for uniform rows (like FlatList's
   `getItemLayout`). On an iPhone 15 Pro Max at 120 Hz, 100k rows scroll at 118–120 fps
   with no blank rows, from the top or after `scrollTo(50_000)` (`Apps/iOS` has a
-  benchmark). `listStyle="list"` uses SwiftUI's `List` for the list look, but `List`
-  finds each cell by walking rows from the start, so it gets slow far down long lists.
+  benchmark). `scrollTo(index)` jumps straight to the offset, so even a jump to row
+  50,000 is instant. `listStyle="list"` gives the inset-grouped list look; on iOS it's a
+  `UICollectionView` list hosting your rows, just as fast at any depth.
 - **Refs.** `ref.current.focus()`, `.blur()`, `.scrollTo(ref | index | "top" | "end")`,
   `await .measure()`. `useImperativeHandle` etc. work as usual on top.
 - **Modifiers are props**, applied CSS-box-model style:
@@ -88,8 +89,28 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   its position.
 - **Gestures.** `onTapGesture`, `onDoubleTap`, `onLongPress`, `onDrag`/`onDragEnd`
   (translation, location, velocity, predicted end), `onMagnify`, `onRotate`. Handlers run
-  on the JS thread like any event. Pair them with `offset`/`scale`/`rotation` state, and
-  `animation={dragging ? undefined : "spring"}` to follow the finger and spring back.
+  on the JS thread like any event, or on the main thread as worklets (below).
+- **Animation.** `withAnimation("spring", () => setOpen(true))` animates everything that
+  update changes, like SwiftUI's `withAnimation`; the `animation` prop animates one view.
+  Both take SwiftUI's curves (`spring`, `bouncy`, `snappy`, `easeInOut`…) or
+  `{ type, duration, bounce, delay, repeatCount }`.
+- **Worklets** (like Reanimated). A handler marked `"worklet"` runs on the main thread
+  inside the touch event, so a dragged view moves in the same frame as the finger, with
+  no React render:
+
+  ```tsx
+  const offset = useSharedValue({ x: 0, y: 0 });
+  const style = useAnimatedStyle(() => ({ offset: offset.get() }));
+  <VStack
+    animatedStyle={style}
+    onDrag={(e) => { "worklet"; offset.set(e.translation); }}
+    onDragEnd={() => { "worklet"; offset.set(withSpring({ x: 0, y: 0 })); runOnJS(save)(); }}
+  />
+  ```
+
+  The build compiles worklets to source plus the values they capture; a small second
+  JSContext on the main thread runs them. `withSpring`/`withTiming` hand the change to
+  SwiftUI, which animates it natively.
 - **Images.** `<Image systemName>` (SF Symbols), `<Image name>` (asset catalog), and
   `<Image src="https://…" contentMode="fill">`. URL images are cached in memory, requested
   once even when several views want them, and decoded off the main thread. They fire

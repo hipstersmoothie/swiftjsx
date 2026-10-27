@@ -19,14 +19,19 @@ export type VirtualListProps<T> = Omit<Modifiers, "ref"> & {
    * outrun React.
    */
   overscan?: number;
+  /** Space between rows in the stack style (default 0). */
   spacing?: number;
   /**
    * "stack" (default): a LazyVStack in a ScrollView; fast at any depth.
-   * "list": SwiftUI List (separators, swipe actions, list look). List gets
-   * slower the further you scroll from the top (it walks rows from the start
-   * to find each cell); avoid it for very long lists.
+   * "list": the inset-grouped list look (separators, grouped background). On
+   * iOS it's a UICollectionView list hosting your rows, as fast at row 50,000
+   * as at row 0; a large navigation title doesn't collapse into an inline
+   * one over it, so pair it with `titleDisplayMode="inline"`. Elsewhere it's
+   * SwiftUI's List, which slows down far into long lists.
    */
   listStyle?: "list" | "stack";
+  /** iOS, listStyle="list": "insetGrouped" (default), "grouped" or "plain". */
+  listAppearance?: "insetGrouped" | "grouped" | "plain";
   /** `ref.current.scrollTo(index)` scrolls to a row, even one not rendered yet. */
   ref?: Ref<HostInstance>;
 };

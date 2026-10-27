@@ -14,22 +14,33 @@ Known gaps and ideas, roughly by area. Nothing here is scheduled.
 
 ## Gestures and animation
 
-- [ ] Gesture updates go to React and back, so a drag trails the finger by about a
-      frame. Add native-driven animations (like Reanimated worklets) for gestures that
-      need to track the finger exactly.
-- [ ] Animation is per node (`animation="spring"`) or per transition. There's no
-      `withAnimation`-style API to animate one specific state change from JS.
+- [x] Worklets: gesture handlers and animated styles on the main thread
+      (`useSharedValue`, `useAnimatedStyle`, `withSpring`, `withTiming`, `runOnJS`).
+- [x] `withAnimation` from JS, and SwiftUI animation specs for the `animation` prop.
+- [ ] Worklet animations are SwiftUI animations: a worklet can't read a value
+      mid-animation, and there's no `withDecay`, `withRepeat` or `withSequence`.
+- [ ] No `useDerivedValue` / `useAnimatedReaction`; worklets can only drive props
+      through `useAnimatedStyle`, and only gesture handlers can be worklets.
+- [ ] Spring animations started from a gesture don't take the finger's velocity.
 
 ## Rendering
 
 - [ ] `foregroundStyle`, gestures, transforms, accessibility props and refs are attached
       the first time a view uses them and then stay (always-on, idle gestures doubled
       scroll hitches in long lists). So the *first* time one of them appears on a view
-      that's already mounted, that view's SwiftUI state resets once. Props present from
-      mount never reset it. A cheaper always-on form would close this.
-- [ ] `VirtualList listStyle="list"` (SwiftUI `List`) gets slow far down long lists:
-      `List` finds each cell by walking rows from the start. The default stack style is
-      fine at any depth.
+      that's already mounted, that view's SwiftUI state resets once (a text field inside
+      it loses focus). Props present from mount never reset it. `foregroundStyle` has no
+      no-op form: `.foregroundStyle(.foreground)` and the three-level
+      `.foregroundStyle(.primary, .secondary, .tertiary)` both turn a List's gray
+      headers black.
+- [x] `VirtualList listStyle="list"` is a UICollectionView list on iOS, fast at any depth.
+- [ ] Over that UIKit list, a large navigation title doesn't collapse into the inline
+      title (SwiftUI only tracks its own scroll views); use `titleDisplayMode="inline"`.
+      Off iOS, `listStyle="list"` is still SwiftUI's `List`.
+- [x] `VirtualList.scrollTo(index)` jumps by offset: `ScrollViewProxy.scrollTo` searched
+      rows from the top and froze the app ~10 s for row 50,000.
+- [ ] Without `itemHeight`, `scrollTo(index)` lands on an estimate
+      (`estimatedItemHeight`) when rows vary in height.
 
 ## Build and tooling
 

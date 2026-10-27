@@ -1,0 +1,138 @@
+#if os(iOS)
+import SwiftUI
+import UIKit
+
+/// `<VirtualList listStyle="list">` on iOS: an inset-grouped UICollectionView
+/// list whose cells host the same `VirtualSlot` SwiftUI views as the stack
+/// style (via `UIHostingConfiguration`). It looks like a SwiftUI `List`, but
+/// cells are found by index, so it's as fast at row 50,000 as at row 0.
+struct CollectionList: UIViewRepresentable {
+    let node: Node
+    let count: Int
+    let layout: SlotLayout
+    let runtime: JSXRuntime?
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    /// Fills behind the bars, which the list itself stays clear of.
+    static func background(_ node: Node) -> Color {
+        Color(uiColor: appearance(node) == .plain ? .systemBackground : .systemGroupedBackground)
+    }
+
+    func makeUIView(context: Context) -> UICollectionView {
+        var configuration = UICollectionLayoutListConfiguration(appearance: Self.appearance(node))
+        configuration.backgroundColor = .clear
+        let view = TrackedCollectionView(frame: .zero, collectionViewLayout: UICollectionViewCompositionalLayout.list(using: configuration))
+        view.backgroundColor = .clear
+        view.allowsSelection = false
+        view.selfSizingInvalidation = .enabledIncludingConstraints
+        view.register(UICollectionViewListCell.self, forCellWithReuseIdentifier: "row")
+        view.dataSource = context.coordinator
+        view.delegate = context.coordinator
+        context.coordinator.update(self)
+        return view
+    }
+
+    func updateUIView(_ view: UICollectionView, context: Context) {
+        let coordinator = context.coordinator
+        let countChanged = coordinator.count != count
+        let layoutChanged = coordinator.layout != layout
+        coordinator.update(self)
+        if countChanged || layoutChanged { view.reloadData() }
+        if let request = node.scrollRequest, request.seq != coordinator.lastScroll {
+            coordinator.lastScroll = request.seq
+            coordinator.scroll(view, request)
+        }
+    }
+
+    private static func appearance(_ node: Node) -> UICollectionLayoutListConfiguration.Appearance {
+        switch node.string("listAppearance") {
+        case "plain": .plain
+        case "grouped": .grouped
+        default: .insetGrouped
+        }
+    }
+
+    /// Registers itself as its screen's content scroll view, so the navigation
+    /// bar collapses its large title and updates its background as it scrolls,
+    /// like it does for a SwiftUI List.
+    final class TrackedCollectionView: UICollectionView {
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard window != nil else { return }
+            // The page the navigation controller shows, not the nearest
+            // (SwiftUI-internal) view controller.
+            var responder: UIResponder? = self
+            var page: UIViewController?
+            while let next = responder?.next {
+                if let controller = next as? UIViewController {
+                    page = controller
+                    if controller.parent is UINavigationController { break }
+                }
+                responder = next
+            }
+            page?.setContentScrollView(self, for: .top)
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegate {
+        var count = 0
+        var layout = SlotLayout(fixed: nil, estimated: 44)
+        var lastScroll = 0
+        private var node: Node?
+        private var runtime: JSXRuntime?
+        private let visible = VisibleRange()
+
+        func update(_ list: CollectionList) {
+            node = list.node
+            runtime = list.runtime
+            count = list.count
+            layout = list.layout
+        }
+
+        func collectionView(_ view: UICollectionView, numberOfItemsInSection section: Int) -> Int { count }
+
+        func collectionView(_ view: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+            let cell = view.dequeueReusableCell(withReuseIdentifier: "row", for: indexPath)
+            guard let node else { return cell }
+            let configuration = UIHostingConfiguration {
+                VirtualSlot(list: node, index: indexPath.item, layout: layout)
+                    .environment(\.jsxRuntime, runtime)
+            }
+            // Fixed heights are exact: no vertical cell margins on top.
+            cell.contentConfiguration = layout.fixed == nil ? configuration : configuration.margins(.vertical, 0)
+            return cell
+        }
+
+        func collectionView(_ view: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+            visible.update(inserting: indexPath.item, report: report)
+        }
+
+        func collectionView(_ view: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+            visible.update(removing: indexPath.item, report: report)
+        }
+
+        private func report(_ first: Int, _ last: Int) {
+            guard let node else { return }
+            runtime?.dispatch(node.id, "onRangeChange", ["first": first, "last": last])
+        }
+
+        func scroll(_ view: UICollectionView, _ request: ScrollRequest) {
+            let item: Int
+            switch request.target.base {
+            case let index as Int: item = index
+            case let edge as ScrollEdge: item = edge == .top ? 0 : count - 1
+            default: return
+            }
+            guard count > 0 else { return }
+            let position: UICollectionView.ScrollPosition = switch request.anchor {
+            case .center?: .centeredVertically
+            case .bottom?: .bottom
+            default: .top
+            }
+            view.scrollToItem(at: IndexPath(item: min(max(item, 0), count - 1), section: 0), at: position, animated: request.animated)
+        }
+    }
+}
+#endif
