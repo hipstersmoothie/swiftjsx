@@ -359,6 +359,83 @@ struct ShapeView: View {
     }
 }
 
+// MARK: - SF Symbols
+
+/// `symbolRenderingMode` (with `paletteColors` for "palette"),
+/// `symbolVariant`, and `symbolEffect`: `{ type, value }` plays a one-shot
+/// effect (bounce, wiggle, rotate) whenever `value` changes; `{ type, active }`
+/// runs a continuous one (pulse, variableColor, breathe, rotate, wiggle) while
+/// active. Changing `systemName` animates with the "replace" effect.
+struct SymbolModifier: ViewModifier {
+    let node: Node
+
+    func body(content: Content) -> some View {
+        let palette = (node.prop("paletteColors") as? [Any])?.compactMap(color) ?? []
+        content
+            .symbolRenderingMode(renderingMode(node.string("symbolRenderingMode")))
+            .symbolVariant(variant(node.string("symbolVariant")))
+            .modifier(Palette(colors: palette))
+            .contentTransition(.symbolEffect(.replace))
+            .modifier(Effect(spec: node.dict("symbolEffect")))
+    }
+
+    private func renderingMode(_ name: String?) -> SymbolRenderingMode? {
+        switch name {
+        case "monochrome": .monochrome
+        case "hierarchical": .hierarchical
+        case "palette": .palette
+        case "multicolor": .multicolor
+        default: nil
+        }
+    }
+
+    private func variant(_ name: String?) -> SymbolVariants {
+        switch name {
+        case "fill": .fill
+        case "circle": .circle
+        case "square": .square
+        case "rectangle": .rectangle
+        case "slash": .slash
+        case "circleFill": .circle.fill
+        default: .none
+        }
+    }
+
+    private struct Palette: ViewModifier {
+        let colors: [Color]
+        func body(content: Content) -> some View {
+            switch colors.count {
+            case 0: content
+            case 1: content.foregroundStyle(colors[0])
+            case 2: content.foregroundStyle(colors[0], colors[1])
+            default: content.foregroundStyle(colors[0], colors[1], colors[2])
+            }
+        }
+    }
+
+    private struct Effect: ViewModifier {
+        let spec: [String: Any]?
+
+        func body(content: Content) -> some View {
+            let type = spec?["type"] as? String
+            let active = spec?["active"] as? Bool ?? true
+            // Any value works as the trigger; compare its description.
+            let trigger = spec?["value"].map { "\($0)" } ?? ""
+            switch type {
+            case "bounce": content.symbolEffect(.bounce, value: trigger)
+            case "wiggle" where spec?["value"] != nil: content.symbolEffect(.wiggle, value: trigger)
+            case "wiggle": content.symbolEffect(.wiggle, isActive: active)
+            case "rotate" where spec?["value"] != nil: content.symbolEffect(.rotate, value: trigger)
+            case "rotate": content.symbolEffect(.rotate, isActive: active)
+            case "pulse": content.symbolEffect(.pulse, isActive: active)
+            case "variableColor": content.symbolEffect(.variableColor.iterative, isActive: active)
+            case "breathe": content.symbolEffect(.breathe, isActive: active)
+            default: content
+            }
+        }
+    }
+}
+
 // MARK: - Styled text
 
 /// A `<Text>`'s content as one SwiftUI Text: strings, nested `<Text>` runs

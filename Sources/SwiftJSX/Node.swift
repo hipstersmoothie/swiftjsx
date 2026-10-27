@@ -52,6 +52,7 @@ public final class Node: Identifiable {
         case doubleTap, longPress, drag, magnify, rotate
         case accessibility, accessibilityElement
         case refresh, swipeActions, contextMenu
+        case overlay, backgroundView, contentShape, layout, relativeFrame, listRow
     }
 
     /// Called after props or children change.
@@ -59,8 +60,14 @@ public final class Node: Identifiable {
         for (key, feature) in Self.featureKeys where !features.contains(feature) && has(key) {
             features.insert(feature)
         }
-        for child in children where child.type == "SwipeActions" || child.type == "ContextMenu" {
-            features.insert(child.type == "SwipeActions" ? .swipeActions : .contextMenu)
+        for child in children {
+            switch child.type {
+            case "SwipeActions": features.insert(.swipeActions)
+            case "ContextMenu": features.insert(.contextMenu)
+            case "Overlay": features.insert(.overlay)
+            case "Background": features.insert(.backgroundView)
+            default: break
+            }
         }
         guard !decorated else { return }
         if Self.alwaysDecorated.contains(type) || props.keys.contains(where: Self.modifierKeys.contains)
@@ -86,25 +93,30 @@ public final class Node: Identifiable {
         ("accessibilitySortPriority", .accessibility),
         ("accessibilityElement", .accessibility), ("accessibilityElement", .accessibilityElement),
         ("onRefresh", .refresh),
+        ("contentShape", .contentShape), ("onLayout", .layout),
+        ("relativeWidth", .relativeFrame), ("relativeHeight", .relativeFrame),
+        ("listRowBackground", .listRow), ("listRowInsets", .listRow), ("listRowSeparator", .listRow), ("badge", .listRow),
     ]
 
     static let modifierKeys: Set<String> = Set([
         "padding", "frame", "background", "foregroundStyle", "font", "fontWeight", "fontDesign",
         "cornerRadius", "border", "shadow", "opacity", "disabled", "transition", "onAppear",
-        "onTapGesture", "hidden", "onDisappear", "colorScheme",
+        "onTapGesture", "hidden", "onDisappear", "colorScheme", "zIndex", "layoutPriority", "gridColumns",
     ]).union(featureKeys.map(\.0)).subtracting(["__ref"])
 
     /// Views with state of their own get the wrapper from the start, so even
     /// the first modifier prop doesn't reset them.
     static let alwaysDecorated: Set<String> = [
-        "TextField", "Toggle", "Slider", "Stepper", "Picker", "ScrollView", "VirtualList", "List", "Form",
+        "TextField", "TextEditor", "Toggle", "Slider", "Stepper", "Picker", "DatePicker", "ColorPicker",
+        "ScrollView", "VirtualList", "List", "Form",
     ]
 
     /// Sheets and alerts aren't laid out; their parent presents them.
     var isPresentation: Bool { Self.presentationTypes.contains(type) }
     /// Children that aren't laid out but modify their parent: presentations,
     /// `<SwipeActions>`, `<ContextMenu>`.
-    var isAttachment: Bool { isPresentation || type == "SwipeActions" || type == "ContextMenu" }
+    var isAttachment: Bool { isPresentation || Self.attachmentTypes.contains(type) }
+    static let attachmentTypes: Set<String> = ["SwipeActions", "ContextMenu", "Overlay", "Background", "SectionHeader", "SectionFooter"]
     static let presentationTypes: Set<String> = ["Sheet", "Alert", "ConfirmationDialog"]
 
     init(id: Int, type: String, props: [String: Any] = [:], text: String = "") {

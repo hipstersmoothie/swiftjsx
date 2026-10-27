@@ -19,10 +19,143 @@ struct ScrollViewHost: View {
                     Color.clear.frame(width: 1, height: 1).id(ScrollEdge.end)
                 }
             }
+            .modifier(ScrollOptions(node: node))
             .onChange(of: node.scrollRequest) { _, request in scroll(proxy, request) }
             // A scrollTo from before the scroll view appeared (a mount effect).
             .onAppear { scroll(proxy, node.scrollRequest) }
         }
+    }
+}
+
+/// ScrollView and VirtualList options: `showsIndicators`, `paging`,
+/// `defaultScrollAnchor` ("bottom" for chats), `contentMargins`, and
+/// `onScroll({ x, y, contentWidth, contentHeight, width, height })`.
+struct ScrollOptions: ViewModifier {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+
+    func body(content: Content) -> some View {
+        content
+            .scrollIndicators(node.has("showsIndicators") && !node.bool("showsIndicators") ? .hidden : .automatic)
+            .defaultScrollAnchor(unitPoint(node.string("defaultScrollAnchor")))
+            .contentMargins(.all, insets(node.prop("contentMargins")) ?? EdgeInsets(), for: .scrollContent)
+            .modifier(Paging(enabled: node.bool("paging")))
+            .modifier(Events(node: node, runtime: runtime))
+    }
+
+    private struct Paging: ViewModifier {
+        let enabled: Bool
+        func body(content: Content) -> some View {
+            if enabled { content.scrollTargetBehavior(.paging) } else { content }
+        }
+    }
+
+    private struct Info: Equatable {
+        var x: CGFloat, y: CGFloat, contentWidth: CGFloat, contentHeight: CGFloat, width: CGFloat, height: CGFloat
+    }
+
+    private struct Events: ViewModifier {
+        let node: Node
+        let runtime: JSXRuntime?
+        func body(content: Content) -> some View {
+            if node.has("onScroll") {
+                content.onScrollGeometryChange(for: Info.self) { geo in
+                    // 0 at the top, whatever the insets.
+                    Info(x: geo.contentOffset.x + geo.contentInsets.leading, y: geo.contentOffset.y + geo.contentInsets.top,
+                         contentWidth: geo.contentSize.width, contentHeight: geo.contentSize.height,
+                         width: geo.containerSize.width, height: geo.containerSize.height)
+                } action: { _, info in
+                    runtime?.dispatch(node.id, "onScroll", ["x": info.x, "y": info.y, "contentWidth": info.contentWidth,
+                                                            "contentHeight": info.contentHeight, "width": info.width, "height": info.height])
+                }
+            } else {
+                content
+            }
+        }
+    }
+}
+
+/// List and Section children, with swipe-to-delete (`onDelete(indices)`) and
+/// drag-to-reorder in edit mode (`onMove({ from, to })`) when given.
+struct EditableChildren: View {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+
+    var body: some View {
+        if node.has("onDelete") || node.has("onMove") {
+            ForEach(node.children.filter { !$0.isAttachment }) { NodeView(node: $0) }
+                .onDelete(perform: node.has("onDelete") ? { runtime?.dispatch(node.id, "onDelete", Array($0)) } : nil)
+                .onMove(perform: node.has("onMove") ? { runtime?.dispatch(node.id, "onMove", ["from": Array($0), "to": $1]) } : nil)
+        } else {
+            Children(node: node)
+        }
+    }
+}
+
+struct ListStyleModifier: ViewModifier {
+    let style: String?
+    func body(content: Content) -> some View {
+        switch style {
+        case "plain": content.listStyle(.plain)
+        #if os(iOS)
+        case "grouped": content.listStyle(.grouped)
+        case "insetGrouped": content.listStyle(.insetGrouped)
+        #endif
+        case "inset": content.listStyle(.inset)
+        case "sidebar": content.listStyle(.sidebar)
+        default: content
+        }
+    }
+}
+
+/// `<Flow>`: lays children out left to right, wrapping onto new lines (tags, chips).
+struct FlowLayout: Layout {
+    var spacing: CGFloat
+    var lineSpacing: CGFloat
+    var alignment: HorizontalAlignment
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let lines = lines(for: subviews, width: proposal.width ?? .infinity)
+        let width = lines.map(\.width).max() ?? 0
+        let height = lines.map(\.height).reduce(0, +) + lineSpacing * CGFloat(max(lines.count - 1, 0))
+        return CGSize(width: proposal.width ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in lines(for: subviews, width: bounds.width) {
+            var x = switch alignment {
+            case .center: bounds.minX + (bounds.width - line.width) / 2
+            case .trailing: bounds.maxX - line.width
+            default: bounds.minX
+            }
+            for index in line.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y + (line.height - size.height) / 2), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += line.height + lineSpacing
+        }
+    }
+
+    private struct Line { var indices: [Int] = []; var width: CGFloat = 0; var height: CGFloat = 0 }
+
+    private func lines(for subviews: Subviews, width: CGFloat) -> [Line] {
+        var lines: [Line] = []
+        var line = Line()
+        for (index, subview) in subviews.enumerated() {
+            let size = subview.sizeThatFits(.unspecified)
+            let needed = line.indices.isEmpty ? size.width : line.width + spacing + size.width
+            if needed > width, !line.indices.isEmpty {
+                lines.append(line)
+                line = Line()
+            }
+            line.width = line.indices.isEmpty ? size.width : line.width + spacing + size.width
+            line.height = max(line.height, size.height)
+            line.indices.append(index)
+        }
+        if !line.indices.isEmpty { lines.append(line) }
+        return lines
     }
 }
 
@@ -104,8 +237,13 @@ private struct VirtualStack<Slots: View>: View {
     var body: some View {
         let spacing = node.cgFloat("spacing") ?? 0
         ScrollView {
-            LazyVStack(spacing: spacing) { slots(layout) }
+            if node.has("columns") {
+                LazyVGrid(columns: gridColumns(node), spacing: spacing) { slots(layout) }
+            } else {
+                LazyVStack(spacing: spacing) { slots(layout) }
+            }
         }
+        .modifier(ScrollOptions(node: node))
         .scrollPosition($position)
         .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height } action: { _, height in viewport = height }
         .onChange(of: node.scrollRequest) { _, request in
@@ -122,7 +260,9 @@ private struct VirtualStack<Slots: View>: View {
             position.scrollTo(edge: edge == .top ? .top : .bottom)
         case let index as Int:
             let row = layout.fixed ?? layout.estimated
-            let top = CGFloat(min(max(index, 0), max(count - 1, 0))) * (row + spacing)
+            // Grids: rows of `columns` (adaptive columns count as one per row: an estimate).
+            let perRow = max(1, Int(node.double("columns") ?? 1))
+            let top = CGFloat(min(max(index, 0), max(count - 1, 0)) / perRow) * (row + spacing)
             let y: CGFloat = switch request.anchor {
             case .center?: top - (viewport - row) / 2
             case .bottom?: top - (viewport - row)

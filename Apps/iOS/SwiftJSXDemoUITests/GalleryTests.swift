@@ -217,4 +217,112 @@ final class GalleryTests: XCTestCase {
         sleep(1)
         snapshot("flashcards-after-swipe")
     }
+
+    func testControls() {
+        open("Controls & layout")
+        XCTAssert(app.staticTexts["Milk"].waitForExistence(timeout: 5))
+        // Swipe to delete (Section onDelete).
+        let milk = app.staticTexts["Milk"]
+        for _ in 0..<4 where !milk.isHittable { app.swipeUp() }
+        app.cells.containing(.staticText, identifier: "Milk").firstMatch.swipeLeft(velocity: .fast)
+        snapshot("controls-swiped")
+        app.buttons["Delete"].firstMatch.tap()
+        XCTAssert(app.staticTexts["Milk"].waitForNonExistence(timeout: 5))
+        // Item-based sheet.
+        app.staticTexts["Eggs"].tap()
+        XCTAssert(app.staticTexts["EDITING EGGS"].waitForExistence(timeout: 5) || app.staticTexts["Editing Eggs"].waitForExistence(timeout: 1))
+        snapshot("controls-sheet")
+        app.buttons["Done"].tap()
+        // Toolbar menu with a submenu.
+        app.buttons["More"].tap()
+        XCTAssert(app.buttons["Share"].waitForExistence(timeout: 5))
+        snapshot("controls-menu")
+        app.buttons["Share"].tap()
+        XCTAssert(app.buttons["Copy link"].waitForExistence(timeout: 5))
+        app.buttons["Copy link"].tap()
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssert(element("mail-badge").waitForExistence(timeout: 5))
+        snapshot("controls-bottom")
+    }
+
+    func testSettings() {
+        openApp("Settings")
+        let profile = element("profile-row")
+        XCTAssert(profile.waitForExistence(timeout: 5))
+        snapshot("settings-root")
+        profile.tap()
+        let name = app.textFields["name-field"]
+        XCTAssert(name.waitForExistence(timeout: 5))
+        snapshot("settings-profile")
+    }
+
+    func testCalculator() {
+        openApp("Calculator")
+        XCTAssert(element("key-7").waitForExistence(timeout: 5))
+        for key in ["key-7", "key-*", "key-6", "key-="] { element(key).tap() }
+        let display = element("display")
+        let predicate = NSPredicate(format: "label CONTAINS '42'")
+        XCTAssertEqual(XCTWaiter().wait(for: [expectation(for: predicate, evaluatedWith: display)], timeout: 5), .completed,
+                       "display: \(display.label)")
+        snapshot("calculator")
+    }
+
+    func testKanban() {
+        openApp("Kanban")
+        sleep(2)
+        snapshot("kanban-boards")
+        let board = app.buttons.containing(NSPredicate(format: "label CONTAINS ' cards'")).firstMatch
+        if board.waitForExistence(timeout: 5) { board.tap() }
+        sleep(2)
+        snapshot("kanban-board")
+        XCTAssert(element("card").waitForExistence(timeout: 5))
+        sleep(1)
+        snapshot("kanban-board")
+    }
+
+    func testFitness() {
+        openApp("Fitness")
+        XCTAssert(element("activity-rings").waitForExistence(timeout: 5))
+        sleep(2)
+        snapshot("fitness-summary")
+        let steps = element("metric-steps")
+        for _ in 0..<4 where !steps.isHittable { app.swipeUp() }
+        steps.tap()
+        XCTAssert(element("range-picker").waitForExistence(timeout: 5))
+        sleep(1)
+        snapshot("fitness-metric")
+    }
+
+    func testMusic() {
+        openApp("Music")
+        sleep(2)
+        snapshot("music-start")
+        let search = app.searchFields.firstMatch
+        XCTAssert(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("Daft Punk")
+        let result = element("search-result")
+        XCTAssert(result.waitForExistence(timeout: 20), "no results")
+        sleep(2)
+        snapshot("music-search")
+        result.tap()
+        XCTAssert(element("mini-player").waitForExistence(timeout: 10))
+        sleep(2)
+        snapshot("music-playing")
+    }
+
+    func testNotes() {
+        openApp("Notes")
+        let note = element("note-row")
+        for _ in 0..<2 where !note.waitForExistence(timeout: 3) {
+            app.buttons.containing(NSPredicate(format: "label CONTAINS 'All Notes'")).firstMatch.tap()
+        }
+        XCTAssert(note.waitForExistence(timeout: 5))
+        snapshot("notes-list")
+        note.tap()
+        XCTAssert(element("note-title").waitForExistence(timeout: 5))
+        sleep(1)
+        snapshot("notes-editor")
+    }
 }

@@ -17979,14 +17979,23 @@ ${error.stack}` : String(error));
   var index_exports = {};
   __export(index_exports, {
     Alert: () => Alert,
+    AlertHost: () => AlertHost,
+    Background: () => Background,
     Button: () => Button,
     Capsule: () => Capsule,
     Circle: () => Circle,
+    ColorPicker: () => ColorPicker,
     ConfirmationDialog: () => ConfirmationDialog,
+    ConfirmationDialogHost: () => ConfirmationDialogHost,
     ContextMenu: () => ContextMenu,
+    DatePicker: () => DatePicker,
     Divider: () => Divider,
+    EditButton: () => EditButton,
     Ellipse: () => Ellipse,
+    Flow: () => Flow,
     Form: () => Form,
+    Grid: () => Grid,
+    GridRow: () => GridRow,
     HStack: () => HStack,
     HostInstance: () => HostInstance,
     Image: () => Image,
@@ -17995,11 +18004,14 @@ ${error.stack}` : String(error));
     LazyVGrid: () => LazyVGrid,
     LazyVStack: () => LazyVStack,
     List: () => List,
+    Menu: () => Menu,
     NavigationPage: () => NavigationPage,
+    NavigationRow: () => NavigationRow,
     NavigationSplitView: () => NavigationSplitView,
     NavigationSplitViewHost: () => NavigationSplitViewHost,
     NavigationStack: () => NavigationStack,
     Navigator: () => Navigator,
+    Overlay: () => Overlay,
     Picker: () => Picker,
     ProgressView: () => ProgressView,
     Rectangle: () => Rectangle,
@@ -18007,7 +18019,10 @@ ${error.stack}` : String(error));
     Screen: () => Screen,
     ScrollView: () => ScrollView,
     Section: () => Section,
+    SectionFooter: () => SectionFooter,
+    SectionHeader: () => SectionHeader,
     Sheet: () => Sheet,
+    SheetHost: () => SheetHost,
     Slider: () => Slider,
     Spacer: () => Spacer,
     SplitColumn: () => SplitColumn,
@@ -18016,12 +18031,14 @@ ${error.stack}` : String(error));
     Tab: () => Tab,
     TabView: () => TabView,
     Text: () => Text,
+    TextEditor: () => TextEditor,
     TextField: () => TextField,
     Toggle: () => Toggle,
     ToolbarItem: () => ToolbarItem,
     VStack: () => VStack,
     VirtualList: () => VirtualList,
     ZStack: () => ZStack,
+    haptic: () => haptic,
     isNativeAvailable: () => isNativeAvailable,
     makeMutable: () => makeMutable,
     native: () => native,
@@ -18284,6 +18301,13 @@ ${error.stack}` : String(error));
   };
   var nextId = 1;
   var nextCallback = 1;
+  function nativeCall(name, args) {
+    return new Promise((resolve) => {
+      const cb = nextCallback++;
+      callbacks.set(cb, resolve);
+      __native.command(0, name, args, cb);
+    });
+  }
   var pending2 = [];
   var instances = /* @__PURE__ */ new Map();
   var callbacks = /* @__PURE__ */ new Map();
@@ -18658,6 +18682,14 @@ ${e.stack}` : String(e);
   var List = host("List");
   var Form = host("Form");
   var Section = host("Section");
+  var SectionHeader = host("SectionHeader");
+  var SectionFooter = host("SectionFooter");
+  var EditButton = host("EditButton");
+  var Grid = host("Grid");
+  var GridRow = host("GridRow");
+  var Flow = host("Flow");
+  var Overlay = host("Overlay");
+  var Background = host("Background");
   var Text = host("Text");
   var Image = host("Image");
   var Label = host("Label");
@@ -18671,6 +18703,9 @@ ${e.stack}` : String(e);
   var ProgressView = host("ProgressView");
   var Button = host("Button");
   var TextField = host("TextField");
+  var TextEditor = host("TextEditor");
+  var ColorPicker = host("ColorPicker");
+  var Menu = host("Menu");
   var Toggle = host("Toggle");
   var Slider = host("Slider");
   var Stepper = host("Stepper");
@@ -18688,9 +18723,9 @@ ${e.stack}` : String(e);
   var SwipeActions = host("SwipeActions");
   var ContextMenu = host("ContextMenu");
   var ToolbarItem = host("ToolbarItem");
-  var Sheet = host("Sheet");
-  var Alert = host("Alert");
-  var ConfirmationDialog = host("ConfirmationDialog");
+  var SheetHost = host("Sheet");
+  var AlertHost = host("Alert");
+  var ConfirmationDialogHost = host("ConfirmationDialog");
 
   // js/navigation.tsx
   var import_compiler_runtime2 = __toESM(require_compiler_runtime(), 1);
@@ -18927,11 +18962,11 @@ ${e.stack}` : String(e);
   var VirtualRow = "VirtualRow";
   function VirtualList(t0) {
     const $ = (0, import_compiler_runtime3.c)(29);
-    if ($[0] !== "209aadb1143c41a3709414ea132b16b328b6d7ff6154138af6c5e9da993d4109") {
+    if ($[0] !== "853c322c512d454760c4a2dbebaa6de638c67fa93840186be58b77e07837eead") {
       for (let $i = 0; $i < 29; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "209aadb1143c41a3709414ea132b16b328b6d7ff6154138af6c5e9da993d4109";
+      $[0] = "853c322c512d454760c4a2dbebaa6de638c67fa93840186be58b77e07837eead";
     }
     let data;
     let keyExtractor;
@@ -19196,6 +19231,474 @@ ${e.stack}` : String(e);
   function _temp3(e) {
     return console.error(e);
   }
+
+  // js/presentations.tsx
+  var import_compiler_runtime5 = __toESM(require_compiler_runtime(), 1);
+  var import_react6 = __toESM(require_react(), 1);
+  var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
+  function usePresentation(props) {
+    const $ = (0, import_compiler_runtime5.c)(9);
+    if ($[0] !== "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289") {
+      for (let $i = 0; $i < 9; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289";
+    }
+    const presented = props.item !== void 0 ? props.item !== null : !!props.isPresented;
+    const [shown, setShown] = (0, import_react6.useState)(props.item);
+    const [wasPresented, setWasPresented] = (0, import_react6.useState)(presented);
+    const [generation, setGeneration] = (0, import_react6.useState)(0);
+    if (props.item != null && props.item !== shown) {
+      setShown(props.item);
+    }
+    if (presented !== wasPresented) {
+      setWasPresented(presented);
+      if (presented) {
+        setGeneration(_temp4);
+      }
+    }
+    let t0;
+    if ($[1] !== props.children || $[2] !== shown) {
+      t0 = typeof props.children === "function" ? shown != null ? props.children(shown) : null : props.children;
+      $[1] = props.children;
+      $[2] = shown;
+      $[3] = t0;
+    } else {
+      t0 = $[3];
+    }
+    const content = t0;
+    let t1;
+    if ($[4] !== content || $[5] !== generation || $[6] !== presented || $[7] !== shown) {
+      t1 = {
+        presented,
+        shown,
+        generation,
+        content
+      };
+      $[4] = content;
+      $[5] = generation;
+      $[6] = presented;
+      $[7] = shown;
+      $[8] = t1;
+    } else {
+      t1 = $[8];
+    }
+    return t1;
+  }
+  function _temp4(g2) {
+    return g2 + 1;
+  }
+  function Sheet(props) {
+    const $ = (0, import_compiler_runtime5.c)(10);
+    if ($[0] !== "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289") {
+      for (let $i = 0; $i < 10; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289";
+    }
+    const {
+      presented,
+      generation,
+      content
+    } = usePresentation(props);
+    const t0 = props.keepState ? 0 : generation;
+    let t1;
+    if ($[1] !== content || $[2] !== t0) {
+      t1 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Fresh, { children: content }, t0);
+      $[1] = content;
+      $[2] = t0;
+      $[3] = t1;
+    } else {
+      t1 = $[3];
+    }
+    let t2;
+    if ($[4] !== presented || $[5] !== props.detents || $[6] !== props.fullScreen || $[7] !== props.onDismiss || $[8] !== t1) {
+      t2 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, detents: props.detents, fullScreen: props.fullScreen, children: t1 });
+      $[4] = presented;
+      $[5] = props.detents;
+      $[6] = props.fullScreen;
+      $[7] = props.onDismiss;
+      $[8] = t1;
+      $[9] = t2;
+    } else {
+      t2 = $[9];
+    }
+    return t2;
+  }
+  function useDialog(props) {
+    const $ = (0, import_compiler_runtime5.c)(13);
+    if ($[0] !== "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289") {
+      for (let $i = 0; $i < 13; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289";
+    }
+    const presentation = usePresentation(props);
+    let t0;
+    if ($[1] !== presentation) {
+      t0 = (value) => typeof value === "function" ? presentation.shown != null ? value(presentation.shown) : "" : value;
+      $[1] = presentation;
+      $[2] = t0;
+    } else {
+      t0 = $[2];
+    }
+    const resolve = t0;
+    let t1;
+    if ($[3] !== props.title || $[4] !== resolve) {
+      t1 = resolve(props.title) ?? "";
+      $[3] = props.title;
+      $[4] = resolve;
+      $[5] = t1;
+    } else {
+      t1 = $[5];
+    }
+    let t2;
+    if ($[6] !== props.message || $[7] !== resolve) {
+      t2 = resolve(props.message);
+      $[6] = props.message;
+      $[7] = resolve;
+      $[8] = t2;
+    } else {
+      t2 = $[8];
+    }
+    let t3;
+    if ($[9] !== presentation || $[10] !== t1 || $[11] !== t2) {
+      t3 = {
+        ...presentation,
+        title: t1,
+        message: t2
+      };
+      $[9] = presentation;
+      $[10] = t1;
+      $[11] = t2;
+      $[12] = t3;
+    } else {
+      t3 = $[12];
+    }
+    return t3;
+  }
+  function Alert(props) {
+    const $ = (0, import_compiler_runtime5.c)(7);
+    if ($[0] !== "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289") {
+      for (let $i = 0; $i < 7; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289";
+    }
+    const {
+      presented,
+      title,
+      message,
+      content
+    } = useDialog(props);
+    let t0;
+    if ($[1] !== content || $[2] !== message || $[3] !== presented || $[4] !== props.onDismiss || $[5] !== title) {
+      t0 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AlertHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
+      $[1] = content;
+      $[2] = message;
+      $[3] = presented;
+      $[4] = props.onDismiss;
+      $[5] = title;
+      $[6] = t0;
+    } else {
+      t0 = $[6];
+    }
+    return t0;
+  }
+  function ConfirmationDialog(props) {
+    const $ = (0, import_compiler_runtime5.c)(7);
+    if ($[0] !== "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289") {
+      for (let $i = 0; $i < 7; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289";
+    }
+    const {
+      presented,
+      title,
+      message,
+      content
+    } = useDialog(props);
+    let t0;
+    if ($[1] !== content || $[2] !== message || $[3] !== presented || $[4] !== props.onDismiss || $[5] !== title) {
+      t0 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ConfirmationDialogHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
+      $[1] = content;
+      $[2] = message;
+      $[3] = presented;
+      $[4] = props.onDismiss;
+      $[5] = title;
+      $[6] = t0;
+    } else {
+      t0 = $[6];
+    }
+    return t0;
+  }
+  function Fresh(t0) {
+    const $ = (0, import_compiler_runtime5.c)(3);
+    if ($[0] !== "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289") {
+      for (let $i = 0; $i < 3; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "57ce64343a7be13db210d032d7eaa7d37cbff55ee47834903667093e32615289";
+    }
+    const {
+      children
+    } = t0;
+    let t1;
+    if ($[1] !== children) {
+      t1 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children });
+      $[1] = children;
+      $[2] = t1;
+    } else {
+      t1 = $[2];
+    }
+    return t1;
+  }
+
+  // js/controls.tsx
+  var import_compiler_runtime6 = __toESM(require_compiler_runtime(), 1);
+  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+  var DatePickerHost = "DatePicker";
+  function DatePicker(t0) {
+    const $ = (0, import_compiler_runtime6.c)(21);
+    if ($[0] !== "5bb48dff4ad9acac634bf02a1f5e24f9b04b0c3e915365450bc633c64016b294") {
+      for (let $i = 0; $i < 21; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "5bb48dff4ad9acac634bf02a1f5e24f9b04b0c3e915365450bc633c64016b294";
+    }
+    let max;
+    let min;
+    let onChange;
+    let props;
+    let value;
+    if ($[1] !== t0) {
+      ({
+        value,
+        onChange,
+        min,
+        max,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = max;
+      $[3] = min;
+      $[4] = onChange;
+      $[5] = props;
+      $[6] = value;
+    } else {
+      max = $[2];
+      min = $[3];
+      onChange = $[4];
+      props = $[5];
+      value = $[6];
+    }
+    const ms = _temp5;
+    let t1;
+    if ($[7] !== value) {
+      t1 = ms(value);
+      $[7] = value;
+      $[8] = t1;
+    } else {
+      t1 = $[8];
+    }
+    let t2;
+    if ($[9] !== min) {
+      t2 = ms(min);
+      $[9] = min;
+      $[10] = t2;
+    } else {
+      t2 = $[10];
+    }
+    let t3;
+    if ($[11] !== max) {
+      t3 = ms(max);
+      $[11] = max;
+      $[12] = t3;
+    } else {
+      t3 = $[12];
+    }
+    let t4;
+    if ($[13] !== onChange) {
+      t4 = (t) => onChange(new Date(t));
+      $[13] = onChange;
+      $[14] = t4;
+    } else {
+      t4 = $[14];
+    }
+    let t5;
+    if ($[15] !== props || $[16] !== t1 || $[17] !== t2 || $[18] !== t3 || $[19] !== t4) {
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(DatePickerHost, { ...props, value: t1, min: t2, max: t3, onChange: t4 });
+      $[15] = props;
+      $[16] = t1;
+      $[17] = t2;
+      $[18] = t3;
+      $[19] = t4;
+      $[20] = t5;
+    } else {
+      t5 = $[20];
+    }
+    return t5;
+  }
+  function _temp5(d) {
+    return d === void 0 ? void 0 : typeof d === "number" ? d : d.getTime();
+  }
+  function NavigationRow(t0) {
+    const $ = (0, import_compiler_runtime6.c)(33);
+    if ($[0] !== "5bb48dff4ad9acac634bf02a1f5e24f9b04b0c3e915365450bc633c64016b294") {
+      for (let $i = 0; $i < 33; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "5bb48dff4ad9acac634bf02a1f5e24f9b04b0c3e915365450bc633c64016b294";
+    }
+    let badge;
+    let children;
+    let modifiers;
+    let onPress;
+    let subtitle;
+    let systemImage;
+    let t1;
+    let title;
+    let value;
+    if ($[1] !== t0) {
+      ({
+        title,
+        subtitle,
+        systemImage,
+        iconColor: t1,
+        value,
+        badge,
+        onPress,
+        children,
+        ...modifiers
+      } = t0);
+      $[1] = t0;
+      $[2] = badge;
+      $[3] = children;
+      $[4] = modifiers;
+      $[5] = onPress;
+      $[6] = subtitle;
+      $[7] = systemImage;
+      $[8] = t1;
+      $[9] = title;
+      $[10] = value;
+    } else {
+      badge = $[2];
+      children = $[3];
+      modifiers = $[4];
+      onPress = $[5];
+      subtitle = $[6];
+      systemImage = $[7];
+      t1 = $[8];
+      title = $[9];
+      value = $[10];
+    }
+    const iconColor = t1 === void 0 ? "gray" : t1;
+    let t2;
+    if ($[11] !== iconColor || $[12] !== systemImage) {
+      t2 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Image, { systemName: systemImage, font: "callout", foregroundStyle: "white", frame: {
+        width: 29,
+        height: 29
+      }, background: iconColor, cornerRadius: 7 }) : null;
+      $[11] = iconColor;
+      $[12] = systemImage;
+      $[13] = t2;
+    } else {
+      t2 = $[13];
+    }
+    let t3;
+    if ($[14] !== children || $[15] !== subtitle || $[16] !== title) {
+      t3 = children ?? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(VStack, { alignment: "leading", spacing: 2, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { children: title }),
+        subtitle ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { font: "caption", foregroundStyle: "secondary", children: subtitle }) : null
+      ] });
+      $[14] = children;
+      $[15] = subtitle;
+      $[16] = title;
+      $[17] = t3;
+    } else {
+      t3 = $[17];
+    }
+    let t4;
+    if ($[18] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t4 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Spacer, {});
+      $[18] = t4;
+    } else {
+      t4 = $[18];
+    }
+    let t5;
+    if ($[19] !== value) {
+      t5 = value != null ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { foregroundStyle: "secondary", lineLimit: 1, children: value }) : null;
+      $[19] = value;
+      $[20] = t5;
+    } else {
+      t5 = $[20];
+    }
+    let t6;
+    if ($[21] !== badge) {
+      t6 = badge ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { font: "footnote", fontWeight: "semibold", foregroundStyle: "white", padding: {
+        horizontal: 7,
+        vertical: 2
+      }, background: "red", cornerRadius: "capsule", children: String(badge) }) : null;
+      $[21] = badge;
+      $[22] = t6;
+    } else {
+      t6 = $[22];
+    }
+    let t7;
+    if ($[23] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t7 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Image, { systemName: "chevron.right", font: "footnote", fontWeight: "semibold", foregroundStyle: "tertiary" });
+      $[23] = t7;
+    } else {
+      t7 = $[23];
+    }
+    let t8;
+    if ($[24] !== t2 || $[25] !== t3 || $[26] !== t5 || $[27] !== t6) {
+      t8 = /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(HStack, { spacing: 12, children: [
+        t2,
+        t3,
+        t4,
+        t5,
+        t6,
+        t7
+      ] });
+      $[24] = t2;
+      $[25] = t3;
+      $[26] = t5;
+      $[27] = t6;
+      $[28] = t8;
+    } else {
+      t8 = $[28];
+    }
+    let t9;
+    if ($[29] !== modifiers || $[30] !== onPress || $[31] !== t8) {
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Button, { onPress, tint: "primary", ...modifiers, children: t8 });
+      $[29] = modifiers;
+      $[30] = onPress;
+      $[31] = t8;
+      $[32] = t9;
+    } else {
+      t9 = $[32];
+    }
+    return t9;
+  }
+
+  // js/platform.ts
+  function haptic(kind = "medium") {
+    void nativeCall("haptic", {
+      kind
+    });
+  }
+  globalThis.navigator.clipboard = {
+    async writeText(text) {
+      await nativeCall("clipboardWrite", {
+        text: String(text)
+      });
+    },
+    async readText() {
+      return await nativeCall("clipboardRead", {});
+    }
+  };
 
   // js/runtime-entry.ts
   globalThis.__swiftjsx_modules = {

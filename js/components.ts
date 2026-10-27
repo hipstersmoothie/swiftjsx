@@ -104,6 +104,25 @@ export interface Modifiers {
   shadow?: number | { radius: number; x?: number; y?: number; color?: ColorValue };
   /** Light or dark appearance for this view and everything inside it. */
   colorScheme?: "light" | "dark";
+  /** Drawing order among siblings (higher is in front). */
+  zIndex?: number;
+  /** Who gets space first in a stack (higher wins; default 0). */
+  layoutPriority?: number;
+  /** In a `<GridRow>`: how many columns this cell spans. */
+  gridColumns?: number;
+  /** The tappable area: the whole shape, not just what's drawn (e.g. a row with a Spacer). */
+  contentShape?: "rectangle" | "capsule" | "circle";
+  /** Called with the view's size after layout, and when it changes (like React Native's onLayout). */
+  onLayout?: (size: { width: number; height: number }) => void;
+  /** A fraction of the nearest container's width / height (the scroll view or screen), e.g. 0.8. */
+  relativeWidth?: number;
+  relativeHeight?: number;
+  // Inside a <List>:
+  listRowBackground?: Fill;
+  listRowInsets?: number | { top?: number; leading?: number; bottom?: number; trailing?: number; horizontal?: number; vertical?: number };
+  listRowSeparator?: "visible" | "hidden";
+  /** A count or short text shown at the trailing edge of a List row. */
+  badge?: number | string;
   opacity?: number;
   disabled?: boolean;
   /** Animate every change to this view (and its children's insertions/removals). */
@@ -163,6 +182,12 @@ export interface Modifiers {
    * They override this element's props with the same name.
    */
   animatedStyle?: import("./worklets").AnimatedStyle;
+  /**
+   * Any element can hold attachments: `<Overlay>`, `<Background>`,
+   * `<ContextMenu>`, `<SwipeActions>`, `<Sheet>`, `<Alert>`… (containers
+   * also hold their content).
+   */
+  children?: ReactNode;
   /** Imperative handle: `focus()`, `blur()`, `scrollTo()`, `measure()`. */
   ref?: Ref<HostInstance>;
 }
@@ -200,10 +225,54 @@ export const VStack = host<Modifiers & WithChildren & { spacing?: number; alignm
 export const HStack = host<Modifiers & WithChildren & { spacing?: number; alignment?: "top" | "center" | "bottom" | "firstTextBaseline" }>("HStack");
 export const ZStack = host<Modifiers & WithChildren & { alignment?: Alignment }>("ZStack");
 /** Children are stacked in a VStack (HStack when horizontal) with `spacing` between them (SwiftUI's default if unset). */
-export const ScrollView = host<Modifiers & WithChildren & { axis?: "vertical" | "horizontal"; spacing?: number }>("ScrollView");
-export const List = host<Modifiers & WithChildren>("List");
-export const Form = host<Modifiers & WithChildren>("Form");
-export const Section = host<Modifiers & WithChildren & { header?: string; footer?: string }>("Section");
+/** Options shared by ScrollView and VirtualList. */
+export type ScrollProps = {
+  showsIndicators?: boolean;
+  /** Snap to pages the size of the scroll view (carousels). */
+  paging?: boolean;
+  /** Where content starts (and stays as it grows): "bottom" for chats. */
+  defaultScrollAnchor?: "top" | "center" | "bottom";
+  /** Space around the scrollable content, inside the scroll view. */
+  contentMargins?: number | { top?: number; leading?: number; bottom?: number; trailing?: number; horizontal?: number; vertical?: number };
+  /** While scrolling: offset from the top/leading edge, and sizes. */
+  onScroll?: (event: { x: number; y: number; contentWidth: number; contentHeight: number; width: number; height: number }) => void;
+};
+
+/** Children are stacked in a VStack (HStack when horizontal) with `spacing` between them (SwiftUI's default if unset). */
+export const ScrollView = host<Modifiers & WithChildren & ScrollProps & { axis?: "vertical" | "horizontal"; spacing?: number }>("ScrollView");
+
+type Editable = {
+  /** Swipe-to-delete on the rows: called with the deleted children's indices. */
+  onDelete?: (indices: number[]) => void;
+  /** Reordering in edit mode (see `<EditButton>`): move children at `from` to before index `to`. */
+  onMove?: (move: { from: number[]; to: number }) => void;
+};
+
+export const List = host<
+  Modifiers & WithChildren & Editable & {
+    listStyle?: "automatic" | "plain" | "grouped" | "insetGrouped" | "inset" | "sidebar";
+    /** "hidden": no list background, so the List's own `background` (or what's behind) shows. */
+    scrollContentBackground?: "visible" | "hidden";
+  }
+>("List");
+export const Form = host<Modifiers & WithChildren & { scrollContentBackground?: "visible" | "hidden" }>("Form");
+/** `header` / `footer` as text, or `<SectionHeader>` / `<SectionFooter>` children for anything else. */
+export const Section = host<Modifiers & WithChildren & Editable & { header?: string; footer?: string }>("Section");
+export const SectionHeader = host<Modifiers & WithChildren>("SectionHeader");
+export const SectionFooter = host<Modifiers & WithChildren>("SectionFooter");
+/** Toggles edit mode for the List on this screen (reordering with `onMove`). */
+export const EditButton = host<Modifiers>("EditButton");
+
+/** Rows (`<GridRow>`) of cells aligned in columns, sized to fit (not lazy, not scrolling). */
+export const Grid = host<Modifiers & WithChildren & { alignment?: Alignment; horizontalSpacing?: number; verticalSpacing?: number }>("Grid");
+export const GridRow = host<Modifiers & WithChildren & { alignment?: "top" | "center" | "bottom" | "firstTextBaseline" }>("GridRow");
+/** Lays children out in rows, wrapping to the next line when full (tags, chips). */
+export const Flow = host<Modifiers & WithChildren & { spacing?: number; lineSpacing?: number; alignment?: "leading" | "center" | "trailing" }>("Flow");
+
+/** Drawn over the parent element, sized to it (`alignment` places it: badges in a corner). */
+export const Overlay = host<Modifiers & WithChildren & { alignment?: Alignment }>("Overlay");
+/** Drawn behind the parent element, sized to it. */
+export const Background = host<Modifiers & WithChildren & { alignment?: Alignment }>("Background");
 
 /**
  * Text. Nest `<Text>` for styled runs (`<Text>Hello <Text fontWeight="bold"
@@ -238,7 +307,26 @@ export const Text = host<
 >("Text");
 type ImageSource =
   /** An SF Symbol. Sized like text unless `resizable`. */
-  | { systemName: string; resizable?: boolean; imageScale?: "small" | "medium" | "large"; contentMode?: "fit" | "fill" }
+  | {
+      systemName: string;
+      resizable?: boolean;
+      imageScale?: "small" | "medium" | "large";
+      contentMode?: "fit" | "fill";
+      /** "multicolor" (the symbol's own colors), "hierarchical" (one color in layers), "palette" (`paletteColors`). */
+      symbolRenderingMode?: "monochrome" | "hierarchical" | "palette" | "multicolor";
+      /** Up to three colors for the "palette" rendering mode. */
+      paletteColors?: ColorValue[];
+      symbolVariant?: "fill" | "circle" | "square" | "rectangle" | "slash" | "circleFill";
+      /** 0–1 for symbols with variable parts (wifi, speaker.wave.3). */
+      variableValue?: number;
+      /**
+       * `{ type: "bounce", value }` plays once each time `value` changes;
+       * `{ type: "pulse", active }` runs while active.
+       */
+      symbolEffect?:
+        | { type: "bounce" | "wiggle" | "rotate"; value: unknown }
+        | { type: "pulse" | "variableColor" | "breathe" | "wiggle" | "rotate"; active?: boolean };
+    }
   /** An image from the app's asset catalog; resizable. */
   | { name: string; contentMode?: "fit" | "fill" }
   /**
@@ -288,21 +376,56 @@ export const Button = host<
   }
 >("Button");
 
+type TextInputProps = {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  /** Focus when it appears. */
+  autoFocus?: boolean;
+  keyboardType?: "default" | "email" | "number" | "decimal" | "phone" | "url" | "numbersAndPunctuation" | "webSearch" | "asciiCapable";
+  /** What the field holds, for AutoFill and the keyboard's suggestions. */
+  textContentType?:
+    | "name" | "givenName" | "familyName" | "nickname" | "email" | "phone" | "username" | "password" | "newPassword"
+    | "oneTimeCode" | "url" | "streetAddress" | "postalCode" | "city" | "country" | "organization" | "jobTitle" | "creditCardNumber";
+  autocapitalize?: "none" | "sentences" | "words" | "characters";
+  autocorrect?: boolean;
+  tint?: ColorValue;
+};
+
 export const TextField = host<
-  Modifiers & {
-    value: string;
-    onChange: (value: string) => void;
-    placeholder?: string;
+  Modifiers & TextInputProps & {
     onSubmit?: () => void;
-    onFocus?: () => void;
-    onBlur?: () => void;
     secure?: boolean;
+    /** "roundedBorder" (default), "plain" (e.g. in a Form), or "automatic". */
+    textFieldStyle?: "roundedBorder" | "plain" | "automatic";
+    /** "vertical": grows to more lines as you type (between minLines and maxLines). */
+    axis?: "horizontal" | "vertical";
+    minLines?: number;
+    maxLines?: number;
+    /** The return key's label. */
+    submitLabel?: "return" | "done" | "go" | "send" | "join" | "route" | "search" | "next" | "continue";
+    /** false: keep the keyboard up after submitting (rapid entry). */
+    blurOnSubmit?: boolean;
   }
 >("TextField");
+/** A multi-line, scrolling text editor (notes, descriptions). Give it a frame. */
+export const TextEditor = host<Modifiers & TextInputProps & { scrollContentBackground?: "visible" | "hidden" }>("TextEditor");
+
+/** Hex colors in and out: "#rrggbb" (or "#rrggbbaa" with `supportsOpacity`). */
+export const ColorPicker = host<Modifiers & { value: string; onChange: (hex: string) => void; label?: string; supportsOpacity?: boolean }>("ColorPicker");
+
+/**
+ * A button that opens a menu of its children: Buttons, Dividers, Sections,
+ * Pickers, and nested Menus (submenus). Works in toolbars and context menus.
+ * With `onPress`, a tap runs it and a long press opens the menu.
+ */
+export const Menu = host<Modifiers & WithChildren & { title?: string; systemImage?: string; onPress?: () => void; tint?: ColorValue }>("Menu");
 export const Toggle = host<Modifiers & WithChildren & { value: boolean; onChange: (value: boolean) => void; label?: string; tint?: ColorValue }>("Toggle");
 export const Slider = host<Modifiers & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; tint?: ColorValue }>("Slider");
-export const Stepper = host<Modifiers & WithChildren & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; label?: string }>("Stepper");
-export const Picker = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string }[]; label?: string; pickerStyle?: "menu" | "segmented" | "inline" }>("Picker");
+export const Stepper = host<Modifiers & WithChildren & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; label?: string; tint?: ColorValue }>("Stepper");
+export const Picker = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string }[]; label?: string; pickerStyle?: "menu" | "segmented" | "inline"; tint?: ColorValue }>("Picker");
 
 // MARK: Lazy containers. SwiftUI only builds the views that are on screen, but
 // React still renders every child; for thousands of rows use <VirtualList>.
@@ -370,6 +493,12 @@ export const Screen = host<
     searchText?: string;
     onSearchTextChange?: (text: string) => void;
     searchPrompt?: string;
+    /**
+     * Where the search field goes: "automatic" (iOS 26: the bottom toolbar, or the tab
+     * bar's search tab when the screen is in a `<Tab role="search">`), "navigationBar"
+     * (always under the title), or "toolbar".
+     */
+    searchPlacement?: "automatic" | "navigationBar" | "toolbar";
     /** The navigation bar's background (shown even before scrolling), or "hidden". */
     toolbarBackground?: Fill | "hidden";
     /** Light or dark navigation bar items (e.g. "dark" for white items on a dark screen). */
@@ -388,7 +517,7 @@ export const ContextMenu = host<WithChildren>("ContextMenu");
 
 export const ToolbarItem = host<WithChildren & { placement?: "automatic" | "primaryAction" | "cancellationAction" | "confirmationAction" | "principal" | "navigation" }>("ToolbarItem");
 
-export const Sheet = host<
+export const SheetHost = host<
   WithChildren & {
     isPresented: boolean;
     /** Called when the user dismisses it (swipe down, Esc…); set your state to false. */
@@ -398,12 +527,5 @@ export const Sheet = host<
     fullScreen?: boolean;
   }
 >("Sheet");
-
-/** Children should be <Button>s; tapping any one dismisses the alert. */
-export const Alert = host<WithChildren & { isPresented: boolean; onDismiss: () => void; title: string; message?: string }>("Alert");
-/**
- * Presentations attach to their parent element. On iOS 26+ a confirmation
- * dialog is a popover pointing at that element, so nest it inside the button
- * that opens it: `<Button title="Share" onPress={open}><ConfirmationDialog …/></Button>`.
- */
-export const ConfirmationDialog = host<WithChildren & { isPresented: boolean; onDismiss: () => void; title: string; message?: string }>("ConfirmationDialog");
+export const AlertHost = host<WithChildren & { isPresented: boolean; onDismiss: () => void; title: string; message?: string }>("Alert");
+export const ConfirmationDialogHost = host<WithChildren & { isPresented: boolean; onDismiss: () => void; title: string; message?: string }>("ConfirmationDialog");

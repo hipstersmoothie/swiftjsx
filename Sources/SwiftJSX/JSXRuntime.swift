@@ -133,6 +133,14 @@ public final class JSXRuntime {
             worklets.handle(args)
         case "eventDone":
             if let callback = (args["callback"] as? NSNumber)?.intValue { waiting.removeValue(forKey: callback)?.resume() }
+        case "haptic":
+            playHaptic(args["kind"] as? String)
+            engine.resolve(callback: callback, value: NSNull())
+        case "clipboardWrite":
+            writeClipboard(args["text"] as? String ?? "")
+            engine.resolve(callback: callback, value: NSNull())
+        case "clipboardRead":
+            engine.resolve(callback: callback, value: readClipboard())
         case "openURL":
             if let url = (args["url"] as? String).flatMap(URL.init(string:)) { openExternal(url, inApp: args["inApp"] as? Bool ?? false) }
         case "focus", "blur":

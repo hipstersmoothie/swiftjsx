@@ -8,3 +8,6 @@ export {
   useSharedValue, makeMutable, useAnimatedStyle, withSpring, withTiming, runOnJS,
   type SharedValue, type AnimatedStyle, type AnimatableProps,
 } from "./worklets";
+export { Sheet, Alert, ConfirmationDialog } from "./presentations";
+export { DatePicker, NavigationRow } from "./controls";
+export { haptic } from "./platform";

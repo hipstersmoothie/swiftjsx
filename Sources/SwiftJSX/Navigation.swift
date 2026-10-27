@@ -113,11 +113,21 @@ struct SearchableModifier: ViewModifier {
                         typed = text
                         runtime?.dispatch(node.id, "onSearchTextChange", text)
                     }
-                ), prompt: node.string("searchPrompt").map { Text($0) })
+                ), placement: searchPlacement(node.string("searchPlacement")), prompt: node.string("searchPrompt").map { Text($0) })
                 .onChange(of: node.string("searchText")) { _, text in if text == typed { typed = nil } }
         } else {
             content
         }
+    }
+}
+
+private func searchPlacement(_ name: String?) -> SearchFieldPlacement {
+    switch name {
+    #if os(iOS)
+    case "navigationBar": .navigationBarDrawer(displayMode: .always)
+    #endif
+    case "toolbar": .toolbar
+    default: .automatic
     }
 }
 

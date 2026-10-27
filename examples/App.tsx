@@ -6,6 +6,12 @@ import { WeatherApp } from "./apps/weather/App";
 import { PokedexApp } from "./apps/pokedex/App";
 import { ChatApp } from "./apps/chat/App";
 import { FlashcardsApp } from "./apps/flashcards/App";
+import { SettingsApp } from "./apps/settings/App";
+import { CalculatorApp } from "./apps/calculator/App";
+import { KanbanApp } from "./apps/kanban/App";
+import { FitnessApp } from "./apps/fitness/App";
+import { MusicApp } from "./apps/music/App";
+import { NotesApp } from "./apps/notes/App";
 import { HooksDemo } from "./screens/Hooks";
 import { NavigationDemo } from "./screens/Navigation";
 import { VirtualListDemo } from "./screens/VirtualListDemo";
@@ -17,6 +23,7 @@ import { SplitViewDemo } from "./screens/SplitView";
 import { GesturesDemo } from "./screens/Gestures";
 import { ImagesDemo } from "./screens/Images";
 import { StylesDemo } from "./screens/Styles";
+import { ControlsDemo } from "./screens/Controls";
 
 type Demo = { title: string; subtitle: string; icon: string; color: any; screen: () => ReactElement };
 
@@ -30,6 +37,7 @@ const demos: Demo[] = [
   { title: "Split view", subtitle: "NavigationSplitView: columns on iPad, a stack on iPhone", icon: "sidebar.left", color: "mint", screen: () => <SplitViewDemo /> },
   { title: "Gestures", subtitle: "drag, pinch, rotate, long press, double tap", icon: "hand.draw", color: "red", screen: () => <GesturesDemo /> },
   { title: "Shapes, colors & fonts", subtitle: "Circle, Capsule, gradients, system colors, styled text", icon: "paintpalette", color: "pink", screen: () => <StylesDemo /> },
+  { title: "Controls & layout", subtitle: "Menus, pickers, text input, rows, Flow, Grid, overlays", icon: "slider.horizontal.3", color: "teal", screen: () => <ControlsDemo /> },
   { title: "Images", subtitle: "Remote images: cached, decoded off main", icon: "photo.on.rectangle", color: "cyan", screen: () => <ImagesDemo /> },
   { title: "Native", subtitle: "Objective-C APIs from JS, onMain()", icon: "cpu", color: "indigo", screen: () => <NativeDemo /> },
 ];
@@ -41,6 +49,12 @@ const apps: Demo[] = [
   { title: "Weather", subtitle: "Open-Meteo, zod, gradients, materials", icon: "cloud.sun.fill", color: "cyan", screen: () => <WeatherApp /> },
   { title: "Chat", subtitle: "WebSocket echo bot, bubbles, offline queue", icon: "bubble.left.and.bubble.right.fill", color: "green", screen: () => <ChatApp /> },
   { title: "Flashcards", subtitle: "worklet swipe stack, spaced repetition", icon: "rectangle.stack.fill", color: "purple", screen: () => <FlashcardsApp /> },
+  { title: "Settings", subtitle: "Forms, validation, pickers, appearance", icon: "gearshape.fill", color: "gray", screen: () => <SettingsApp /> },
+  { title: "Calculator", subtitle: "Exact decimals, press feedback, scientific mode", icon: "plus.forwardslash.minus", color: "orange", screen: () => <CalculatorApp /> },
+  { title: "Kanban", subtitle: "Drag and drop between columns", icon: "rectangle.split.3x1.fill", color: "indigo", screen: () => <KanbanApp /> },
+  { title: "Fitness", subtitle: "Activity rings, charts, scrubbing", icon: "figure.run", color: "green", screen: () => <FitnessApp /> },
+  { title: "Music", subtitle: "iTunes search, AVPlayer through native APIs", icon: "music.note", color: "pink", screen: () => <MusicApp /> },
+  { title: "Notes", subtitle: "Markdown editing, split view, search", icon: "note.text", color: "yellow", screen: () => <NotesApp /> },
   { title: "Pokédex", subtitle: "PokeAPI, image grid, infinite loading", icon: "circle.grid.3x3.fill", color: "red", screen: () => <PokedexApp /> },
 ];
 

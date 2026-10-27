@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState, type ReactNode, type Ref } from "react";
-import type { Modifiers } from "./components";
+import type { Modifiers, ScrollProps } from "./components";
 import type { HostInstance } from "./renderer";
 
-export type VirtualListProps<T> = Omit<Modifiers, "ref"> & {
+export type VirtualListProps<T> = Omit<Modifiers, "ref"> & ScrollProps & {
   data: readonly T[];
   renderItem: (item: T, index: number) => ReactNode;
   keyExtractor?: (item: T, index: number) => string | number;
@@ -21,6 +21,11 @@ export type VirtualListProps<T> = Omit<Modifiers, "ref"> & {
   overscan?: number;
   /** Space between rows in the stack style (default 0). */
   spacing?: number;
+  /**
+   * A grid: a column count, or `{ minimum }` for as many as fit. Only the
+   * visible cells are rendered, as with rows.
+   */
+  columns?: number | { minimum: number; maximum?: number };
   /**
    * "stack" (default): a LazyVStack in a ScrollView; fast at any depth.
    * "list": the inset-grouped list look (separators, grouped background). On

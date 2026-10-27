@@ -86,6 +86,15 @@ export class HostInstance {
 
 let nextId = 1;
 let nextCallback = 1;
+
+/** A command to the native side that answers (on the JS thread) with a value. */
+export function nativeCall(name: string, args: unknown): Promise<unknown> {
+  return new Promise((resolve) => {
+    const cb = nextCallback++;
+    callbacks.set(cb, resolve);
+    __native.command(0, name, args, cb);
+  });
+}
 let pending: Op[] = [];
 const instances = new Map<number, HostInstance>();
 const callbacks = new Map<number, (value: unknown) => void>();

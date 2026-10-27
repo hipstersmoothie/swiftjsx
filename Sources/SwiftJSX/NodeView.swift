@@ -46,7 +46,7 @@ struct NodeView: View {
 
     /// Controls that take `tint` get it on the control itself (a Button in
     /// `<SwipeActions>` must stay a plain Button for its tint to color the action).
-    private static let tinted: Set<String> = ["Toggle", "Slider", "ProgressView", "Stepper", "Picker"]
+    private static let tinted: Set<String> = ["Toggle", "Slider", "ProgressView", "Stepper", "Picker", "DatePicker", "Menu", "TextField", "TextEditor"]
 
     private func fire(_ event: String, _ payload: Any? = nil) {
         runtime?.dispatch(node.id, event, payload)
@@ -135,30 +135,58 @@ struct NodeView: View {
             ScreenHost(node: node)
 
         case "List":
-            List { Children(node: node) }
+            List { EditableChildren(node: node) }
+                .modifier(ListStyleModifier(style: node.string("listStyle")))
+                .scrollContentBackground(node.string("scrollContentBackground") == "hidden" ? .hidden : .automatic)
 
         case "Form":
             Form { Children(node: node) }
+                .scrollContentBackground(node.string("scrollContentBackground") == "hidden" ? .hidden : .automatic)
 
         case "Section":
+            // Header and footer: a string prop, or <SectionHeader> / <SectionFooter> children.
+            let header = node.children.first { $0.type == "SectionHeader" }
+            let footer = node.children.first { $0.type == "SectionFooter" }
             Section {
-                Children(node: node)
+                EditableChildren(node: node)
             } header: {
-                if let header = node.string("header") { Text(header) }
+                if let header { HStack { Children(node: header) }.modifier(Decorations(node: header)) }
+                else if let title = node.string("header") { Text(title) }
             } footer: {
-                if let footer = node.string("footer") { Text(footer) }
+                if let footer { HStack { Children(node: footer) }.modifier(Decorations(node: footer)) }
+                else if let title = node.string("footer") { Text(title) }
+            }
+
+        case "Grid":
+            Grid(alignment: alignment(node.string("alignment")) ?? .center,
+                 horizontalSpacing: node.cgFloat("horizontalSpacing"), verticalSpacing: node.cgFloat("verticalSpacing")) {
+                Children(node: node)
+            }
+
+        case "GridRow":
+            GridRow(alignment: verticalAlignment(node.string("alignment"))) { Children(node: node) }
+
+        case "Flow":
+            FlowLayout(spacing: node.cgFloat("spacing") ?? 8, lineSpacing: node.cgFloat("lineSpacing") ?? node.cgFloat("spacing") ?? 8,
+                       alignment: horizontalAlignment(node.string("alignment") ?? "leading")) {
+                Children(node: node)
             }
 
         case "Image":
             if node.has("src") {
                 RemoteImage(node: node)
+            } else if let name = node.string("name") {
+                Image(name).resizable().aspectRatio(contentMode: node.string("contentMode") == "fill" ? .fill : .fit)
             } else {
-                let image = node.string("name").map { Image($0) } ?? Image(systemName: node.string("systemName") ?? "questionmark")
-                if node.bool("resizable") || node.has("name") {
-                    image.resizable().aspectRatio(contentMode: node.string("contentMode") == "fill" ? .fill : .fit)
-                } else {
-                    image.imageScale(parseImageScale(node.string("imageScale")))
+                let image = Image(systemName: node.string("systemName") ?? "questionmark", variableValue: node.double("variableValue"))
+                Group {
+                    if node.bool("resizable") {
+                        image.resizable().aspectRatio(contentMode: node.string("contentMode") == "fill" ? .fill : .fit)
+                    } else {
+                        image.imageScale(parseImageScale(node.string("imageScale")))
+                    }
                 }
+                .modifier(SymbolModifier(node: node))
             }
 
         case "Label":
@@ -193,7 +221,21 @@ struct NodeView: View {
             .modifier(ButtonStyleModifier(style: node.string("buttonStyle")))
             .tint(color(node.prop("tint")))
 
-        case "TextField":
+        case "DatePicker":
+            DatePickerHost(node: node)
+
+        case "ColorPicker":
+            ColorPickerHost(node: node)
+
+        case "Menu":
+            MenuHost(node: node)
+
+        #if os(iOS)
+        case "EditButton":
+            EditButton()
+        #endif
+
+        case "TextField", "TextEditor":
             TextFieldHost(node: node)
 
         case "Toggle":
@@ -239,32 +281,6 @@ struct NodeView: View {
     }
 }
 
-struct TextFieldHost: View {
-    let node: Node
-    @Environment(\.jsxRuntime) private var runtime
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        Controlled(node: node, fallback: "") { text in
-            let placeholder = node.string("placeholder") ?? ""
-            Group {
-                if node.bool("secure") {
-                    SecureField(placeholder, text: text)
-                } else {
-                    TextField(placeholder, text: text)
-                }
-            }
-            .focused($focused)
-        }
-        .textFieldStyle(.roundedBorder)
-        .onSubmit { runtime?.dispatch(node.id, "onSubmit") }
-        .onChange(of: node.focusRequest) { _, request in focused = request.focused }
-        .onChange(of: focused) { _, isFocused in
-            runtime?.dispatch(node.id, isFocused ? "onFocus" : "onBlur")
-        }
-    }
-}
-
 /// React Native-style red box for uncaught JS errors.
 struct RedBox: View {
     let message: String
@@ -281,7 +297,7 @@ struct RedBox: View {
     }
 }
 
-@MainActor private func gridColumns(_ node: Node) -> [GridItem] {
+@MainActor func gridColumns(_ node: Node) -> [GridItem] {
     let spacing = node.cgFloat("spacing")
     if let adaptive = node.dict("columns") {
         let min = (adaptive["minimum"] as? NSNumber).map { CGFloat($0.doubleValue) } ?? 80

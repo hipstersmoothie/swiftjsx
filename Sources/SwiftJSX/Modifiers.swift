@@ -78,8 +78,13 @@ struct Modifiers: ViewModifier {
                                       lineWidth: (border["width"] as? NSNumber).map { CGFloat($0.doubleValue) } ?? 1)
                 }
             }
+            .modifier(ViewAttachments(node: node))
             .shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
             .opacity(node.bool("hidden") ? 0 : node.double("opacity") ?? 1)
+            .zIndex(node.double("zIndex") ?? 0)
+            .layoutPriority(node.double("layoutPriority") ?? 0)
+            .gridCellColumns(Int(node.double("gridColumns") ?? 1))
+            .modifier(LayoutExtras(node: node))
             .disabled(node.bool("disabled"))
             .transition(transition(node.string("transition")))
             .onAppear { if node.has("onAppear") { runtime?.dispatch(node.id, "onAppear") } }
@@ -143,6 +148,150 @@ struct Interactions: ViewModifier {
                 .modifier(GestureModifiers(node: node))
                 .modifier(AccessibilityModifier(node: node))
         }
+    }
+}
+
+/// `<Overlay alignment>` and `<Background alignment>` children: views drawn
+/// over or behind this one, sized to it (badges, decorations). Applied after
+/// the background and corner clip, so overlays can stick out of rounded cards.
+struct ViewAttachments: ViewModifier {
+    let node: Node
+
+    func body(content: Content) -> some View {
+        content
+            .modifier(Layer(node: node, type: "Background", feature: .backgroundView, front: false))
+            .modifier(Layer(node: node, type: "Overlay", feature: .overlay, front: true))
+    }
+
+    private struct Layer: ViewModifier {
+        let node: Node
+        let type: String
+        let feature: Node.Feature
+        let front: Bool
+
+        func body(content: Content) -> some View {
+            if node.features.contains(feature) {
+                let layers = node.children.filter { $0.type == type }
+                let alignment = SwiftJSX.alignment(layers.first?.string("alignment")) ?? .center
+                if front {
+                    content.overlay(alignment: alignment) { ForEach(layers) { LayerContent(node: $0) } }
+                } else {
+                    content.background(alignment: alignment) { ForEach(layers) { LayerContent(node: $0) } }
+                }
+            } else {
+                content
+            }
+        }
+    }
+
+    private struct LayerContent: View {
+        let node: Node
+        var body: some View {
+            ZStack(alignment: alignment(node.string("alignment")) ?? .center) { Children(node: node) }
+                .modifier(Decorations(node: node))
+        }
+    }
+}
+
+/// `contentShape` ("rectangle" | "capsule" | "circle": the whole shape is
+/// tappable), `onLayout({ width, height })`, and `relativeWidth` /
+/// `relativeHeight` (a fraction of the nearest container: scroll view or
+/// screen). Each is attached on first use.
+struct LayoutExtras: ViewModifier {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+
+    func body(content: Content) -> some View {
+        content
+            .modifier(Shape(node: node))
+            .modifier(Relative(node: node))
+            .modifier(Layout(node: node, runtime: runtime))
+            .modifier(ListRow(node: node))
+    }
+
+    private struct Shape: ViewModifier {
+        let node: Node
+        func body(content: Content) -> some View {
+            if node.features.contains(.contentShape) {
+                content.contentShape(shape(node.string("contentShape")))
+            } else {
+                content
+            }
+        }
+        private func shape(_ name: String?) -> AnyShape {
+            switch name {
+            case "capsule": AnyShape(Capsule())
+            case "circle": AnyShape(Circle())
+            default: AnyShape(Rectangle())
+            }
+        }
+    }
+
+    private struct Relative: ViewModifier {
+        let node: Node
+        func body(content: Content) -> some View {
+            if node.features.contains(.relativeFrame) {
+                let width = node.cgFloat("relativeWidth"), height = node.cgFloat("relativeHeight")
+                content
+                    .containerRelativeFrame(.horizontal) { length, _ in width.map { length * $0 } ?? length }
+                    .containerRelativeFrame(.vertical) { length, _ in height.map { length * $0 } ?? length }
+            } else {
+                content
+            }
+        }
+    }
+
+    private struct Layout: ViewModifier {
+        let node: Node
+        let runtime: JSXRuntime?
+        func body(content: Content) -> some View {
+            if node.features.contains(.layout) {
+                content.onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                    if node.has("onLayout") { runtime?.dispatch(node.id, "onLayout", ["width": size.width, "height": size.height]) }
+                }
+            } else {
+                content
+            }
+        }
+    }
+
+    /// Row options inside a List: `listRowBackground`, `listRowInsets`,
+    /// `listRowSeparator`, `badge`.
+    private struct ListRow: ViewModifier {
+        let node: Node
+        func body(content: Content) -> some View {
+            if node.features.contains(.listRow) {
+                content
+                    .listRowBackground(fill(node.prop("listRowBackground")).map { Rectangle().fill($0) })
+                    .listRowInsets(insets(node.prop("listRowInsets")))
+                    .listRowSeparator(node.string("listRowSeparator") == "hidden" ? .hidden : .automatic)
+                    .badge(badge(node.prop("badge")))
+            } else {
+                content
+            }
+        }
+        private func badge(_ value: Any?) -> Text? {
+            switch value {
+            case let n as NSNumber where n.intValue != 0: Text("\(n.intValue)")
+            case let s as String where !s.isEmpty: Text(s)
+            default: nil
+            }
+        }
+    }
+}
+
+/// Padding-style insets: a number, or `{ top, leading, bottom, trailing, horizontal, vertical }`.
+func insets(_ value: Any?) -> EdgeInsets? {
+    switch value {
+    case let n as NSNumber:
+        let v = CGFloat(n.doubleValue)
+        return EdgeInsets(top: v, leading: v, bottom: v, trailing: v)
+    case let d as [String: Any]:
+        func v(_ k: String) -> CGFloat? { (d[k] as? NSNumber).map { CGFloat($0.doubleValue) } }
+        let h = v("horizontal") ?? 0, vert = v("vertical") ?? 0
+        return EdgeInsets(top: v("top") ?? vert, leading: v("leading") ?? h, bottom: v("bottom") ?? vert, trailing: v("trailing") ?? h)
+    default:
+        return nil
     }
 }
 

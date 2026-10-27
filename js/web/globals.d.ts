@@ -71,7 +71,15 @@ declare global {
   /** The global object (there's no DOM). */
   var window: typeof globalThis;
   var self: typeof globalThis;
-  var navigator: { userAgent: string; language: string; languages: string[]; onLine: boolean; product: string };
+  var navigator: {
+    userAgent: string;
+    language: string;
+    languages: string[];
+    onLine: boolean;
+    product: string;
+    /** Text on the system pasteboard. */
+    clipboard: { writeText(text: string): Promise<void>; readText(): Promise<string> };
+  };
   function addEventListener(type: "focus" | "blur" | "visibilitychange" | "online" | "offline" | (string & {}), listener: (event: Event) => void): void;
   function removeEventListener(type: string, listener: (event: Event) => void): void;
 }
