@@ -340,14 +340,15 @@ private struct VirtualStack<Slots: View>: View {
     @ViewBuilder let slots: (SlotLayout) -> Slots
     @State private var position = ScrollPosition()
     @State private var viewport: CGFloat = 0
+    @State private var headerHeight: CGFloat = 0
 
     var body: some View {
         let spacing = node.cgFloat("spacing") ?? 0
         ScrollView {
             if node.has("columns") {
-                LazyVGrid(columns: gridColumns(node), spacing: spacing) { slots(layout) }
+                LazyVGrid(columns: gridColumns(node), spacing: spacing) { section }
             } else {
-                LazyVStack(spacing: spacing) { slots(layout) }
+                LazyVStack(spacing: spacing) { section }
             }
         }
         .modifier(ScrollOptions(node: node))
@@ -361,6 +362,23 @@ private struct VirtualStack<Slots: View>: View {
         .onAppear { if let request = node.scrollRequest { scroll(to: request, spacing: spacing) } }
     }
 
+    /// `header` / `footer` (VirtualListHeader / VirtualListFooter children):
+    /// full-width views above and below the rows that scroll with them.
+    private var section: some View {
+        let header = node.children.first { $0.type == "VirtualListHeader" }
+        let footer = node.children.first { $0.type == "VirtualListFooter" }
+        return Section {
+            slots(layout)
+        } header: {
+            if let header {
+                NodeView(node: header)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+            }
+        } footer: {
+            if let footer { NodeView(node: footer) }
+        }
+    }
+
     private func scroll(to request: ScrollRequest, spacing: CGFloat) {
         switch request.target.base {
         case let edge as ScrollEdge:
@@ -369,7 +387,8 @@ private struct VirtualStack<Slots: View>: View {
             let row = layout.fixed ?? layout.estimated
             // Grids: rows of `columns` (adaptive columns count as one per row: an estimate).
             let perRow = max(1, Int(node.double("columns") ?? 1))
-            let top = CGFloat(min(max(index, 0), max(count - 1, 0)) / perRow) * (row + spacing)
+            let header = headerHeight > 0 ? headerHeight + spacing : 0
+            let top = header + CGFloat(min(max(index, 0), max(count - 1, 0)) / perRow) * (row + spacing)
             let y: CGFloat = switch request.anchor {
             case .center?: top - (viewport - row) / 2
             case .bottom?: top - (viewport - row)

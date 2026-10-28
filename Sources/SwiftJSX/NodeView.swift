@@ -156,7 +156,7 @@ struct NodeView: View {
         case "VirtualList":
             VirtualListHost(node: node)
 
-        case "VirtualRow", "NavigationPage", "ToolbarItem", "MenuLabel":
+        case "VirtualRow", "NavigationPage", "ToolbarItem", "MenuLabel", "VirtualListHeader", "VirtualListFooter":
             Children(node: node)
 
         case "NavigationStack":

@@ -119,8 +119,10 @@ for the record.
       (snap to children), `defaultScrollAnchor="trailing"`.
 - [ ] `onScrollIndexChange` assumes children of equal size (SwiftUI's
       `scrollPosition(id:)` didn't report for our children; worth another look).
-- [ ] `VirtualList`: header/footer slots and full-width items in `columns` grids (a home
-      screen with chips + carousel + grid can't use it). Slots are matched by index, not
+- [x] `VirtualList` `header` / `footer` (stack style; full width above a `columns` grid).
+      The Social feed's stories row and loading footer use them.
+- [ ] `VirtualList`: header/footer in the UIKit `listStyle="list"`; full-width items
+      inside `columns` grids. Slots are matched by index, not
       `keyExtractor`, so inserting rows above moves native state (a carousel's offset) to
       another row. [x] Attachments (`<Overlay>`, `<SafeAreaInset>`…) inside it are kept.
 

@@ -12,10 +12,6 @@ const PAGE = 10;
 /** The feed ends here ("You're all caught up"). */
 const MAX_POSTS = 200;
 
-// VirtualList has no header or footer slots: the stories row and the
-// loading footer are rows of their own.
-type Row = { kind: "stories" } | { kind: "post"; post: Post } | { kind: "footer" };
-
 export function FeedScreen() {
   const width = useWidth();
   const nav = useNavigation();
@@ -27,7 +23,6 @@ export function FeedScreen() {
   const likedCount = useSocial((s) => Object.keys(s.likes).length);
 
   const posts = [...fresh, ...Array.from({ length: count }, (_, n) => feedPost(n, epoch))].filter((p) => !hidden.includes(p.id));
-  const rows: Row[] = [{ kind: "stories" }, ...posts.map((post): Row => ({ kind: "post", post })), { kind: "footer" }];
   const more = count < MAX_POSTS;
 
   const loadMore = () => {
@@ -59,18 +54,12 @@ export function FeedScreen() {
         </Button>
       </ToolbarItem>
       <VirtualList
-        data={rows}
-        keyExtractor={(row) => (row.kind === "post" ? row.post.id : row.kind)}
+        data={posts}
+        keyExtractor={(post) => post.id}
         estimatedItemHeight={width + 190}
-        renderItem={(row) =>
-          row.kind === "stories" ? (
-            <StoriesRow />
-          ) : row.kind === "footer" ? (
-            <Footer loading={more} />
-          ) : (
-            <PostView post={row.post} onHide={(post) => setHidden((h) => [...h, post.id])} />
-          )
-        }
+        header={<StoriesRow />}
+        footer={<Footer loading={more} />}
+        renderItem={(post) => <PostView post={post} onHide={(hide) => setHidden((h) => [...h, hide.id])} />}
         onEndReached={loadMore}
         onEndReachedThreshold={3}
         onRefresh={refresh}

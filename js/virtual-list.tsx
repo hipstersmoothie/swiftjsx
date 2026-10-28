@@ -43,6 +43,13 @@ export type VirtualListProps<T> = Omit<Modifiers, "ref"> & ScrollProps & {
   onEndReachedThreshold?: number;
   /** `ref.current.scrollTo(index)` scrolls to a row, even one not rendered yet. */
   ref?: Ref<HostInstance>;
+  /**
+   * Full-width content above / below the rows that scrolls with them (a home
+   * screen's chips and carousel above a product grid; a loading footer).
+   * Stack style only.
+   */
+  header?: ReactNode;
+  footer?: ReactNode;
   /** Attachments (`<Overlay>`, `<SafeAreaInset>`, `<Sheet>`…); rows come from `data`. */
   children?: ReactNode;
 };
@@ -50,6 +57,8 @@ export type VirtualListProps<T> = Omit<Modifiers, "ref"> & ScrollProps & {
 type Range = { start: number; end: number };
 
 const VirtualListHost = "VirtualList" as unknown as (props: any) => ReactNode;
+const VirtualListHeader = "VirtualListHeader" as unknown as (props: { children: ReactNode }) => ReactNode;
+const VirtualListFooter = "VirtualListFooter" as unknown as (props: { children: ReactNode }) => ReactNode;
 const VirtualRow = "VirtualRow" as unknown as (props: { index: number; children: ReactNode }) => ReactNode;
 
 /**
@@ -65,6 +74,8 @@ export function VirtualList<T>({
   overscan = 10,
   onEndReached,
   onEndReachedThreshold = 10,
+  header,
+  footer,
   children,
   ...rest
 }: VirtualListProps<T>) {
@@ -111,6 +122,8 @@ export function VirtualList<T>({
   return (
     <VirtualListHost {...rest} count={data.length} estimatedItemHeight={estimatedItemHeight} onRangeChange={onRangeChange}>
       {children}
+      {header != null ? <VirtualListHeader>{header}</VirtualListHeader> : null}
+      {footer != null ? <VirtualListFooter>{footer}</VirtualListFooter> : null}
       {rows}
     </VirtualListHost>
   );
