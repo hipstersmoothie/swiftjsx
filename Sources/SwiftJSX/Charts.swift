@@ -23,7 +23,7 @@ struct ChartHost: View {
         .modifier(Scales(node: node))
         .modifier(Axes(node: node, xKind: xKind(marks)))
         .modifier(SeriesColors(node: node))
-        .modifier(Selections(node: node, kind: xKind(marks)))
+        .modifier(Selections(node: node, kind: xKind(marks), unit: marks.lazy.compactMap { calendarUnit($0.string("xUnit")) }.first))
         .modifier(Scrolling(node: node, kind: xKind(marks)))
     }
 
@@ -87,8 +87,10 @@ struct ChartHost: View {
         @AxisContentBuilder
         private func marks(_ axis: [String: Any]) -> some AxisContent {
             let position = position(axis["position"] as? String)
-            if let list = axis["values"] as? [Any] {
-                // Explicit values: numbers, Dates or categories.
+            if let given = axis["values"] as? [Any] {
+                // Explicit values: numbers, Dates or categories, or
+                // `{ value, label }` for text of your own (lane names).
+                let list = given.map { ($0 as? [String: Any])?["value"] ?? $0 }
                 switch kind {
                 case .date: AxisMarks(position: position, values: list.compactMap { $0 as? Date }) { mark($0, axis) }
                 case .category: AxisMarks(position: position, values: list.compactMap { $0 as? String }) { mark($0, axis) }
@@ -104,12 +106,28 @@ struct ChartHost: View {
             if axis["gridlines"] as? Bool ?? true { AxisGridLine() }
             if axis["ticks"] as? Bool ?? true { AxisTick() }
             if axis["labels"] as? Bool ?? true {
-                if let format = axis["format"] as? String {
+                if let label = customLabel(value, axis) {
+                    AxisValueLabel { Text(label) }
+                } else if let format = axis["format"] as? String {
                     AxisValueLabel { Text(axisLabel(value, format: format, kind: kind)) }
                 } else {
                     AxisValueLabel()
                 }
             }
+        }
+
+        /// The label given with this value in `values: [{ value, label }]`.
+        private func customLabel(_ value: AxisValue, _ axis: [String: Any]) -> String? {
+            for case let item as [String: Any] in axis["values"] as? [Any] ?? [] {
+                guard let label = item["label"] as? String else { continue }
+                switch item["value"] {
+                case let date as Date where value.as(Date.self) == date: return label
+                case let text as String where value.as(String.self) == text: return label
+                case let number as NSNumber where value.as(Double.self) == number.doubleValue: return label
+                default: continue
+                }
+            }
+            return nil
         }
 
         /// `stride` (a number, or `{ unit, count }` for dates), or `count`
@@ -152,6 +170,9 @@ struct ChartHost: View {
     private struct Selections: ViewModifier {
         let node: Node
         let kind: ValueKind
+        /// Marks' `xUnit`: a selected date is reported as the start of its
+        /// day / week / month (the bar it's in).
+        let unit: Calendar.Component?
         @Environment(\.jsxRuntime) private var runtime
         @State private var number: Double?
         @State private var date: Date?
@@ -164,7 +185,10 @@ struct ChartHost: View {
             content
                 .modifier(XSelection(node: node, kind: kind, number: $number, date: $date, category: $category))
                 .onChange(of: number) { _, value in report("onXSelectionChange", value) }
-                .onChange(of: date) { _, value in report("onXSelectionChange", value.map { $0.timeIntervalSince1970 * 1000 }) }
+                .onChange(of: date) { _, value in
+                    let start = value.map { date in unit.flatMap { Calendar.current.dateInterval(of: $0, for: date)?.start } ?? date }
+                    report("onXSelectionChange", start.map { $0.timeIntervalSince1970 * 1000 })
+                }
                 .onChange(of: category) { _, value in report("onXSelectionChange", value) }
                 .modifier(YSelection(node: node, value: $y))
                 .onChange(of: y) { _, value in report("onYSelectionChange", value) }
@@ -370,8 +394,7 @@ private struct ChartMark: ChartContent {
                     .interpolationMethod(interpolation)
             }
         case "PointMark":
-            PointMark(x: value(x), y: .value(yLabel, y))
-                .symbolSize(node.double("symbolSize") ?? 30)
+            withSymbol(PointMark(x: value(x), y: .value(yLabel, y)).symbolSize(node.double("symbolSize") ?? 30))
         case "RuleMark":
             if node.has("y") {
                 RuleMark(y: .value(yLabel, y))
@@ -394,6 +417,31 @@ private struct ChartMark: ChartContent {
         }
     }
 
+    /// `symbol` ("circle", "square", "triangle", "diamond", "pentagon",
+    /// "plus", "cross", "asterisk"); `symbolStroke`: an outline this wide
+    /// instead of a filled symbol (a ring).
+    @ChartContentBuilder
+    private func withSymbol<C: ChartContent>(_ mark: C) -> some ChartContent {
+        let shape: BasicChartSymbolShape? = switch node.string("symbol") {
+        case "circle": .circle
+        case "square": .square
+        case "triangle": .triangle
+        case "diamond": .diamond
+        case "pentagon": .pentagon
+        case "plus": .plus
+        case "cross": .cross
+        case "asterisk": .asterisk
+        default: node.has("symbolStroke") ? .circle : nil
+        }
+        if let shape, let width = node.cgFloat("symbolStroke") {
+            mark.symbol(shape.strokeBorder(lineWidth: width))
+        } else if let shape {
+            mark.symbol(shape)
+        } else {
+            mark
+        }
+    }
+
     /// Color (or a `series` category colored by the chart's `seriesColors`),
     /// line style, opacity, annotation.
     @ChartContentBuilder
@@ -405,7 +453,7 @@ private struct ChartMark: ChartContent {
             .cornerRadius(node.cgFloat("cornerRadius") ?? 0)
             .lineStyle(line)
             .opacity(node.double("opacity") ?? 1)
-            .annotation(position: annotationPosition, alignment: .center) {
+            .annotation(position: annotationPosition, alignment: alignment(node.string("annotationAlignment")) ?? .center) {
                 if let text = node.string("annotation") {
                     Text(text).font(.caption).foregroundStyle(.secondary)
                 }

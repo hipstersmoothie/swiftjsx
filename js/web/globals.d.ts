@@ -7,6 +7,7 @@ import type * as Urls from "./url";
 import type * as Fetch from "./fetch";
 import type * as Sockets from "./websocket";
 import type * as Streams from "./streams";
+import type * as Xhr from "./xhr";
 
 type WebStorage = {
   getItem(key: string): string | null;
@@ -64,6 +65,20 @@ declare global {
   type ReadableStream<R = Uint8Array> = Streams.ReadableStream<R>;
   var ReadableStreamDefaultReader: typeof Streams.ReadableStreamDefaultReader;
   type ReadableStreamDefaultReader<R = Uint8Array> = Streams.ReadableStreamDefaultReader<R>;
+  var XMLHttpRequest: typeof Xhr.XMLHttpRequest;
+  type XMLHttpRequest = Xhr.XMLHttpRequest;
+  var ProgressEvent: typeof Xhr.ProgressEvent;
+  type ProgressEvent = Xhr.ProgressEvent;
+  var WritableStream: typeof Streams.WritableStream;
+  type WritableStream<W = unknown> = Streams.WritableStream<W>;
+  var WritableStreamDefaultWriter: typeof Streams.WritableStreamDefaultWriter;
+  type WritableStreamDefaultWriter<W = unknown> = Streams.WritableStreamDefaultWriter<W>;
+  var TransformStream: typeof Streams.TransformStream;
+  type TransformStream<I = unknown, O = unknown> = Streams.TransformStream<I, O>;
+  var TextDecoderStream: typeof Streams.TextDecoderStream;
+  type TextDecoderStream = Streams.TextDecoderStream;
+  var TextEncoderStream: typeof Streams.TextEncoderStream;
+  type TextEncoderStream = Streams.TextEncoderStream;
 
   var WebSocket: typeof Sockets.WebSocket;
   type WebSocket = Sockets.WebSocket;
@@ -90,6 +105,8 @@ declare global {
     product: string;
     /** Text on the system pasteboard. */
     clipboard: { writeText(text: string): Promise<void>; readText(): Promise<string> };
+    /** Core Location (asks for when-in-use permission; see `useGeolocation`). */
+    geolocation: typeof import("../services").geolocation;
   };
   function addEventListener(type: "focus" | "blur" | "visibilitychange" | "online" | "offline" | (string & {}), listener: (event: Event) => void): void;
   function removeEventListener(type: string, listener: (event: Event) => void): void;

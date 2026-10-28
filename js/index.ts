@@ -21,7 +21,8 @@ export { AnimatePresence, type AnimatePresenceProps } from "./presence";
 export { DatePicker, TimePicker, NavigationRow, Picker, type TimeOfDay } from "./controls";
 export { haptic, prefetchImage, share, loadFont, AsyncStorage } from "./platform";
 export {
-  notifications, useNotificationListener, speech, keepAwake, useKeepAwake,
+  notifications, useNotificationListener, speech, keepAwake, useKeepAwake, geolocation, useGeolocation,
+  type GeolocationPosition, type GeolocationPositionError, type PositionOptions,
   type NotificationContent, type NotificationResponse, type NotificationRequest, type NotificationCategory, type NotificationAction, type SpeakOptions,
 } from "./services";
 export { useEnvironment, useColorScheme, type Environment } from "./environment";

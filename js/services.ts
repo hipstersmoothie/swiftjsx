@@ -1,7 +1,8 @@
 // Platform services without the native backend: local notifications and the
-// app badge, text-to-speech, and keeping the screen awake.
+// app badge, text-to-speech, keeping the screen awake, and
+// navigator.geolocation.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { nativeCall } from "./renderer";
 
 // Events from Swift (a notification arrived or was tapped, a word spoken).
@@ -230,4 +231,98 @@ export function keepAwake(): () => void {
 /** Keeps the screen awake while mounted (and `active`). */
 export function useKeepAwake(active = true) {
   useEffect(() => (active ? keepAwake() : undefined), [active]);
+}
+
+// MARK: Geolocation
+
+export type GeolocationCoordinates = {
+  latitude: number;
+  longitude: number;
+  /** Meters. */
+  accuracy: number;
+  altitude: number | null;
+  altitudeAccuracy: number | null;
+  /** Degrees clockwise from north, while moving. */
+  heading: number | null;
+  /** Meters per second. */
+  speed: number | null;
+};
+export type GeolocationPosition = { coords: GeolocationCoordinates; timestamp: number };
+export type GeolocationPositionError = { code: 1 | 2 | 3; message: string; PERMISSION_DENIED: 1; POSITION_UNAVAILABLE: 2; TIMEOUT: 3 };
+export type PositionOptions = { enableHighAccuracy?: boolean; timeout?: number; maximumAge?: number };
+
+function positionError(code: 1 | 2 | 3, message: string): GeolocationPositionError {
+  return { code, message, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 };
+}
+
+let nextWatch = 1;
+const watches = new Map<number, () => void>();
+
+/**
+ * The web's `navigator.geolocation` on Core Location. Asks for when-in-use
+ * permission the first time (the app needs `NSLocationWhenInUseUsageDescription`
+ * in its Info.plist).
+ */
+export const geolocation = {
+  getCurrentPosition(
+    success: (position: GeolocationPosition) => void,
+    error?: (error: GeolocationPositionError) => void,
+    options: PositionOptions = {},
+  ) {
+    let done = false;
+    const timer =
+      options.timeout !== undefined && options.timeout !== Infinity
+        ? setTimeout(() => {
+            if (done) return;
+            done = true;
+            error?.(positionError(3, "Timeout expired"));
+          }, options.timeout)
+        : undefined;
+    void nativeCall("locationGet", { enableHighAccuracy: options.enableHighAccuracy, maximumAge: options.maximumAge ?? 0 }).then((result: any) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (result?.error) error?.(positionError(result.error.code, result.error.message));
+      else success(result as GeolocationPosition);
+    });
+  },
+  watchPosition(
+    success: (position: GeolocationPosition) => void,
+    error?: (error: GeolocationPositionError) => void,
+    options: PositionOptions = {},
+  ): number {
+    const id = nextWatch++;
+    const removePosition = listen("location", (position: GeolocationPosition) => success(position));
+    const removeError = listen("locationError", (e: { code: 1 | 2 | 3; message: string }) => error?.(positionError(e.code, e.message)));
+    watches.set(id, () => {
+      removePosition();
+      removeError();
+    });
+    void nativeCall("locationWatch", { id, enableHighAccuracy: options.enableHighAccuracy });
+    return id;
+  },
+  clearWatch(id: number) {
+    const remove = watches.get(id);
+    if (!remove) return;
+    remove();
+    watches.delete(id);
+    void nativeCall("locationClear", { id });
+  },
+};
+(globalThis as any).navigator.geolocation = geolocation;
+
+/** The current position while mounted (watching it), and any error. */
+export function useGeolocation(options: PositionOptions & { enabled?: boolean } = {}) {
+  const [state, setState] = useState<{ position: GeolocationPosition | null; error: GeolocationPositionError | null }>({ position: null, error: null });
+  const { enabled = true, enableHighAccuracy } = options;
+  useEffect(() => {
+    if (!enabled) return;
+    const id = geolocation.watchPosition(
+      (position) => setState({ position, error: null }),
+      (error) => setState((s) => ({ ...s, error })),
+      { enableHighAccuracy },
+    );
+    return () => geolocation.clearWatch(id);
+  }, [enabled, enableHighAccuracy]);
+  return state;
 }

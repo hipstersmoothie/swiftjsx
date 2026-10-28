@@ -29,6 +29,11 @@ struct TabViewHost: View {
                     TabContentView(tab: tab)
                 }
                 .badge(badge(tab))
+                // The tab bar item's own props (the content takes the rest of a screen's).
+                .accessibilityIdentifier(tab.string("accessibilityIdentifier") ?? "")
+                .accessibilityLabel(Text(tab.string("accessibilityLabel") ?? tab.string("title") ?? ""))
+                .accessibilityHint(Text(tab.string("accessibilityHint") ?? ""))
+                .hidden(tab.bool("hidden"))
             }
         }
         .modifier(TabViewStyleModifier(node: node))

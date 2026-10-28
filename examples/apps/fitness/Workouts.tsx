@@ -72,19 +72,21 @@ function weeklyMinutes(workouts: Workout[]): ChartData {
   const { today } = getData();
   const thisMonday = startOfWeek(today, { weekStartsOn: 1 });
   const points = [];
+  const ticks: Date[] = [];
   for (let w = 12; w >= 0; w--) {
     const from = addDays(thisMonday, -7 * w);
     const to = addDays(from, 7);
     const inWeek = workouts.filter((x) => x.start >= from && x.start < to);
     const parts = TYPES.map((type) => inWeek.filter((x) => x.type === type).reduce((a, x) => a + x.minutes, 0) / 60);
+    if (w % 4 === 0) ticks.push(from);
     points.push({
       label: `${format(from, "MMM d")} – ${format(addDays(to, -1), "MMM d")}`,
-      axis: w % 4 === 0 ? format(from, "MMM d") : undefined,
+      x: from,
       value: parts.reduce((a, b) => a + b, 0),
       parts,
     });
   }
-  return { kind: "stacked", color: "green", points, partColors: TYPES.map((t) => WORKOUTS[t].color) };
+  return { kind: "stacked", color: "green", points, unit: "weekOfYear", ticks, tickFormat: "monthDay", partColors: TYPES.map((t) => WORKOUTS[t].color) };
 }
 
 export function WorkoutsScreen({ pushed = false }: { pushed?: boolean }) {
@@ -125,7 +127,7 @@ export function WorkoutsScreen({ pushed = false }: { pushed?: boolean }) {
                 setSelected(i);
                 if (i !== null) haptic("selection");
               }}
-              yLabel={(v) => `${v}h`}
+              yFormat="{}h"
               accessibilityLabel={`Workout hours per week for the last 13 weeks, ${hoursMinutes(totalMinutes / 13)} on average`}
               accessibilityIdentifier="workouts-chart"
             />
@@ -252,7 +254,9 @@ function HeartRateCard({ workout }: { workout: Workout }) {
   const data: ChartData = {
     kind: "line",
     color: "red",
-    points: hr.map((bpm, m) => ({ label: `${m} min · ${time(addMinutes(workout.start, m))}`, axis: m % tick === 0 ? `${m}m` : undefined, value: bpm })),
+    points: hr.map((bpm, m) => ({ label: `${m} min · ${time(addMinutes(workout.start, m))}`, x: m, value: bpm })),
+    ticks: hr.map((_, m) => m).filter((m) => m % tick === 0),
+    tickFormat: "{}m",
     pointColors: hr.map((bpm) => ZONES[zoneOf(bpm)].color),
   };
   const point = selected === null ? null : data.points[selected];

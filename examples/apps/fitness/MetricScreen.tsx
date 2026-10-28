@@ -52,7 +52,7 @@ export function MetricScreen({ metricId }: { metricId: MetricId }) {
                 setSelected(i);
                 if (i !== null) haptic("selection");
               }}
-              yLabel={metricId === "sleep" ? (v) => `${v} hr` : compact}
+              yFormat={metricId === "sleep" ? "{} hr" : "compact"}
               accessibilityLabel={chartDescription(metric, range, data)}
               accessibilityIdentifier="metric-chart"
             />

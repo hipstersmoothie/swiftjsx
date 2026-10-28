@@ -238,14 +238,64 @@ abstract class Body {
   async blob(): Promise<Blob> {
     return new Blob([await this.bytes()], { type: this.headers.get("content-type") ?? "" });
   }
-  /** URL-encoded bodies (multipart responses aren't parsed). */
+  /** URL-encoded and multipart/form-data bodies (file parts become `File`s). */
   async formData(): Promise<FormData> {
     const type = this.headers.get("content-type") ?? "";
-    if (!type.includes("application/x-www-form-urlencoded")) throw new TypeError(`formData(): can't parse "${type}"`);
     const form = new FormData();
-    new URLSearchParams(await this.text()).forEach((value, key) => form.append(key, value));
+    if (type.includes("application/x-www-form-urlencoded")) {
+      new URLSearchParams(await this.text()).forEach((value, key) => form.append(key, value));
+      return form;
+    }
+    const boundary = /multipart\/form-data.*;\s*boundary="?([^";]+)"?/i.exec(type)?.[1];
+    if (!boundary) throw new TypeError(`formData(): can't parse "${type}"`);
+    for (const part of splitMultipart(await this.bytes(), boundary)) {
+      const disposition = part.headers.get("content-disposition") ?? "";
+      const name = /\bname="([^"]*)"/i.exec(disposition)?.[1];
+      if (name === undefined) continue;
+      const filename = /\bfilename="([^"]*)"/i.exec(disposition)?.[1];
+      if (filename !== undefined) {
+        form.append(name, new File([part.body], filename, { type: part.headers.get("content-type") ?? "" }));
+      } else {
+        form.append(name, __web.decodeUTF8(part.body, false) as string);
+      }
+    }
     return form;
   }
+}
+
+/** The parts of a multipart body: each one's headers and bytes. */
+function splitMultipart(bytes: Uint8Array, boundary: string): { headers: Headers; body: Uint8Array }[] {
+  const delimiter = __web.encodeUTF8(`--${boundary}`);
+  const find = (needle: Uint8Array, from: number) => {
+    outer: for (let i = from; i <= bytes.length - needle.length; i++) {
+      for (let j = 0; j < needle.length; j++) if (bytes[i + j] !== needle[j]) continue outer;
+      return i;
+    }
+    return -1;
+  };
+  const parts: { headers: Headers; body: Uint8Array }[] = [];
+  let start = find(delimiter, 0);
+  while (start >= 0) {
+    let from = start + delimiter.length;
+    // "--" after a delimiter ends the body.
+    if (bytes[from] === 45 && bytes[from + 1] === 45) break;
+    if (bytes[from] === 13) from += 2;
+    const next = find(delimiter, from);
+    if (next < 0) break;
+    // The part ends with CRLF before the next delimiter.
+    const part = bytes.subarray(from, next >= 2 && bytes[next - 2] === 13 ? next - 2 : next);
+    const blank = find(__web.encodeUTF8("\r\n\r\n"), from) - from;
+    if (blank >= 0 && blank <= part.length) {
+      const headers = new Headers();
+      for (const line of (__web.decodeUTF8(part.subarray(0, blank), false) as string).split("\r\n")) {
+        const colon = line.indexOf(":");
+        if (colon > 0) headers.append(line.slice(0, colon).trim(), line.slice(colon + 1).trim());
+      }
+      parts.push({ headers, body: part.slice(blank + 4) });
+    }
+    start = next;
+  }
+  return parts;
 }
 
 type RequestInit = {
@@ -253,6 +303,8 @@ type RequestInit = {
   headers?: HeadersInit;
   body?: BodyInit;
   signal?: AbortSignal | null;
+  /** SwiftJSX: bytes of the body sent so far (big uploads). */
+  onUploadProgress?: (progress: { loaded: number; total: number }) => void;
   [key: string]: unknown; // mode, credentials, cache, redirect…: accepted, not used
 };
 
@@ -341,6 +393,7 @@ type Pending = {
   signal: AbortSignal;
   /** Set once the headers arrived: the body stream's controller. */
   body?: ReadableStreamDefaultController<Uint8Array>;
+  onUploadProgress?: (progress: { loaded: number; total: number }) => void;
 };
 const pending = new Map<number, Pending>();
 
@@ -350,7 +403,8 @@ export function fetch(input: string | { href: string } | Request, init?: Request
     const { signal } = request;
     if (signal.aborted) return reject(signal.reason);
     const id = nextFetch++;
-    pending.set(id, { resolve, reject, signal });
+    const onUploadProgress = typeof init?.onUploadProgress === "function" ? init.onUploadProgress : undefined;
+    pending.set(id, { resolve, reject, signal, onUploadProgress });
     signal.addEventListener("abort", () => __web.abort(id), { once: true });
     const body = request._data;
     __web.fetch(id, {
@@ -358,6 +412,7 @@ export function fetch(input: string | { href: string } | Request, init?: Request
       url: request.url,
       headers: [...request.headers.entries()],
       ...(body === null ? {} : { body }),
+      ...(onUploadProgress && body !== null ? { uploadProgress: true } : {}),
     });
   });
 }
@@ -378,6 +433,10 @@ export function fetch(input: string | { href: string } | Request, init?: Request
   response.url = info.url;
   response.redirected = info.redirected;
   request.resolve(response);
+};
+
+(globalThis as any).__swiftjsx_fetchUpload = (id: number, loaded: number, total: number) => {
+  pending.get(id)?.onUploadProgress?.({ loaded, total });
 };
 
 (globalThis as any).__swiftjsx_fetchChunk = (id: number, chunk: ArrayBuffer) => {

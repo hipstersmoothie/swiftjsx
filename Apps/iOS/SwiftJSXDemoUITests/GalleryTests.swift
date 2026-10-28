@@ -79,7 +79,7 @@ final class GalleryTests: XCTestCase {
         app.staticTexts["Welcome"].swipeLeft()
         waitFor(label("page"), label: "Page 2 of 3")
 
-        app.tabBars.buttons["Settings"].tap()
+        app.tabBars.buttons["settings-tab"].tap()
         app.buttons["Go to Inbox"].tap()
         waitFor(label("unread"), label: "2 unread")
     }
@@ -317,6 +317,20 @@ final class GalleryTests: XCTestCase {
         XCTAssert(element("range-picker").waitForExistence(timeout: 5))
         sleep(1)
         snapshot("fitness-metric")
+        // (Scrubbing clears on release, like Health's, so it isn't checked
+        // here; testCharts covers chart selection.)
+        app.buttons["6M"].tap()
+        sleep(1)
+        snapshot("fitness-6m")
+        // The sleep timeline (lane names on the y axis).
+        app.navigationBars.buttons.firstMatch.tap()
+        let sleepCard = element("metric-sleep")
+        for _ in 0..<6 where !(sleepCard.exists && sleepCard.isHittable) { app.swipeUp() }
+        sleepCard.tap()
+        XCTAssert(element("range-picker").waitForExistence(timeout: 5))
+        app.buttons["D"].tap()
+        sleep(1)
+        snapshot("fitness-sleep-day")
     }
 
     func testMusic() {

@@ -750,7 +750,11 @@ export const WebView = host<
 
 export type MapRegion = { latitude: number; longitude: number; latitudeDelta?: number; longitudeDelta?: number };
 
-/** A map (MapKit) with `<Marker>` and `<MapAnnotation>` children. (Not `Map`: that would shadow JS's Map.) */
+/**
+ * A map (MapKit) with `<Marker>`, `<MapAnnotation>` and overlay
+ * (`<MapPolyline>`, `<MapPolygon>`, `<MapCircle>`) children. (Not `Map`: that
+ * would shadow JS's Map.)
+ */
 export const MapView = host<
   Modifiers & WithChildren & {
     /** Where the camera is; changing it moves the map. */
@@ -760,8 +764,25 @@ export const MapView = host<
     /** A tap on the map, at this coordinate. */
     onPress?: (coordinate: { latitude: number; longitude: number }) => void;
     mapStyle?: "standard" | "imagery" | "hybrid";
+    /**
+     * The blue dot. Asks for when-in-use permission the first time (the app
+     * needs `NSLocationWhenInUseUsageDescription` in its Info.plist).
+     */
+    showsUserLocation?: boolean;
+    /** Keep the camera on the user (until they pan; `region` takes over when it changes). */
+    followsUserLocation?: boolean;
+    controls?: ("userLocation" | "compass" | "scale" | "pitchToggle")[];
   }
 >("Map");
+/** `{ latitude, longitude }` objects or `[latitude, longitude]` pairs (GeoJSON's are `[longitude, latitude]`). */
+export type MapCoordinates = ({ latitude: number; longitude: number } | [number, number])[];
+type MapStroke = { stroke?: ColorValue; lineWidth?: number };
+/** A route or track on a `<MapView>`. */
+export const MapPolyline = host<MapStroke & { coordinates: MapCoordinates }>("MapPolyline");
+/** An outlined area. */
+export const MapPolygon = host<MapStroke & { coordinates: MapCoordinates; fill?: ColorValue }>("MapPolygon");
+/** A circle `radius` meters around a coordinate. */
+export const MapCircle = host<MapStroke & { latitude: number; longitude: number; radius: number; fill?: ColorValue }>("MapCircle");
 /** A balloon marker on a `<MapView>`. */
 export const Marker = host<{ latitude: number; longitude: number; title?: string; systemImage?: string; tint?: ColorValue }>("Marker");
 /** Any views on a `<MapView>`, centered on the coordinate. */
@@ -815,6 +836,12 @@ export const Tab = host<
     badge?: number | string;
     /** "search": the separate search tab of iOS 26. */
     role?: "search";
+    /** Hides the tab (its content stays mounted). */
+    hidden?: boolean;
+    /** On the tab bar item (UI tests find it by this). */
+    accessibilityIdentifier?: string;
+    accessibilityLabel?: string;
+    accessibilityHint?: string;
   }
 >("Tab");
 
@@ -922,8 +949,8 @@ type ChartX = string | number | Date;
  */
 export type ChartAxis = {
   position?: "leading" | "trailing" | "top" | "bottom";
-  /** Marks at exactly these values (numbers, Dates or categories). */
-  values?: (number | Date | string)[];
+  /** Marks at exactly these values (numbers, Dates or categories), or `{ value, label }` for text of your own. */
+  values?: (number | Date | string | { value: number | Date | string; label: string })[];
   /** A mark every `stride` (numbers), or every `count` `unit`s (dates). */
   stride?: number | { unit: CalendarUnit; count?: number };
   /** About how many marks (automatic placement). */
@@ -950,7 +977,11 @@ export const Chart = host<
     legend?: "automatic" | "hidden";
     /** Colors for marks with a `series`: `{ Deep: "indigo", REM: "cyan" }`. */
     seriesColors?: Record<string, ColorValue>;
-    /** Scrubbing: the x value under the finger (null when released). Dates come as ms since 1970. */
+    /**
+     * Scrubbing: the x value under the finger (null when released). Dates
+     * come as ms since 1970; with marks' `xUnit`, the start of the day / week
+     * / month under the finger (the bar's own date).
+     */
     onXSelectionChange?: (x: string | number | null) => void;
     /** The y value under the finger (null when released). */
     onYSelectionChange?: (y: number | null) => void;
@@ -986,6 +1017,8 @@ type MarkProps = {
   /** Text above (or `annotationPosition`) the mark: goal lines, highlights. */
   annotation?: string;
   annotationPosition?: "top" | "bottom" | "leading" | "trailing" | "overlay";
+  /** Where the annotation sits along that side (default "center"). */
+  annotationAlignment?: Alignment;
 };
 
 type Interpolated = { interpolation?: "linear" | "catmullRom" | "monotone" | "stepStart" | "stepCenter" | "stepEnd" | "cardinal" };
@@ -1006,7 +1039,14 @@ export const BarMark = host<
 export const LineMark = host<MarkProps & Interpolated & Stroked>("LineMark");
 /** Filled from zero to y, or between yStart and yEnd (a band). */
 export const AreaMark = host<MarkProps & Interpolated & { yStart?: number; yEnd?: number; stacking?: "standard" | "normalized" | "center" | "unstacked" }>("AreaMark");
-export const PointMark = host<MarkProps & { symbolSize?: number }>("PointMark");
+export const PointMark = host<
+  MarkProps & {
+    symbolSize?: number;
+    symbol?: "circle" | "square" | "triangle" | "diamond" | "pentagon" | "plus" | "cross" | "asterisk";
+    /** An outline this wide instead of a filled symbol (a ring around a selected point). */
+    symbolStroke?: number;
+  }
+>("PointMark");
 /** A horizontal line at `y` (goals, averages) or a vertical one at `x`. */
 export const RuleMark = host<MarkProps & Stroked>("RuleMark");
 /** A rectangle from xStart to xEnd and yStart to yEnd (timelines, hypnograms). */

@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreLocation
 import Foundation
 import UserNotifications
 #if canImport(UIKit)
@@ -299,5 +300,121 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Sendable 
                 self.runtime?.emit("speechWord", ["id": entry.id, "start": range.location, "length": range.length])
             }
         }
+    }
+}
+
+/// `navigator.geolocation` for one runtime: one-shot positions resolve their
+/// command callback; watched positions are emitted as "location" events
+/// (errors as "locationError"). Asks for when-in-use permission when needed.
+final class Locator: NSObject, CLLocationManagerDelegate, @unchecked Sendable {
+    private let manager = CLLocationManager()
+    @MainActor private var waiting: [Int] = []
+    @MainActor private var watchers: Set<Int> = []
+    @MainActor private weak var runtime: JSXRuntime?
+
+    @MainActor init(runtime: JSXRuntime) {
+        self.runtime = runtime
+        super.init()
+        manager.delegate = self
+    }
+
+    @MainActor func get(_ args: [String: Any], callback: Int) {
+        apply(args)
+        let maximumAge = (args["maximumAge"] as? NSNumber)?.doubleValue ?? 0
+        if let last = manager.location, -last.timestamp.timeIntervalSinceNow * 1000 <= maximumAge {
+            return resolve(callback, Self.position(last))
+        }
+        waiting.append(callback)
+        start()
+    }
+
+    @MainActor func watch(_ args: [String: Any]) {
+        apply(args)
+        if let id = (args["id"] as? NSNumber)?.intValue { watchers.insert(id) }
+        start()
+    }
+
+    @MainActor func clear(_ args: [String: Any]) {
+        if let id = (args["id"] as? NSNumber)?.intValue { watchers.remove(id) }
+        if watchers.isEmpty { manager.stopUpdatingLocation() }
+    }
+
+    @MainActor private func apply(_ args: [String: Any]) {
+        if args["enableHighAccuracy"] as? Bool == true { manager.desiredAccuracy = kCLLocationAccuracyBest }
+    }
+
+    /// Starts once permitted (asking first if nobody has).
+    @MainActor private func start() {
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            if Bundle.main.object(forInfoDictionaryKey: "NSLocationWhenInUseUsageDescription") == nil {
+                fail(1, "Location needs NSLocationWhenInUseUsageDescription in the app's Info.plist")
+            } else {
+                manager.requestWhenInUseAuthorization()
+            }
+        case .denied, .restricted:
+            fail(1, "User denied Geolocation")
+        default:
+            if !waiting.isEmpty { manager.requestLocation() }
+            if !watchers.isEmpty { manager.startUpdatingLocation() }
+        }
+    }
+
+    @MainActor private func resolve(_ callback: Int, _ value: Any) {
+        runtime?.resolveCommand(callback, value)
+    }
+
+    @MainActor private func fail(_ code: Int, _ message: String) {
+        let error: [String: Any] = ["error": ["code": code, "message": message]]
+        for callback in waiting { resolve(callback, error) }
+        waiting = []
+        if !watchers.isEmpty { runtime?.emit("locationError", ["code": code, "message": message]) }
+    }
+
+    static func position(_ location: CLLocation) -> [String: Any] {
+        func valid(_ value: Double, _ ok: Bool) -> Any { ok ? value : NSNull() }
+        return [
+            "coords": [
+                "latitude": location.coordinate.latitude,
+                "longitude": location.coordinate.longitude,
+                "accuracy": location.horizontalAccuracy,
+                "altitude": valid(location.altitude, location.verticalAccuracy >= 0),
+                "altitudeAccuracy": valid(location.verticalAccuracy, location.verticalAccuracy >= 0),
+                "heading": valid(location.course, location.course >= 0),
+                "speed": valid(location.speed, location.speed >= 0),
+            ],
+            "timestamp": location.timestamp.timeIntervalSince1970 * 1000,
+        ]
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        DispatchQueue.main.async { MainActor.assumeIsolated {
+            guard self.manager.authorizationStatus != .notDetermined, !self.waiting.isEmpty || !self.watchers.isEmpty else { return }
+            self.start()
+        } }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let last = locations.last else { return }
+        let position = UncheckedSendable(Self.position(last))
+        DispatchQueue.main.async { MainActor.assumeIsolated {
+            for callback in self.waiting { self.resolve(callback, position.value) }
+            self.waiting = []
+            if !self.watchers.isEmpty { self.runtime?.emit("location", position.value) }
+        } }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        // kCLErrorLocationUnknown is transient: updates keep coming.
+        if (error as? CLError)?.code == .locationUnknown {
+            DispatchQueue.main.async { MainActor.assumeIsolated {
+                if !self.waiting.isEmpty { self.fail(2, "Position unavailable") }
+            } }
+            return
+        }
+        let denied = (error as? CLError)?.code == .denied
+        DispatchQueue.main.async { MainActor.assumeIsolated {
+            self.fail(denied ? 1 : 2, denied ? "User denied Geolocation" : "Position unavailable")
+        } }
     }
 }

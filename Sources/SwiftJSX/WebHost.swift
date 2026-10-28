@@ -115,7 +115,9 @@ extension JSEngine {
         }
         // Streamed: the headers, then each chunk, then the end.
         let task = WebHost.session.dataTask(with: urlRequest)
-        task.delegate = FetchStream(id: id, requested: url, host: self)
+        let stream = FetchStream(id: id, requested: url, host: self)
+        stream.reportsUpload = request.objectForKeyedSubscript("uploadProgress")?.toBool() == true
+        task.delegate = stream
         fetches.add(id, task)
         task.resume()
     }
@@ -130,6 +132,12 @@ extension JSEngine {
         ] as [String: Any])
         perform { ctx in
             ctx.objectForKeyedSubscript("__swiftjsx_fetchHead")?.call(withArguments: [id, response.value])
+        }
+    }
+
+    fileprivate func fetchUpload(_ id: Int, sent: Int64, total: Int64) {
+        perform { ctx in
+            ctx.objectForKeyedSubscript("__swiftjsx_fetchUpload")?.call(withArguments: [id, sent, total])
         }
     }
 
@@ -159,6 +167,7 @@ extension JSEngine {
         let id: Int
         let requested: URL
         weak var host: JSEngine?
+        var reportsUpload = false
 
         init(id: Int, requested: URL, host: JSEngine) {
             self.id = id
@@ -181,6 +190,11 @@ extension JSEngine {
                                 headers: response.mimeType.map { [["content-type", $0]] } ?? [])
             }
             completionHandler(.allow)
+        }
+
+        func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64,
+                        totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+            if reportsUpload { host?.fetchUpload(id, sent: totalBytesSent, total: totalBytesExpectedToSend) }
         }
 
         func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
@@ -219,8 +233,11 @@ extension JSEngine {
             let count = JSObjectGetArrayBufferByteLength(ctx, object, nil)
             if let pointer = JSObjectGetArrayBufferBytesPtr(ctx, object, nil) { body(pointer, count) }
         default:
+            // The pointer is to the start of the backing buffer: a view
+            // (`bytes.subarray(4)`) starts byteOffset into it.
             let count = JSObjectGetTypedArrayByteLength(ctx, object, nil)
-            if let pointer = JSObjectGetTypedArrayBytesPtr(ctx, object, nil) { body(pointer, count) }
+            let offset = JSObjectGetTypedArrayByteOffset(ctx, object, nil)
+            if let pointer = JSObjectGetTypedArrayBytesPtr(ctx, object, nil) { body(pointer + offset, count) }
         }
     }
 

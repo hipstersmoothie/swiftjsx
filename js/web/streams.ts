@@ -1,7 +1,11 @@
 // A ReadableStream for fetch bodies (streaming responses: server-sent events,
 // AI tokens, big downloads) and code that reads `response.body`. The core of
-// the WHATWG API: a pull-free underlying source, readers, async iteration,
-// cancel and tee. No byte streams, BYOB readers or pipes.
+// the WHATWG API: underlying sources, readers, async iteration, cancel, tee,
+// pipes, WritableStream and TransformStream (TextDecoderStream for
+// `body.pipeThrough(new TextDecoderStream())`). No byte streams, BYOB readers
+// or backpressure beyond one queued chunk.
+
+import { TextDecoder, TextEncoder } from "./encoding";
 
 type Source<R> = {
   start?(controller: ReadableStreamDefaultController<R>): void | Promise<void>;
@@ -133,6 +137,52 @@ export class ReadableStream<R = Uint8Array> {
     return this[Symbol.asyncIterator]();
   }
 
+  /** A stream of an iterable's or async iterable's values. */
+  static from<T>(source: Iterable<T> | AsyncIterable<T>): ReadableStream<T> {
+    const iterator = Symbol.asyncIterator in source ? (source as AsyncIterable<T>)[Symbol.asyncIterator]() : (source as Iterable<T>)[Symbol.iterator]();
+    return new ReadableStream<T>({
+      async pull(controller) {
+        const { done, value } = await iterator.next();
+        if (done) controller.close();
+        else controller.enqueue(value);
+      },
+      async cancel(reason) {
+        await iterator.return?.(reason);
+      },
+    });
+  }
+
+  /** Writes every chunk to `destination`, then closes it (unless `preventClose`). */
+  async pipeTo(destination: WritableStream<R>, options: { preventClose?: boolean; preventAbort?: boolean; preventCancel?: boolean; signal?: AbortSignal } = {}): Promise<void> {
+    const reader = this.getReader();
+    const writer = destination.getWriter();
+    const abort = () => void reader.cancel(options.signal?.reason);
+    options.signal?.addEventListener("abort", abort);
+    try {
+      for (;;) {
+        if (options.signal?.aborted) throw options.signal.reason;
+        const { done, value } = await reader.read();
+        if (done) break;
+        await writer.write(value as R);
+      }
+      if (!options.preventClose) await writer.close();
+    } catch (error) {
+      if (!options.preventAbort) await writer.abort(error).catch(() => {});
+      if (!options.preventCancel) await reader.cancel(error).catch(() => {});
+      throw error;
+    } finally {
+      options.signal?.removeEventListener("abort", abort);
+      reader.releaseLock();
+      writer.releaseLock();
+    }
+  }
+
+  /** `body.pipeThrough(new TextDecoderStream())`: this stream through a transform. */
+  pipeThrough<T>(transform: { writable: WritableStream<R>; readable: ReadableStream<T> }, options?: { signal?: AbortSignal }): ReadableStream<T> {
+    this.pipeTo(transform.writable, options).catch(() => {});
+    return transform.readable;
+  }
+
   /** @internal */ _read(): Promise<ReadResult<R>> {
     if (this._queue.length) {
       const value = this._queue.shift()!;
@@ -181,6 +231,226 @@ export class ReadableStream<R = Uint8Array> {
       },
       (error) => this._error(error),
     );
+  }
+}
+
+// MARK: Writable streams
+
+type Sink<W> = {
+  start?(controller: WritableStreamDefaultController): void | Promise<void>;
+  write?(chunk: W, controller: WritableStreamDefaultController): void | Promise<void>;
+  close?(): void | Promise<void>;
+  abort?(reason?: unknown): void | Promise<void>;
+};
+
+export class WritableStreamDefaultController {
+  /** @internal */ constructor(private stream: WritableStream<any>) {}
+  readonly signal = new AbortController().signal;
+  error(reason?: unknown) {
+    this.stream._fail(reason);
+  }
+}
+
+/** Writes run one at a time, in order, through the sink. */
+export class WritableStream<W = unknown> {
+  /** @internal */ _state: "writable" | "closed" | "errored" = "writable";
+  /** @internal */ _storedError: unknown;
+  /** @internal */ _writer: WritableStreamDefaultWriter<W> | null = null;
+  /** @internal */ _chain: Promise<void>;
+  /** @internal */ _sink: Sink<W>;
+  /** @internal */ _controller: WritableStreamDefaultController;
+
+  constructor(sink: Sink<W> = {}) {
+    this._sink = sink;
+    this._controller = new WritableStreamDefaultController(this);
+    this._chain = Promise.resolve(sink.start?.(this._controller)).then(() => undefined);
+    this._chain.catch((error) => this._fail(error));
+  }
+
+  get locked() {
+    return this._writer !== null;
+  }
+
+  getWriter(): WritableStreamDefaultWriter<W> {
+    return new WritableStreamDefaultWriter(this);
+  }
+
+  close(): Promise<void> {
+    if (this.locked) return Promise.reject(new TypeError("Cannot close a locked stream"));
+    return this._close();
+  }
+
+  abort(reason?: unknown): Promise<void> {
+    if (this.locked) return Promise.reject(new TypeError("Cannot abort a locked stream"));
+    return this._abort(reason);
+  }
+
+  /** @internal */ _write(chunk: W): Promise<void> {
+    if (this._state !== "writable") return Promise.reject(this._state === "errored" ? this._storedError : new TypeError("The stream is closed"));
+    const next = this._chain.then(() => {
+      if (this._state === "errored") throw this._storedError;
+      return this._sink.write?.(chunk, this._controller);
+    });
+    this._chain = next.catch((error) => this._fail(error));
+    return next;
+  }
+
+  /** @internal */ _close(): Promise<void> {
+    if (this._state !== "writable") return Promise.reject(new TypeError("The stream is closed or errored"));
+    this._state = "closed";
+    const done = this._chain.then(() => this._sink.close?.()).then(() => this._writer?._settleClosed.resolve());
+    done.catch((error) => this._fail(error));
+    return done;
+  }
+
+  /** @internal */ _abort(reason?: unknown): Promise<void> {
+    if (this._state === "closed") return Promise.resolve();
+    this._fail(reason);
+    return Promise.resolve(this._sink.abort?.(reason)).then(() => undefined);
+  }
+
+  /** @internal */ _fail(reason: unknown) {
+    if (this._state === "errored") return;
+    this._state = "errored";
+    this._storedError = reason;
+    this._writer?._settleClosed.reject(reason);
+  }
+}
+
+export class WritableStreamDefaultWriter<W> {
+  /** @internal */ _stream: WritableStream<W> | null;
+  readonly closed: Promise<void>;
+  readonly ready = Promise.resolve();
+  /** @internal */ _settleClosed!: { resolve: () => void; reject: (e: unknown) => void };
+
+  constructor(stream: WritableStream<W>) {
+    if (stream.locked) throw new TypeError("WritableStream is locked to a writer");
+    this._stream = stream;
+    stream._writer = this;
+    this.closed = new Promise((resolve, reject) => (this._settleClosed = { resolve, reject }));
+    this.closed.catch(() => {});
+  }
+
+  get desiredSize(): number | null {
+    return this._stream?._state === "writable" ? 1 : this._stream?._state === "closed" ? 0 : null;
+  }
+
+  write(chunk: W): Promise<void> {
+    return this._stream ? this._stream._write(chunk) : Promise.reject(new TypeError("Writer was released"));
+  }
+
+  close(): Promise<void> {
+    return this._stream ? this._stream._close() : Promise.reject(new TypeError("Writer was released"));
+  }
+
+  abort(reason?: unknown): Promise<void> {
+    return this._stream ? this._stream._abort(reason) : Promise.reject(new TypeError("Writer was released"));
+  }
+
+  releaseLock() {
+    if (!this._stream) return;
+    this._stream._writer = null;
+    this._stream = null;
+  }
+}
+
+// MARK: Transform streams
+
+type Transformer<I, O> = {
+  start?(controller: TransformStreamDefaultController<O>): void | Promise<void>;
+  transform?(chunk: I, controller: TransformStreamDefaultController<O>): void | Promise<void>;
+  flush?(controller: TransformStreamDefaultController<O>): void | Promise<void>;
+};
+
+export class TransformStreamDefaultController<O> {
+  /** @internal */ constructor(private readableController: () => ReadableStreamDefaultController<O>, private onError: (reason: unknown) => void) {}
+  get desiredSize() {
+    return this.readableController().desiredSize;
+  }
+  enqueue(chunk: O) {
+    this.readableController().enqueue(chunk);
+  }
+  error(reason?: unknown) {
+    this.onError(reason);
+  }
+  /** Closes the readable side; further writes fail. */
+  terminate() {
+    this.readableController().close();
+  }
+}
+
+/** A writable side whose chunks come out of the readable side, transformed. */
+export class TransformStream<I = unknown, O = unknown> {
+  readonly readable: ReadableStream<O>;
+  readonly writable: WritableStream<I>;
+
+  constructor(transformer: Transformer<I, O> = {}) {
+    let readableController!: ReadableStreamDefaultController<O>;
+    this.readable = new ReadableStream<O>({ start: (c) => void (readableController = c) });
+    const controller = new TransformStreamDefaultController<O>(
+      () => readableController,
+      (reason) => {
+        readableController.error(reason);
+        this.writable._fail(reason);
+      },
+    );
+    this.writable = new WritableStream<I>({
+      start: () => transformer.start?.(controller),
+      write: (chunk) => (transformer.transform ? transformer.transform(chunk, controller) : controller.enqueue(chunk as unknown as O)),
+      close: async () => {
+        await transformer.flush?.(controller);
+        readableController.close();
+      },
+      abort: (reason) => readableController.error(reason),
+    });
+  }
+}
+
+/** Bytes in, text out (characters split across chunks are kept whole). */
+export class TextDecoderStream extends TransformStream<Uint8Array | ArrayBuffer, string> {
+  readonly encoding: string;
+  readonly fatal: boolean;
+  readonly ignoreBOM: boolean;
+  constructor(label = "utf-8", options: { fatal?: boolean; ignoreBOM?: boolean } = {}) {
+    const decoder = new TextDecoder(label, options);
+    super({
+      transform(chunk, controller) {
+        const text = decoder.decode(chunk, { stream: true });
+        if (text) controller.enqueue(text);
+      },
+      flush(controller) {
+        const text = decoder.decode();
+        if (text) controller.enqueue(text);
+      },
+    });
+    this.encoding = decoder.encoding;
+    this.fatal = decoder.fatal;
+    this.ignoreBOM = decoder.ignoreBOM;
+  }
+}
+
+/** Text in, UTF-8 bytes out. */
+export class TextEncoderStream extends TransformStream<string, Uint8Array> {
+  readonly encoding = "utf-8";
+  constructor() {
+    const encoder = new TextEncoder();
+    // A lone high surrogate at a chunk's end waits for its pair.
+    let pending = "";
+    super({
+      transform(chunk, controller) {
+        let text = pending + String(chunk);
+        pending = "";
+        const last = text.charCodeAt(text.length - 1);
+        if (last >= 0xd800 && last <= 0xdbff) {
+          pending = text.slice(-1);
+          text = text.slice(0, -1);
+        }
+        if (text) controller.enqueue(encoder.encode(text));
+      },
+      flush(controller) {
+        if (pending) controller.enqueue(encoder.encode("\ufffd"));
+      },
+    });
   }
 }
 

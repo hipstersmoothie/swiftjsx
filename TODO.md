@@ -16,7 +16,10 @@ for the record.
 - [x] Charts: `onYSelectionChange`, `onXRangeSelectionChange` (two fingers), scrolling
       charts (`xVisibleDomain`, `xScrollPosition`, `onXScrollPositionChange`,
       `xScrollAlignment` snapping to numbers or calendar units).
-- [ ] The Fitness app still draws its charts by hand (rewrite on `<Chart>`).
+- [x] The Fitness app's charts are `<Chart>`s now (bars, stacks, ranges, zone-colored
+      lines, the sleep timeline). Axis `values` take `{ value, label }` (lane names);
+      selections on `xUnit` dates report the bin's start; `PointMark` `symbol` and
+      `symbolStroke` (rings); `annotationAlignment`.
 - [x] Charts axes: `position`, explicit `values`, `stride` (numbers or `{ unit, count }`),
       `count`, `format` (compact, percent, currency, "{} h", weekday, monthDay…),
       `gridlines` / `ticks` / `labels`. Date `x` with `xUnit` (bars span the day/week).
@@ -25,7 +28,9 @@ for the record.
 - [x] Under a chart `animation`, mark colors change too (style props apply unanimated:
       Swift Charts drops a color change made in an animated transaction).
 - [ ] Charts: category `y` values, styled or view annotations, continuous color
-      scales (heatmaps).
+      scales (heatmaps); label formats are strings (no format functions); `cornerRadius`
+      rounds all four corners (no top-only bars); one line can't change color along its
+      length (a series per color run); no minimum bar height.
 - [x] `<Path d>` (SVG path data) and `<Polyline points>` in a `viewBox`; `lineCap` /
       `lineJoin`.
 - [x] Angular gradient `startAngle` / `endAngle` (arcs, gauges); gradient points as unit
@@ -34,7 +39,10 @@ for the record.
 - [x] `<Video>` (AVKit; controls or just the picture, loop, time updates), `<WebView>`
       (URL or HTML, messages from the page, injected JS), `<MapView>` (region, markers,
       annotations with any views, taps, region changes).
-- [ ] `Canvas` (immediate-mode drawing); map overlays (polylines), user location.
+- [x] Map overlays (`<MapPolyline>`, `<MapPolygon>`, `<MapCircle>`), `showsUserLocation`,
+      `followsUserLocation`, `controls`; `navigator.geolocation` and `useGeolocation()`
+      on Core Location (asks for when-in-use permission).
+- [ ] `Canvas` (immediate-mode drawing); map clustering, look-around, directions.
 
 ## Layout
 
@@ -92,7 +100,8 @@ for the record.
 - [x] Button `onLongPress` (a hold doesn't also fire `onPress`; works in List rows).
 - [x] `onPressIn` / `onPressOut({ cancelled })`, `pressedScale` / `pressedOpacity` on any
       view (a UIKit recognizer alongside other gestures and scrolling; moving cancels).
-- [ ] `<Tab>` takes no modifiers (accessibility identifier, `measure()`, animated badges).
+- [x] `<Tab>` takes `hidden` and its tab bar item's `accessibilityIdentifier` / `Label` / `Hint`.
+- [ ] `<Tab>`: no `measure()` of the tab bar item; badges don't animate.
 - [x] Page TabView dots: `pageIndicator` ("always" / "never" / "backed").
 - [x] `<TimePicker>` with `{ hour, minute }` values (and `min` / `max`); `minuteInterval`
       snaps the value.
@@ -220,7 +229,11 @@ for the record.
       `ReadableStream` of chunks as they arrive (readers, async iteration, tee). `FormData`
       bodies (multipart, with `File`s). URLSession buffers the first 512 bytes of
       `text/plain` and unlabeled responses to sniff them; `text/event-stream` and JSON stream.
-- [ ] Upload progress; `XMLHttpRequest`; `formData()` on multipart responses; byte streams.
+- [x] `XMLHttpRequest` (async; upload and download progress, timeouts, response types) on
+      fetch; fetch's `onUploadProgress` (a SwiftJSX extension); `formData()` parses
+      multipart bodies. Native code read typed-array views from the start of their
+      buffer (`bytes.subarray(4)` sent the wrong bytes); fixed.
+- [ ] Byte streams / BYOB readers.
 - [x] `localStorage` saves to a JSON file in the background (coalesced, flushed when the
       app leaves the foreground), with a quota (`QuotaExceededError`).
 - [x] `AsyncStorage` (React Native's API): files per key, off the main and JS threads.
@@ -242,8 +255,9 @@ for the record.
       updates (bundle-wide, not per module).
 - [x] `TextDecoder`: streaming (`{ stream: true }` keeps split characters), UTF-16 LE / BE,
       windows-1252 (and the Latin-1 / ASCII labels, as browsers do).
-- [ ] No `TextDecoderStream` / `TransformStream`; WebSocket has no extensions or ping
-      control; no `document` (by design).
+- [x] `WritableStream`, `TransformStream`, `TextDecoderStream`, `TextEncoderStream`,
+      `pipeTo` / `pipeThrough`, `ReadableStream.from`.
+- [ ] WebSocket has no extensions or ping control; no `document` (by design).
 
 ## Native backend (NativeScript)
 
@@ -256,7 +270,8 @@ for the record.
       out-parameters. Which frameworks need main isn't documented beyond UIKit/AppKit.
 - [ ] Native UIViews can't be embedded (MPVolumeView, AVRoutePickerView); `<Image>`'s
       cache isn't shared with native code.
-- [ ] Apps can't declare capabilities or Info.plist keys (background audio).
+- [x] Apps declare Info.plist keys and capabilities in their own `ios/project.yml` /
+      `Info.plist` / entitlements (the template README shows how).
 - [x] `defineNativeClass(name, { protocols, methods, exposed })` (registered once, lazily;
       Fast Refresh swaps method bodies), `keepAlive()` for weak delegates, and
       `nativePromise()` for completion handlers on any queue.

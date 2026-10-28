@@ -41,6 +41,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         # Debug builds on devices load the app from the dev server on this Mac.
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: Loads the app from the SwiftJSX dev server on your Mac while developing.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Shows where you are on the map demo.
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight

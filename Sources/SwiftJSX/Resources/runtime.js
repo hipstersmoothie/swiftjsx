@@ -330,7 +330,7 @@
                       });
                       return initialValue;
                     },
-                    useState: function useState7(initialState) {
+                    useState: function useState8(initialState) {
                       var hook = nextHook();
                       initialState = null !== hook ? hook.memoizedState : "function" === typeof initialState ? initialState() : initialState;
                       hookLog.push({
@@ -33633,6 +33633,58 @@ ${error.stack}` : String(error));
     values() {
       return this[Symbol.asyncIterator]();
     }
+    /** A stream of an iterable's or async iterable's values. */
+    static from(source) {
+      const iterator = Symbol.asyncIterator in source ? source[Symbol.asyncIterator]() : source[Symbol.iterator]();
+      return new _ReadableStream({
+        async pull(controller) {
+          const {
+            done,
+            value
+          } = await iterator.next();
+          if (done) controller.close();
+          else controller.enqueue(value);
+        },
+        async cancel(reason) {
+          await iterator.return?.(reason);
+        }
+      });
+    }
+    /** Writes every chunk to `destination`, then closes it (unless `preventClose`). */
+    async pipeTo(destination, options = {}) {
+      const reader = this.getReader();
+      const writer = destination.getWriter();
+      const abort = () => void reader.cancel(options.signal?.reason);
+      options.signal?.addEventListener("abort", abort);
+      try {
+        for (; ; ) {
+          if (options.signal?.aborted) throw options.signal.reason;
+          const {
+            done,
+            value
+          } = await reader.read();
+          if (done) break;
+          await writer.write(value);
+        }
+        if (!options.preventClose) await writer.close();
+      } catch (error) {
+        if (!options.preventAbort) await writer.abort(error).catch(() => {
+        });
+        if (!options.preventCancel) await reader.cancel(error).catch(() => {
+        });
+        throw error;
+      } finally {
+        options.signal?.removeEventListener("abort", abort);
+        reader.releaseLock();
+        writer.releaseLock();
+      }
+    }
+    /** `body.pipeThrough(new TextDecoderStream())`: this stream through a transform. */
+    pipeThrough(transform, options) {
+      this.pipeTo(transform.writable, options).catch(() => {
+      });
+      return transform.readable;
+    }
     /** @internal */
     _read() {
       if (this._queue.length) {
@@ -33692,6 +33744,187 @@ ${error.stack}` : String(error));
         this.pulling = false;
         if (this._reads.length) this._pullIfNeeded();
       }, (error) => this._error(error));
+    }
+  };
+  var WritableStreamDefaultController = class {
+    /** @internal */
+    constructor(stream) {
+      this.stream = stream;
+      this.signal = new AbortController().signal;
+    }
+    error(reason) {
+      this.stream._fail(reason);
+    }
+  };
+  var WritableStream = class {
+    constructor(sink = {}) {
+      /** @internal */
+      this._state = "writable";
+      /** @internal */
+      this._writer = null;
+      this._sink = sink;
+      this._controller = new WritableStreamDefaultController(this);
+      this._chain = Promise.resolve(sink.start?.(this._controller)).then(() => void 0);
+      this._chain.catch((error) => this._fail(error));
+    }
+    get locked() {
+      return this._writer !== null;
+    }
+    getWriter() {
+      return new WritableStreamDefaultWriter(this);
+    }
+    close() {
+      if (this.locked) return Promise.reject(new TypeError("Cannot close a locked stream"));
+      return this._close();
+    }
+    abort(reason) {
+      if (this.locked) return Promise.reject(new TypeError("Cannot abort a locked stream"));
+      return this._abort(reason);
+    }
+    /** @internal */
+    _write(chunk) {
+      if (this._state !== "writable") return Promise.reject(this._state === "errored" ? this._storedError : new TypeError("The stream is closed"));
+      const next = this._chain.then(() => {
+        if (this._state === "errored") throw this._storedError;
+        return this._sink.write?.(chunk, this._controller);
+      });
+      this._chain = next.catch((error) => this._fail(error));
+      return next;
+    }
+    /** @internal */
+    _close() {
+      if (this._state !== "writable") return Promise.reject(new TypeError("The stream is closed or errored"));
+      this._state = "closed";
+      const done = this._chain.then(() => this._sink.close?.()).then(() => this._writer?._settleClosed.resolve());
+      done.catch((error) => this._fail(error));
+      return done;
+    }
+    /** @internal */
+    _abort(reason) {
+      if (this._state === "closed") return Promise.resolve();
+      this._fail(reason);
+      return Promise.resolve(this._sink.abort?.(reason)).then(() => void 0);
+    }
+    /** @internal */
+    _fail(reason) {
+      if (this._state === "errored") return;
+      this._state = "errored";
+      this._storedError = reason;
+      this._writer?._settleClosed.reject(reason);
+    }
+  };
+  var WritableStreamDefaultWriter = class {
+    constructor(stream) {
+      this.ready = Promise.resolve();
+      if (stream.locked) throw new TypeError("WritableStream is locked to a writer");
+      this._stream = stream;
+      stream._writer = this;
+      this.closed = new Promise((resolve, reject) => this._settleClosed = {
+        resolve,
+        reject
+      });
+      this.closed.catch(() => {
+      });
+    }
+    get desiredSize() {
+      return this._stream?._state === "writable" ? 1 : this._stream?._state === "closed" ? 0 : null;
+    }
+    write(chunk) {
+      return this._stream ? this._stream._write(chunk) : Promise.reject(new TypeError("Writer was released"));
+    }
+    close() {
+      return this._stream ? this._stream._close() : Promise.reject(new TypeError("Writer was released"));
+    }
+    abort(reason) {
+      return this._stream ? this._stream._abort(reason) : Promise.reject(new TypeError("Writer was released"));
+    }
+    releaseLock() {
+      if (!this._stream) return;
+      this._stream._writer = null;
+      this._stream = null;
+    }
+  };
+  var TransformStreamDefaultController = class {
+    /** @internal */
+    constructor(readableController, onError) {
+      this.readableController = readableController;
+      this.onError = onError;
+    }
+    get desiredSize() {
+      return this.readableController().desiredSize;
+    }
+    enqueue(chunk) {
+      this.readableController().enqueue(chunk);
+    }
+    error(reason) {
+      this.onError(reason);
+    }
+    /** Closes the readable side; further writes fail. */
+    terminate() {
+      this.readableController().close();
+    }
+  };
+  var TransformStream = class {
+    constructor(transformer = {}) {
+      let readableController;
+      this.readable = new ReadableStream({
+        start: (c) => void (readableController = c)
+      });
+      const controller = new TransformStreamDefaultController(() => readableController, (reason) => {
+        readableController.error(reason);
+        this.writable._fail(reason);
+      });
+      this.writable = new WritableStream({
+        start: () => transformer.start?.(controller),
+        write: (chunk) => transformer.transform ? transformer.transform(chunk, controller) : controller.enqueue(chunk),
+        close: async () => {
+          await transformer.flush?.(controller);
+          readableController.close();
+        },
+        abort: (reason) => readableController.error(reason)
+      });
+    }
+  };
+  var TextDecoderStream = class extends TransformStream {
+    constructor(label = "utf-8", options = {}) {
+      const decoder = new TextDecoder(label, options);
+      super({
+        transform(chunk, controller) {
+          const text = decoder.decode(chunk, {
+            stream: true
+          });
+          if (text) controller.enqueue(text);
+        },
+        flush(controller) {
+          const text = decoder.decode();
+          if (text) controller.enqueue(text);
+        }
+      });
+      this.encoding = decoder.encoding;
+      this.fatal = decoder.fatal;
+      this.ignoreBOM = decoder.ignoreBOM;
+    }
+  };
+  var TextEncoderStream = class extends TransformStream {
+    constructor() {
+      const encoder = new TextEncoder();
+      let pending3 = "";
+      super({
+        transform(chunk, controller) {
+          let text = pending3 + String(chunk);
+          pending3 = "";
+          const last = text.charCodeAt(text.length - 1);
+          if (last >= 55296 && last <= 56319) {
+            pending3 = text.slice(-1);
+            text = text.slice(0, -1);
+          }
+          if (text) controller.enqueue(encoder.encode(text));
+        },
+        flush(controller) {
+          if (pending3) controller.enqueue(encoder.encode("\uFFFD"));
+        }
+      });
+      this.encoding = "utf-8";
     }
   };
   async function readAll(stream) {
@@ -33955,15 +34188,66 @@ Content-Type: ${value.type || "application/octet-stream"}\r
         type: this.headers.get("content-type") ?? ""
       });
     }
-    /** URL-encoded bodies (multipart responses aren't parsed). */
+    /** URL-encoded and multipart/form-data bodies (file parts become `File`s). */
     async formData() {
       const type = this.headers.get("content-type") ?? "";
-      if (!type.includes("application/x-www-form-urlencoded")) throw new TypeError(`formData(): can't parse "${type}"`);
       const form = new FormData();
-      new URLSearchParams(await this.text()).forEach((value, key) => form.append(key, value));
+      if (type.includes("application/x-www-form-urlencoded")) {
+        new URLSearchParams(await this.text()).forEach((value, key) => form.append(key, value));
+        return form;
+      }
+      const boundary = /multipart\/form-data.*;\s*boundary="?([^";]+)"?/i.exec(type)?.[1];
+      if (!boundary) throw new TypeError(`formData(): can't parse "${type}"`);
+      for (const part of splitMultipart(await this.bytes(), boundary)) {
+        const disposition = part.headers.get("content-disposition") ?? "";
+        const name = /\bname="([^"]*)"/i.exec(disposition)?.[1];
+        if (name === void 0) continue;
+        const filename = /\bfilename="([^"]*)"/i.exec(disposition)?.[1];
+        if (filename !== void 0) {
+          form.append(name, new File([part.body], filename, {
+            type: part.headers.get("content-type") ?? ""
+          }));
+        } else {
+          form.append(name, __web.decodeUTF8(part.body, false));
+        }
+      }
       return form;
     }
   };
+  function splitMultipart(bytes, boundary) {
+    const delimiter = __web.encodeUTF8(`--${boundary}`);
+    const find = (needle, from) => {
+      outer: for (let i = from; i <= bytes.length - needle.length; i++) {
+        for (let j = 0; j < needle.length; j++) if (bytes[i + j] !== needle[j]) continue outer;
+        return i;
+      }
+      return -1;
+    };
+    const parts = [];
+    let start = find(delimiter, 0);
+    while (start >= 0) {
+      let from = start + delimiter.length;
+      if (bytes[from] === 45 && bytes[from + 1] === 45) break;
+      if (bytes[from] === 13) from += 2;
+      const next = find(delimiter, from);
+      if (next < 0) break;
+      const part = bytes.subarray(from, next >= 2 && bytes[next - 2] === 13 ? next - 2 : next);
+      const blank = find(__web.encodeUTF8("\r\n\r\n"), from) - from;
+      if (blank >= 0 && blank <= part.length) {
+        const headers = new Headers();
+        for (const line of __web.decodeUTF8(part.subarray(0, blank), false).split("\r\n")) {
+          const colon = line.indexOf(":");
+          if (colon > 0) headers.append(line.slice(0, colon).trim(), line.slice(colon + 1).trim());
+        }
+        parts.push({
+          headers,
+          body: part.slice(blank + 4)
+        });
+      }
+      start = next;
+    }
+    return parts;
+  }
   var Request = class _Request extends Body {
     constructor(input, init = {}) {
       super();
@@ -34059,10 +34343,12 @@ Content-Type: ${value.type || "application/octet-stream"}\r
       } = request;
       if (signal.aborted) return reject(signal.reason);
       const id = nextFetch++;
+      const onUploadProgress = typeof init?.onUploadProgress === "function" ? init.onUploadProgress : void 0;
       pending.set(id, {
         resolve,
         reject,
-        signal
+        signal,
+        onUploadProgress
       });
       signal.addEventListener("abort", () => __web.abort(id), {
         once: true
@@ -34074,7 +34360,10 @@ Content-Type: ${value.type || "application/octet-stream"}\r
         headers: [...request.headers.entries()],
         ...body === null ? {} : {
           body
-        }
+        },
+        ...onUploadProgress && body !== null ? {
+          uploadProgress: true
+        } : {}
       });
     });
   }
@@ -34094,6 +34383,12 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     response.redirected = info.redirected;
     request.resolve(response);
   };
+  globalThis.__swiftjsx_fetchUpload = (id, loaded, total) => {
+    pending.get(id)?.onUploadProgress?.({
+      loaded,
+      total
+    });
+  };
   globalThis.__swiftjsx_fetchChunk = (id, chunk) => {
     pending.get(id)?.body?.enqueue(new Uint8Array(chunk));
   };
@@ -34106,6 +34401,229 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     if (request.body) request.body.error(reason);
     else request.reject(reason);
   };
+
+  // js/web/xhr.ts
+  var ProgressEvent = class extends Event {
+    constructor(type, init = {}) {
+      super(type);
+      this.lengthComputable = !!init.lengthComputable;
+      this.loaded = init.loaded ?? 0;
+      this.total = init.total ?? 0;
+    }
+  };
+  var XMLHttpRequestEventTarget = class extends EventTarget {
+    constructor() {
+      super(...arguments);
+      this.onloadstart = null;
+      this.onprogress = null;
+      this.onabort = null;
+      this.onerror = null;
+      this.onload = null;
+      this.ontimeout = null;
+      this.onloadend = null;
+    }
+  };
+  var _XMLHttpRequest = class _XMLHttpRequest extends XMLHttpRequestEventTarget {
+    constructor() {
+      super(...arguments);
+      this.UNSENT = 0;
+      this.OPENED = 1;
+      this.HEADERS_RECEIVED = 2;
+      this.LOADING = 3;
+      this.DONE = 4;
+      this.readyState = 0;
+      this.status = 0;
+      this.statusText = "";
+      this.responseURL = "";
+      this.responseType = "";
+      /** Milliseconds; 0 waits forever. */
+      this.timeout = 0;
+      this.withCredentials = false;
+      this.upload = new XMLHttpRequestEventTarget();
+      this.onreadystatechange = null;
+      this.method = "GET";
+      this.url = "";
+      this.requestHeaders = new Headers();
+      this.responseHeaders = null;
+      this.mimeOverride = null;
+      this.chunks = [];
+      this.bytes = null;
+      this.controller = null;
+      this.sent = false;
+    }
+    open(method, url, async = true) {
+      if (!async) throw new DOMException("Synchronous XMLHttpRequest isn't supported", "InvalidAccessError");
+      this.controller?.abort();
+      this.method = String(method).toUpperCase();
+      this.url = String(url);
+      this.requestHeaders = new Headers();
+      this.responseHeaders = null;
+      this.chunks = [];
+      this.bytes = null;
+      this.status = 0;
+      this.statusText = "";
+      this.responseURL = "";
+      this.sent = false;
+      this.setState(_XMLHttpRequest.OPENED);
+    }
+    setRequestHeader(name, value) {
+      if (this.readyState !== _XMLHttpRequest.OPENED || this.sent) throw new DOMException("The object's state must be OPENED.", "InvalidStateError");
+      this.requestHeaders.append(name, value);
+    }
+    overrideMimeType(mime) {
+      this.mimeOverride = mime;
+    }
+    send(body = null) {
+      if (this.readyState !== _XMLHttpRequest.OPENED || this.sent) throw new DOMException("The object's state must be OPENED.", "InvalidStateError");
+      this.sent = true;
+      const controller = this.controller = new AbortController();
+      const hasBody = body !== null && body !== void 0 && this.method !== "GET" && this.method !== "HEAD";
+      this.fire(this, "loadstart");
+      if (hasBody) this.fire(this.upload, "loadstart");
+      const timer = this.timeout > 0 ? setTimeout(() => this.end("timeout"), this.timeout) : void 0;
+      fetch(this.url, {
+        method: this.method,
+        headers: this.requestHeaders,
+        body: hasBody ? body : null,
+        signal: controller.signal,
+        onUploadProgress: hasBody ? ({
+          loaded,
+          total
+        }) => this.fire(this.upload, "progress", loaded, total) : void 0
+      }).then(async (response) => {
+        if (this.controller !== controller) return;
+        this.status = response.status;
+        this.statusText = response.statusText;
+        this.responseURL = response.url;
+        this.responseHeaders = response.headers;
+        if (hasBody) {
+          this.fire(this.upload, "load");
+          this.fire(this.upload, "loadend");
+        }
+        this.setState(_XMLHttpRequest.HEADERS_RECEIVED);
+        const total = Number(response.headers.get("content-length")) || 0;
+        let loaded = 0;
+        if (response.body) {
+          for await (const chunk of response.body) {
+            if (this.controller !== controller) return;
+            this.chunks.push(chunk);
+            loaded += chunk.length;
+            if (this.readyState !== _XMLHttpRequest.LOADING) this.setState(_XMLHttpRequest.LOADING);
+            else this.setState(_XMLHttpRequest.LOADING, true);
+            this.fire(this, "progress", loaded, total);
+          }
+        }
+        if (this.controller !== controller) return;
+        clearTimeout(timer);
+        this.controller = null;
+        this.setState(_XMLHttpRequest.DONE);
+        this.fire(this, "load", loaded, total);
+        this.fire(this, "loadend", loaded, total);
+      }).catch(() => {
+        clearTimeout(timer);
+        if (this.controller !== controller) return;
+        this.controller = null;
+        this.status = 0;
+        this.setState(_XMLHttpRequest.DONE);
+        if (hasBody) {
+          this.fire(this.upload, "error");
+          this.fire(this.upload, "loadend");
+        }
+        this.fire(this, "error");
+        this.fire(this, "loadend");
+      });
+    }
+    abort() {
+      this.end("abort");
+    }
+    end(how) {
+      const controller = this.controller;
+      if (!controller) {
+        if (how === "abort" && this.readyState === _XMLHttpRequest.DONE) this.readyState = _XMLHttpRequest.UNSENT;
+        return;
+      }
+      this.controller = null;
+      controller.abort();
+      this.status = 0;
+      this.chunks = [];
+      this.setState(_XMLHttpRequest.DONE);
+      this.fire(this, how);
+      this.fire(this, "loadend");
+      if (how === "abort") this.readyState = _XMLHttpRequest.UNSENT;
+    }
+    getResponseHeader(name) {
+      return this.responseHeaders?.get(name) ?? null;
+    }
+    getAllResponseHeaders() {
+      if (!this.responseHeaders) return "";
+      let out = "";
+      for (const [name, value] of this.responseHeaders.entries()) out += `${name}: ${value}\r
+`;
+      return out;
+    }
+    get responseText() {
+      if (this.responseType !== "" && this.responseType !== "text") {
+        throw new DOMException(`responseText is only available if responseType is '' or 'text' (was '${this.responseType}')`, "InvalidStateError");
+      }
+      return this.text();
+    }
+    text() {
+      return __web.decodeUTF8(this.data(), false);
+    }
+    get response() {
+      switch (this.responseType) {
+        case "":
+        case "text":
+          return this.responseText;
+        case "json":
+          if (this.readyState !== _XMLHttpRequest.DONE) return null;
+          try {
+            return JSON.parse(this.text().replace(/^\ufeff/, ""));
+          } catch {
+            return null;
+          }
+        case "arraybuffer":
+          return this.readyState === _XMLHttpRequest.DONE ? this.data().slice().buffer : null;
+        case "blob":
+          return this.readyState === _XMLHttpRequest.DONE ? new Blob([this.data()], {
+            type: this.mimeOverride ?? this.getResponseHeader("content-type") ?? ""
+          }) : null;
+      }
+    }
+    /** The body so far, joined. */
+    data() {
+      if (this.bytes && !this.chunks.length) return this.bytes;
+      const previous = this.bytes ?? new Uint8Array(0);
+      const joined = new Uint8Array(previous.length + this.chunks.reduce((n, c) => n + c.length, 0));
+      joined.set(previous);
+      let offset = previous.length;
+      for (const chunk of this.chunks) {
+        joined.set(chunk, offset);
+        offset += chunk.length;
+      }
+      this.chunks = [];
+      this.bytes = joined;
+      return joined;
+    }
+    setState(state2, repeat = false) {
+      if (this.readyState === state2 && !repeat) return;
+      this.readyState = state2;
+      this.dispatchEvent(new Event("readystatechange"));
+    }
+    fire(target, type, loaded = 0, total = 0) {
+      target.dispatchEvent(new ProgressEvent(type, {
+        lengthComputable: total > 0,
+        loaded,
+        total
+      }));
+    }
+  };
+  _XMLHttpRequest.UNSENT = 0;
+  _XMLHttpRequest.OPENED = 1;
+  _XMLHttpRequest.HEADERS_RECEIVED = 2;
+  _XMLHttpRequest.LOADING = 3;
+  _XMLHttpRequest.DONE = 4;
+  var XMLHttpRequest = _XMLHttpRequest;
 
   // js/web/websocket.ts
   var MessageEvent = class extends Event {
@@ -34354,6 +34872,14 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     FormData,
     ReadableStream,
     ReadableStreamDefaultReader,
+    WritableStream,
+    WritableStreamDefaultWriter,
+    TransformStream,
+    TextDecoderStream,
+    TextEncoderStream,
+    XMLHttpRequest,
+    XMLHttpRequestEventTarget,
+    ProgressEvent,
     WebSocket,
     MessageEvent,
     CloseEvent,
@@ -34462,6 +34988,9 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     LineMark: () => LineMark,
     List: () => List,
     MapAnnotation: () => MapAnnotation,
+    MapCircle: () => MapCircle,
+    MapPolygon: () => MapPolygon,
+    MapPolyline: () => MapPolyline,
     MapView: () => MapView,
     Marker: () => Marker,
     Menu: () => Menu,
@@ -34515,6 +35044,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     canOpenURL: () => canOpenURL,
     createNavigationRef: () => createNavigationRef,
     defineNativeClass: () => defineNativeClass,
+    geolocation: () => geolocation,
     haptic: () => haptic,
     hot: () => hot,
     isNativeAvailable: () => isNativeAvailable,
@@ -34538,6 +35068,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     useAnimatedStyle: () => useAnimatedStyle,
     useColorScheme: () => useColorScheme,
     useEnvironment: () => useEnvironment,
+    useGeolocation: () => useGeolocation,
     useKeepAwake: () => useKeepAwake,
     useNativeValue: () => useNativeValue,
     useNavigation: () => useNavigation,
@@ -35259,6 +35790,9 @@ ${e.stack}` : String(e);
   var Video = host("Video");
   var WebView = host("WebView");
   var MapView = host("Map");
+  var MapPolyline = host("MapPolyline");
+  var MapPolygon = host("MapPolygon");
+  var MapCircle = host("MapCircle");
   var Marker = host("Marker");
   var MapAnnotation = host("MapAnnotation");
   var ShareLink = host("ShareLink");
@@ -36791,11 +37325,11 @@ ${e.stack}` : String(e);
   };
   function useNotificationListener(type, listener) {
     const $ = (0, import_compiler_runtime7.c)(6);
-    if ($[0] !== "5006df16a263148b3751e0468062d9f1124806a3ac47d02716e266595a9e4732") {
+    if ($[0] !== "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "5006df16a263148b3751e0468062d9f1124806a3ac47d02716e266595a9e4732";
+      $[0] = "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753";
     }
     const latest = (0, import_react8.useRef)(listener);
     let t0;
@@ -36881,11 +37415,11 @@ ${e.stack}` : String(e);
   }
   function useKeepAwake(t0) {
     const $ = (0, import_compiler_runtime7.c)(4);
-    if ($[0] !== "5006df16a263148b3751e0468062d9f1124806a3ac47d02716e266595a9e4732") {
+    if ($[0] !== "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753") {
       for (let $i = 0; $i < 4; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "5006df16a263148b3751e0468062d9f1124806a3ac47d02716e266595a9e4732";
+      $[0] = "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753";
     }
     const active = t0 === void 0 ? true : t0;
     let t1;
@@ -36901,6 +37435,124 @@ ${e.stack}` : String(e);
       t2 = $[3];
     }
     (0, import_react8.useEffect)(t1, t2);
+  }
+  function positionError(code, message) {
+    return {
+      code,
+      message,
+      PERMISSION_DENIED: 1,
+      POSITION_UNAVAILABLE: 2,
+      TIMEOUT: 3
+    };
+  }
+  var nextWatch = 1;
+  var watches = /* @__PURE__ */ new Map();
+  var geolocation = {
+    getCurrentPosition(success, error, options = {}) {
+      let done = false;
+      const timer = options.timeout !== void 0 && options.timeout !== Infinity ? setTimeout(() => {
+        if (done) return;
+        done = true;
+        error?.(positionError(3, "Timeout expired"));
+      }, options.timeout) : void 0;
+      void nativeCall("locationGet", {
+        enableHighAccuracy: options.enableHighAccuracy,
+        maximumAge: options.maximumAge ?? 0
+      }).then((result) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        if (result?.error) error?.(positionError(result.error.code, result.error.message));
+        else success(result);
+      });
+    },
+    watchPosition(success, error, options = {}) {
+      const id = nextWatch++;
+      const removePosition = listen("location", (position) => success(position));
+      const removeError = listen("locationError", (e) => error?.(positionError(e.code, e.message)));
+      watches.set(id, () => {
+        removePosition();
+        removeError();
+      });
+      void nativeCall("locationWatch", {
+        id,
+        enableHighAccuracy: options.enableHighAccuracy
+      });
+      return id;
+    },
+    clearWatch(id) {
+      const remove = watches.get(id);
+      if (!remove) return;
+      remove();
+      watches.delete(id);
+      void nativeCall("locationClear", {
+        id
+      });
+    }
+  };
+  globalThis.navigator.geolocation = geolocation;
+  function useGeolocation(t0) {
+    const $ = (0, import_compiler_runtime7.c)(8);
+    if ($[0] !== "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753") {
+      for (let $i = 0; $i < 8; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753";
+    }
+    let t1;
+    if ($[1] !== t0) {
+      t1 = t0 === void 0 ? {} : t0;
+      $[1] = t0;
+      $[2] = t1;
+    } else {
+      t1 = $[2];
+    }
+    const options = t1;
+    let t2;
+    if ($[3] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t2 = {
+        position: null,
+        error: null
+      };
+      $[3] = t2;
+    } else {
+      t2 = $[3];
+    }
+    const [state2, setState] = (0, import_react8.useState)(t2);
+    const {
+      enabled: t3,
+      enableHighAccuracy
+    } = options;
+    const enabled = t3 === void 0 ? true : t3;
+    let t4;
+    let t5;
+    if ($[4] !== enableHighAccuracy || $[5] !== enabled) {
+      t4 = () => {
+        if (!enabled) {
+          return;
+        }
+        const id = geolocation.watchPosition((position) => setState({
+          position,
+          error: null
+        }), (error) => setState((s) => ({
+          ...s,
+          error
+        })), {
+          enableHighAccuracy
+        });
+        return () => geolocation.clearWatch(id);
+      };
+      t5 = [enabled, enableHighAccuracy];
+      $[4] = enableHighAccuracy;
+      $[5] = enabled;
+      $[6] = t4;
+      $[7] = t5;
+    } else {
+      t4 = $[6];
+      t5 = $[7];
+    }
+    (0, import_react8.useEffect)(t4, t5);
+    return state2;
   }
 
   // js/environment.ts

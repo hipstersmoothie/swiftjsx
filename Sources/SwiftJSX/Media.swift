@@ -37,9 +37,13 @@ struct VideoHost: View {
         let item = AVPlayerItem(url: url)
         player.replaceCurrentItem(with: item)
         if let observer { player.removeTimeObserver(observer) }
+        // The observer also fires while paused (at load, after seeks): report
+        // only times that moved.
+        let last = LastTime()
         observer = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main) { [node, runtime, player] time in
             MainActor.assumeIsolated {
-                guard node.has("onTimeUpdate") else { return }
+                guard node.has("onTimeUpdate"), time.seconds != last.seconds else { return }
+                last.seconds = time.seconds
                 let duration = player.currentItem?.duration.seconds ?? .nan
                 runtime?.dispatch(node.id, "onTimeUpdate", ["currentTime": time.seconds, "duration": duration.isFinite ? duration : 0])
             }
@@ -60,6 +64,10 @@ struct VideoHost: View {
         }
         if node.bool("autoPlay"), !node.bool("paused") { player.play() }
     }
+}
+
+private final class LastTime: @unchecked Sendable {
+    var seconds: Double = 0
 }
 
 #if os(iOS)
@@ -188,9 +196,12 @@ extension WebViewHost: NSViewRepresentable {
 /// longitudeDelta }` (moves the camera when it changes);
 /// `onRegionChange(region)` when the user stops moving it; `onPress({
 /// latitude, longitude })`; `mapStyle` ("standard" | "imagery" | "hybrid").
-/// Children: `<Marker latitude longitude title tint systemImage>` and
+/// Children: `<Marker latitude longitude title tint systemImage>`,
 /// `<MapAnnotation latitude longitude title>` (any views, centered on the
-/// coordinate).
+/// coordinate), and overlays: `<MapPolyline coordinates>`,
+/// `<MapPolygon coordinates>`, `<MapCircle latitude longitude radius>`
+/// (`stroke`, `lineWidth`, `fill`). `showsUserLocation` (asks for
+/// when-in-use permission), `followsUserLocation`, `controls`.
 struct MapHost: View {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
@@ -199,6 +210,10 @@ struct MapHost: View {
     var body: some View {
         MapReader { proxy in
             Map(position: $position) {
+                if node.bool("showsUserLocation") { UserAnnotation() }
+                ForEach(node.children.filter { Self.overlayTypes.contains($0.type) }) { overlay in
+                    MapOverlay(node: overlay)
+                }
                 ForEach(node.children.filter { $0.type == "Marker" }) { marker in
                     let coordinate = Self.coordinate(marker)
                     let title = marker.string("title") ?? ""
@@ -215,6 +230,7 @@ struct MapHost: View {
                 }
             }
             .mapStyle(style)
+            .mapControls { MapControlsHost(names: node.prop("controls") as? [String] ?? []) }
             .onMapCameraChange(frequency: .onEnd) { context in
                 guard node.has("onRegionChange") else { return }
                 let region = context.region
@@ -231,7 +247,15 @@ struct MapHost: View {
         .onChange(of: regionKey, initial: true) { _, _ in
             if let region { withAnimation { position = .region(region) } }
         }
+        .onChange(of: node.bool("followsUserLocation"), initial: true) { _, follow in
+            if follow { withAnimation { position = .userLocation(fallback: position) } }
+        }
+        .onChange(of: node.bool("showsUserLocation") || node.bool("followsUserLocation"), initial: true) { _, wanted in
+            if wanted { LocationPermission.requestWhenInUse() }
+        }
     }
+
+    static let overlayTypes: Set<String> = ["MapPolyline", "MapPolygon", "MapCircle"]
 
     private var region: MKCoordinateRegion? {
         guard let dict = node.dict("region"), let lat = dict["latitude"] as? NSNumber, let lon = dict["longitude"] as? NSNumber else { return nil }
@@ -255,7 +279,70 @@ struct MapHost: View {
         }
     }
 
-    private static func coordinate(_ node: Node) -> CLLocationCoordinate2D {
+    static func coordinate(_ node: Node) -> CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: node.double("latitude") ?? 0, longitude: node.double("longitude") ?? 0)
+    }
+
+    static func coordinates(_ value: Any?) -> [CLLocationCoordinate2D] {
+        (value as? [Any] ?? []).compactMap { item in
+            if let dict = item as? [String: Any], let lat = dict["latitude"] as? NSNumber, let lon = dict["longitude"] as? NSNumber {
+                return CLLocationCoordinate2D(latitude: lat.doubleValue, longitude: lon.doubleValue)
+            }
+            // [latitude, longitude] pairs (GeoJSON is [longitude, latitude]: swap first).
+            if let pair = item as? [NSNumber], pair.count == 2 {
+                return CLLocationCoordinate2D(latitude: pair[0].doubleValue, longitude: pair[1].doubleValue)
+            }
+            return nil
+        }
+    }
+}
+
+/// A line, shape or circle drawn on the map.
+private struct MapOverlay: MapContent {
+    let node: Node
+
+    var body: some MapContent {
+        let stroke = color(node.prop("stroke")) ?? .blue
+        let width = node.cgFloat("lineWidth") ?? 3
+        let fill = color(node.prop("fill")) ?? .clear
+        switch node.type {
+        case "MapPolygon":
+            MapPolygon(coordinates: MapHost.coordinates(node.prop("coordinates")))
+                .foregroundStyle(fill)
+                .stroke(stroke, lineWidth: width)
+        case "MapCircle":
+            MapCircle(center: MapHost.coordinate(node), radius: node.double("radius") ?? 100)
+                .foregroundStyle(fill)
+                .stroke(stroke, lineWidth: width)
+        default:
+            MapPolyline(coordinates: MapHost.coordinates(node.prop("coordinates")))
+                .stroke(stroke, style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+        }
+    }
+}
+
+/// `controls={["userLocation", "compass", "scale", "pitchToggle"]}`.
+private struct MapControlsHost: View {
+    let names: [String]
+    var body: some View {
+        if names.contains("userLocation") { MapUserLocationButton() }
+        if names.contains("compass") { MapCompass() }
+        if names.contains("scale") { MapScaleView() }
+        if names.contains("pitchToggle") { MapPitchToggle() }
+    }
+}
+
+/// When-in-use location permission (asked once; the system remembers).
+@MainActor
+enum LocationPermission {
+    private static let manager = CLLocationManager()
+
+    static func requestWhenInUse() {
+        guard manager.authorizationStatus == .notDetermined else { return }
+        guard Bundle.main.object(forInfoDictionaryKey: "NSLocationWhenInUseUsageDescription") != nil else {
+            print("[SwiftJSX] Location needs NSLocationWhenInUseUsageDescription in the app's Info.plist.")
+            return
+        }
+        manager.requestWhenInUseAuthorization()
     }
 }

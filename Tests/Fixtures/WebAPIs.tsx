@@ -64,6 +64,38 @@ const checks: Checks = {
     for await (const chunk of new Response("hi").body!) local += new TextDecoder().decode(chunk);
     eq(local, "hi");
   },
+  async "stream pipes and transforms"() {
+    // A fetch body through a TextDecoderStream.
+    let text = "";
+    for await (const chunk of (await fetch("https://mock.test/stream")).body!.pipeThrough(new TextDecoderStream())) text += chunk;
+    eq(text, "one two three");
+    // A character split across chunks.
+    const bytes = new TextEncoder().encode("é👋");
+    const parts: string[] = [];
+    await ReadableStream.from([bytes.subarray(0, 1), bytes.subarray(1, 4), bytes.subarray(4)])
+      .pipeThrough(new TextDecoderStream())
+      .pipeTo(new WritableStream({ write: (chunk) => void parts.push(chunk) }));
+    eq(parts.join(""), "é👋");
+    // A custom transform, with flush.
+    const out: string[] = [];
+    const upper = new TransformStream<string, string>({
+      transform: (chunk, controller) => controller.enqueue(chunk.toUpperCase()),
+      flush: (controller) => controller.enqueue("!"),
+    });
+    await ReadableStream.from(["a", "b"]).pipeThrough(upper).pipeTo(new WritableStream({ write: (chunk) => void out.push(chunk) }));
+    eq(out.join(), "A,B,!");
+    // TextEncoderStream back to bytes.
+    let length = 0;
+    for await (const chunk of ReadableStream.from(["hé", "llo"]).pipeThrough(new TextEncoderStream())) length += chunk.length;
+    eq(length, 6);
+    // A writer's writes run in order, and close waits for them.
+    const log: number[] = [];
+    const writer = new WritableStream<number>({ write: (n) => new Promise((r) => setTimeout(() => r(void log.push(n)), 5 - n)) }).getWriter();
+    void writer.write(1);
+    void writer.write(2);
+    await writer.close();
+    eq(log.join(), "1,2");
+  },
   async "fetch FormData"() {
     const form = new FormData();
     form.append("note", "hello");
@@ -74,6 +106,63 @@ const checks: Checks = {
     eq(echo.contentType.startsWith("multipart/form-data; boundary="), true);
     eq(echo.body.includes('name="note"\r\n\r\nhello'), true);
     eq(echo.body.includes('filename="me.png"\r\nContent-Type: image/png\r\n\r\nPNGDATA'), true);
+  },
+  async "formData() parses multipart bodies"() {
+    const form = new FormData();
+    form.append("note", "héllo");
+    form.append("photo", new Blob(["PNG\r\nDATA"], { type: "image/png" }), "me.png");
+    const parsed = await new Response(form).formData();
+    eq(parsed.get("note"), "héllo");
+    const photo = parsed.get("photo") as File;
+    eq(photo.name, "me.png");
+    eq(photo.type, "image/png");
+    eq(await photo.text(), "PNG\r\nDATA");
+  },
+  async "XMLHttpRequest"() {
+    const send = (setup: (xhr: XMLHttpRequest) => void, body?: any) =>
+      new Promise<{ xhr: XMLHttpRequest; events: string[] }>((resolve) => {
+        const xhr = new XMLHttpRequest();
+        const events: string[] = [];
+        xhr.onreadystatechange = () => events.push(`state${xhr.readyState}`);
+        for (const type of ["load", "error", "abort", "timeout"]) xhr.addEventListener(type, () => events.push(type));
+        xhr.onloadend = () => resolve({ xhr, events });
+        setup(xhr);
+        xhr.send(body);
+      });
+    const json = await send((xhr) => {
+      xhr.open("GET", "https://mock.test/json?a=1");
+      xhr.responseType = "json";
+    });
+    eq(json.xhr.status, 200);
+    eq(json.xhr.response.query, "a=1");
+    eq(json.xhr.getResponseHeader("X-Test"), "yes");
+    eq(json.xhr.getAllResponseHeaders().includes("x-test: yes\r\n"), true);
+    eq(json.events.join(), "state1,state2,state3,state4,load");
+    const echo = await send((xhr) => {
+      xhr.open("POST", "https://mock.test/echo");
+      xhr.setRequestHeader("X-Custom", "42");
+    }, "payload");
+    eq(JSON.parse(echo.xhr.responseText).body, "payload");
+    eq(JSON.parse(echo.xhr.responseText).custom, "42");
+    const failed = await send((xhr) => xhr.open("GET", "https://mock.test/fail"));
+    eq(failed.xhr.status, 0);
+    eq(failed.events.at(-1), "error");
+    const timedOut = await send((xhr) => {
+      xhr.open("GET", "https://mock.test/slow");
+      xhr.timeout = 30;
+    });
+    eq(timedOut.events.at(-1), "timeout");
+    const aborted = await send((xhr) => {
+      xhr.open("GET", "https://mock.test/slow");
+      setTimeout(() => xhr.abort(), 20);
+    });
+    eq(aborted.events.at(-1), "abort");
+    eq(aborted.xhr.readyState, 0);
+    const binary = await send((xhr) => {
+      xhr.open("GET", "https://mock.test/json");
+      xhr.responseType = "arraybuffer";
+    });
+    eq(binary.xhr.response instanceof ArrayBuffer, true);
   },
   async "requestAnimationFrame"() {
     const times: number[] = [];
@@ -152,6 +241,8 @@ const checks: Checks = {
     eq(bytes.length, 11);
     eq(new TextDecoder().decode(bytes), "héllo 👋");
     eq(new TextDecoder().decode(new DataView(bytes.buffer, 0, 1)), "h");
+    // A view into a buffer: native code reads from its byteOffset.
+    eq(new TextDecoder().decode(bytes.subarray(1, 3)), "é");
     let threw = false;
     try {
       new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array([0xff]));

@@ -141,6 +141,7 @@ public final class JSXRuntime {
     }
 
     @ObservationIgnored private lazy var speaker = Speaker(runtime: self)
+    @ObservationIgnored private lazy var locator = Locator(runtime: self)
 
     func setEnvironment(_ values: [String: String]) {
         guard values != environment else { return }
@@ -242,6 +243,14 @@ public final class JSXRuntime {
                 let voices = UncheckedSendable(Speaker.voices())
                 await MainActor.run { engine?.resolve(callback: callback, value: voices.value) }
             }
+        case "locationGet":
+            locator.get(args, callback: callback)
+        case "locationWatch":
+            locator.watch(args)
+            engine.resolve(callback: callback, value: NSNull())
+        case "locationClear":
+            locator.clear(args)
+            engine.resolve(callback: callback, value: NSNull())
         case "haptic":
             playHaptic(args["kind"] as? String)
             engine.resolve(callback: callback, value: NSNull())

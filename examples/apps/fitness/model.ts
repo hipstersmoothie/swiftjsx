@@ -1,6 +1,6 @@
 // Metrics, time ranges, and turning days into chart series and summaries.
-import { addDays, addMinutes, format, isSameDay, startOfWeek, differenceInCalendarDays } from "date-fns";
-import type { Color } from "swiftjsx";
+import { addDays, addHours, addMinutes, format, isSameDay, startOfHour, startOfWeek, differenceInCalendarDays } from "date-fns";
+import type { CalendarUnit, Color } from "swiftjsx";
 import { getData, GOALS, STAGES, type Day, type Stage } from "./data";
 import { STAGE_COLORS, STAGE_NAMES } from "./theme";
 import { compact, dateRange, hoursMinutes, int, percentChange } from "./format";
@@ -74,8 +74,8 @@ export type ChartKind = "bars" | "range" | "stacked" | "line" | "timeline";
 export type ChartPoint = {
   /** Title of the slot when selected ("Tue, Oct 21", "9 AM – 10 AM"). */
   label: string;
-  /** X-axis label drawn at the slot's leading edge. */
-  axis?: string;
+  /** Where the slot is: the start of its day / week / hour (with `unit`), or a number. */
+  x: Date | number;
   /** Bar/line height; the average on range charts; the total on stacked ones. */
   value: number;
   min?: number;
@@ -90,11 +90,18 @@ export type ChartPoint = {
 export type ChartData = {
   kind: ChartKind;
   points: ChartPoint[];
+  /** Date x: the span each point stands for (bars fill it). */
+  unit?: CalendarUnit;
+  /** X-axis labels: at these x values, in this format (a `ChartAxis` format: "weekdayNarrow", "{}m"…). */
+  ticks?: (Date | number)[];
+  tickFormat?: string;
+  /** The x span shown (default: the marks'). */
+  xDomain?: [Date, Date];
   color: Color;
   partColors?: Color[];
   goal?: number;
-  /** Timeline: lanes top to bottom, with their bars in slot units. */
-  lanes?: { name: string; color: Color; bars: { from: number; to: number }[] }[];
+  /** Timeline: lanes top to bottom, with their bars. */
+  lanes?: { name: string; color: Color; bars: { from: Date; to: Date }[] }[];
   /** Line charts: a color per point (heart-rate zones). */
   pointColors?: Color[];
   /** Range charts: draw a line through the averages. */
@@ -103,7 +110,22 @@ export type ChartData = {
   yFloor?: number;
 };
 
-type Bucket = { label: string; axis?: string; days: Day[]; from: Date; to: Date };
+type Bucket = { label: string; days: Day[]; from: Date; to: Date };
+
+/** The x axis of a range's buckets: their unit and where labels go. */
+function bucketAxis(range: Exclude<Range, "D">, list: Bucket[]): Pick<ChartData, "unit" | "ticks" | "tickFormat"> {
+  if (range === "W") return { unit: "day", ticks: list.map((b) => b.from), tickFormat: "weekdayNarrow" };
+  if (range === "M") return { unit: "day", ticks: list.filter((_, i) => i % 7 === 2).map((b) => b.from), tickFormat: "monthDay" };
+  // 6M: a label on the first of each month.
+  const today = getData().today;
+  const months = list.flatMap((b) => [0, 1, 2, 3, 4, 5, 6].map((k) => addDays(b.from, k)).filter((d) => d.getDate() === 1 && d <= today));
+  return { unit: "weekOfYear", ticks: months, tickFormat: "month" };
+}
+
+/** Today by the hour. */
+function hourAxis(day: Day): Pick<ChartData, "unit" | "ticks" | "tickFormat"> {
+  return { unit: "hour", ticks: [0, 6, 12, 18].map((h) => addHours(day.date, h)), tickFormat: "hour" };
+}
 
 /** Days (or weeks, for 6M) of a range, ending today; `back` = 1 is the period before. */
 function buckets(range: Exclude<Range, "D">, back = 0): Bucket[] {
@@ -112,9 +134,8 @@ function buckets(range: Exclude<Range, "D">, back = 0): Bucket[] {
   if (range === "W" || range === "M") {
     const n = range === "W" ? 7 : 30;
     const end = last - back * n;
-    return days.slice(Math.max(0, end - n + 1), end + 1).map((d, i) => ({
+    return days.slice(Math.max(0, end - n + 1), end + 1).map((d) => ({
       label: format(d.date, "EEE, MMM d"),
-      axis: range === "W" ? format(d.date, "EEEEE") : i % 7 === 2 ? format(d.date, "MMM d") : undefined,
       days: [d],
       from: d.date,
       to: d.date,
@@ -128,10 +149,8 @@ function buckets(range: Exclude<Range, "D">, back = 0): Bucket[] {
     const from = addDays(firstWeek, w * 7);
     const to = addDays(from, 6);
     const inWeek = days.filter((d) => d.date >= from && d.date <= to);
-    const month = [0, 1, 2, 3, 4, 5, 6].map((k) => addDays(from, k)).find((d) => d.getDate() === 1 && d <= today);
     out.push({
       label: `${format(from, "MMM d")} – ${format(to > today ? today : to, "MMM d")}`,
-      axis: month ? format(month, "MMM") : undefined,
       days: inWeek,
       from,
       to,
@@ -149,43 +168,50 @@ export function series(metric: Metric, range: Range): ChartData {
 
   if (metric.id === "sleep") {
     if (hourly) return sleepTimeline(today);
+    const list = buckets(range);
     return {
       kind: "stacked",
       color: metric.color,
       partColors: [STAGE_COLORS.deep, STAGE_COLORS.core, STAGE_COLORS.rem, STAGE_COLORS.awake],
       goal: GOALS.sleepHours,
-      points: buckets(range).map((b) => {
+      ...bucketAxis(range, list),
+      points: list.map((b) => {
         const parts = (["deep", "core", "rem", "awake"] as Stage[]).map((s) => mean(b.days.map((d) => d.sleep.totals[s])) / 60);
-        return { label: b.label, axis: b.axis, value: sum(parts.slice(0, 3)), parts, empty: !b.days.length };
+        return { label: b.label, x: b.from, value: sum(parts.slice(0, 3)), parts, empty: !b.days.length };
       }),
     };
   }
 
   if (metric.id === "heart-rate") {
+    const list = hourly ? [] : buckets(range as Exclude<Range, "D">);
     const points: ChartPoint[] = hourly
       ? today.hourly.hrAvg.map((avg, h) => ({
           label: `${hourLabel(h)} – ${hourLabel((h + 1) % 24)}`,
-          axis: h % 6 === 0 ? hourLabel(h) : undefined,
+          x: addHours(today.date, h),
           value: avg,
           min: today.hourly.hrMin[h],
           max: today.hourly.hrMax[h],
         }))
-      : buckets(range).map((b) => ({
+      : list.map((b) => ({
           label: b.label,
-          axis: b.axis,
+          x: b.from,
           value: Math.round(mean(b.days.map((d) => d.hrAvg))),
           min: Math.min(...b.days.map((d) => d.hrMin)),
           max: Math.max(...b.days.map((d) => d.hrMax)),
           empty: !b.days.length,
         }));
-    return { kind: "range", color: metric.color, points, line: true };
+    const axis = hourly ? hourAxis(today) : bucketAxis(range as Exclude<Range, "D">, list);
+    return { kind: "range", color: metric.color, points, line: true, ...axis };
   }
 
   const key = metric.id as "steps" | "energy" | "exercise" | "stand";
-  const points: ChartPoint[] = hourly
-    ? today.hourly[key].map((v, h) => ({ label: `${hourLabel(h)} – ${hourLabel((h + 1) % 24)}`, axis: h % 6 === 0 ? hourLabel(h) : undefined, value: v }))
-    : buckets(range).map((b) => ({ label: b.label, axis: b.axis, value: mean(b.days.map(metric.daily)), empty: !b.days.length }));
-  return { kind: "bars", color: metric.color, points, goal: hourly ? undefined : metric.goal };
+  if (hourly) {
+    const points = today.hourly[key].map((v, h) => ({ label: `${hourLabel(h)} – ${hourLabel((h + 1) % 24)}`, x: addHours(today.date, h), value: v }));
+    return { kind: "bars", color: metric.color, points, ...hourAxis(today) };
+  }
+  const list = buckets(range);
+  const points = list.map((b) => ({ label: b.label, x: b.from, value: mean(b.days.map(metric.daily)), empty: !b.days.length }));
+  return { kind: "bars", color: metric.color, points, goal: metric.goal, ...bucketAxis(range, list) };
 }
 
 /** Last night as a hypnogram: one lane per stage, in 5-minute slots. */
@@ -195,24 +221,26 @@ function sleepTimeline(day: Day): ChartData {
   const length = (sleep.end.getTime() - sleep.start.getTime()) / 60_000;
   const count = Math.ceil(length / SLOT);
   const points: ChartPoint[] = [];
-  let lastHour = -1;
   for (let i = 0; i < count; i++) {
     const at = addMinutes(sleep.start, i * SLOT);
     const minute = i * SLOT;
     const stage = sleep.segments.find((s) => minute >= s.start && minute < s.end)?.stage ?? "awake";
-    const hour = at.getHours();
-    const axis = hour !== lastHour && lastHour !== -1 && hour % 2 === 0 ? format(at, "h a") : undefined;
-    lastHour = hour;
-    points.push({ label: format(at, "h:mm a"), axis, value: 0, stage });
+    points.push({ label: format(at, "h:mm a"), x: at, value: 0, stage });
   }
+  // A label every two hours, on the hour.
+  const ticks: Date[] = [];
+  for (let at = addHours(startOfHour(sleep.start), 1); at < sleep.end; at = addHours(at, 1)) if (at.getHours() % 2 === 0) ticks.push(at);
   return {
     kind: "timeline",
     color: STAGE_COLORS.core,
     points,
+    ticks,
+    tickFormat: "hour",
+    xDomain: [sleep.start, sleep.end],
     lanes: STAGES.map((stage) => ({
       name: STAGE_NAMES[stage],
       color: STAGE_COLORS[stage],
-      bars: sleep.segments.filter((s) => s.stage === stage).map((s) => ({ from: s.start / SLOT, to: s.end / SLOT })),
+      bars: sleep.segments.filter((s) => s.stage === stage).map((s) => ({ from: addMinutes(sleep.start, s.start), to: addMinutes(sleep.start, s.end) })),
     })),
   };
 }

@@ -51,7 +51,7 @@ export function TabsDemo() {
           </VStack>
         </Tab>
 
-        <Tab value="settings" title="Settings" systemImage="gear">
+        <Tab value="settings" title="Settings" systemImage="gear" accessibilityIdentifier="settings-tab">
           <VStack spacing={16} padding={24}>
             <Text>Tabs are controlled like inputs: `selection` + `onSelectionChange`.</Text>
             <Button title="Go to Inbox" buttonStyle="borderedProminent" onPress={() => setTab("inbox")} />

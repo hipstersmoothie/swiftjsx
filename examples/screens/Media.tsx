@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Screen, ScrollView, VStack, HStack, Text, Button, Video, WebView, MapView, Marker, MapAnnotation, Image, type MapRegion } from "swiftjsx";
+import {
+  Screen, ScrollView, VStack, HStack, Text, Button, Video, WebView, MapView, Marker, MapAnnotation, MapPolyline, MapCircle, Image, Toggle,
+  useGeolocation, type MapRegion,
+} from "swiftjsx";
 
 const VIDEO = "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8";
 const PAGE = `<!doctype html><meta name="viewport" content="width=device-width">
@@ -8,6 +11,10 @@ const PAGE = `<!doctype html><meta name="viewport" content="width=device-width">
   <button onclick="window.webkit.messageHandlers.swiftjsx.postMessage({ clicked: Date.now() })">Send a message</button>
 </body>`;
 const PARK: MapRegion = { latitude: 37.3349, longitude: -122.009, latitudeDelta: 0.02 };
+// A walk from Infinite Loop to Apple Park.
+const WALK: [number, number][] = [
+  [37.3318, -122.0312], [37.3323, -122.0262], [37.3327, -122.0202], [37.3331, -122.0151], [37.3349, -122.0128], [37.3349, -122.009],
+];
 
 export function MediaDemo() {
   const [paused, setPaused] = useState(true);
@@ -16,6 +23,8 @@ export function MediaDemo() {
   const [loaded, setLoaded] = useState("");
   const [region, setRegion] = useState(PARK);
   const [center, setCenter] = useState("");
+  const [locate, setLocate] = useState(false);
+  const { position, error } = useGeolocation({ enabled: locate });
 
   return (
     <Screen title="Media" titleDisplayMode="inline">
@@ -47,14 +56,24 @@ export function MediaDemo() {
             onPress={(c) => setRegion({ ...c, latitudeDelta: 0.02 })}
             frame={{ height: 240 }}
             cornerRadius={12}
+            showsUserLocation={locate}
+            controls={["compass", "scale", ...(locate ? (["userLocation"] as const) : [])]}
             accessibilityIdentifier="map"
           >
+            <MapPolyline coordinates={WALK} stroke="indigo" lineWidth={4} />
+            <MapCircle latitude={37.3349} longitude={-122.009} radius={350} fill="green/15" stroke="green" lineWidth={1} />
             <Marker latitude={37.3349} longitude={-122.009} title="Apple Park" systemImage="apple.logo" tint="gray" />
             <MapAnnotation latitude={37.3318} longitude={-122.0312} title="Infinite Loop">
               <Image systemName="infinity.circle.fill" font="title" foregroundStyle="white" background="indigo" cornerRadius="capsule" />
             </MapAnnotation>
           </MapView>
           <Text font="footnote" foregroundStyle="secondary" accessibilityIdentifier="map-center">{center ? `Centered on ${center}` : "Tap the map to move it"}</Text>
+          <Toggle label="Show my location" value={locate} onChange={setLocate} />
+          {locate && (
+            <Text font="footnote" monospacedDigit foregroundStyle="secondary" accessibilityIdentifier="my-location">
+              {error ? `Location error: ${error.message}` : position ? `You: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)} (±${Math.round(position.coords.accuracy)} m)` : "Locating…"}
+            </Text>
+          )}
         </VStack>
       </ScrollView>
     </Screen>
