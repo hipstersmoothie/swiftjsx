@@ -32,6 +32,7 @@ function App() {
   const [hop, setHop] = useState("none");
   const [classes, setClasses] = useState("none");
   const [promise, setPromise] = useState("none");
+  const [exception, setException] = useState("none");
   const [after, setAfter] = useState("none");
   const [note, setNote] = useState("none");
   const [rejected, setRejected] = useState("none");
@@ -54,9 +55,6 @@ function App() {
           cache.delegate = keepAlive(CacheDelegate.new());
           cache.setObjectForKey("one", "k1");
           cache.setObjectForKey("two", "k2");
-          // NSCache evicts what's left when it's freed, after this JS context
-          // may be gone: unhook the JS delegate first.
-          cache.delegate = null;
           setClasses(`${first}|${second}|evicted ${evicted.join(",")}`);
         }}
       />
@@ -71,6 +69,29 @@ function App() {
         }}
       />
       <Text>promise {promise}</Text>
+      <Button
+        title="exception"
+        onPress={() => {
+          try {
+            native.NSArray.array().objectAtIndex(3);
+            setException("no throw");
+          } catch (e) {
+            setException(`threw ${String((e as Error).message ?? e).slice(0, 40)}`);
+          }
+        }}
+      />
+      <Text>exception {exception}</Text>
+      <Button
+        title="leave a delegate behind"
+        onPress={() => {
+          // An NSCache with a JS delegate, parked where it outlives this runtime.
+          const cache = native.NSCache.new();
+          cache.countLimit = 1;
+          cache.delegate = keepAlive(CacheDelegate.new());
+          cache.setObjectForKey("left", "k1");
+          native.NSThread.mainThread.threadDictionary.setObjectForKey(cache, "SwiftJSXTestCache" as never);
+        }}
+      />
 
       <Text>process {process ?? "…"}</Text>
       <Text>reads {refreshes ?? 0}</Text>

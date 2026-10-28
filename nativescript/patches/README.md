@@ -1,9 +1,12 @@
 # Patches for NativeScript/napi-ios
 
-All six patches are against `NativeScript/napi-ios` main at `5b697b3`
+The seven `napi-*` patches are against `NativeScript/napi-ios` main at `5b697b3`
 (2026-09-12). They apply with `git apply` from the repo root, alone or together.
 Applied together, they produce exactly the sources that were built and tested
-(`napi-ios-main-thread-guard.patch` was built and tested on top of the other five).
+(`napi-ios-main-thread-guard.patch` was built and tested on top of the five before
+it, `napi-ios-dead-context-callbacks.patch` on top of all six).
+`libffi-darwin-unwind.patch` is against the `libffi` submodule at `5f28db3`
+(applied inside `libffi/`).
 `napi-ios-ref-leaks.patch` relies on the weak-ref fix: it deletes references in
 finalizers, and reads cache entries that must reliably return null once their
 target is dead.
@@ -386,6 +389,55 @@ its few instructions per call.
 - The hint ("Wrap it in onMain(() => ...)") names the embedder's helper.
   Upstream would want it configurable.
 - Tested only in the simulator.
+
+## `napi-ios-dead-context-callbacks.patch`: callbacks into a destroyed JS context
+
+**Symptom.** A crash (no message) after a runtime is torn down: a full reload, or
+a test's runtime freed. Reproduced with an `NSCache` whose delegate is a class
+defined in JS: when the cache was freed after its runtime, it evicted its
+objects, called `cache:willEvictObject:`, and crashed.
+
+**Cause.** The ffi closures behind JS-implemented methods, functions and blocks
+(`JSMethodCallback`, `JSFunctionCallback`, `JSBlockCallback`) keep the
+`napi_env` they were made in. Native objects can outlive it; calling back used
+the freed env and bridge state.
+
+**Fix.** Each `Closure` already records its bridge state and lifetime token. The
+callbacks check `IsBridgeStateLive` first; for a dead context they zero the
+return value and return without touching the env. Test:
+`NativeTests.callbacksIntoADeadContextAreIgnored`.
+
+## `libffi-darwin-unwind.patch`, plus a rebuild: Objective-C exceptions
+
+**Symptom.** An Objective-C exception inside a native call
+(`NSArray.array().objectAtIndex(3)`, an unrecognized selector) terminated the
+app ("libc++abi: terminating due to uncaught exception of type NSException")
+instead of throwing in JS, although `objcNativeCall` wraps the call in
+`@try/@catch` and rethrows to JS.
+
+**Cause.** The throw has to unwind through `ffi_call_SYSV`, and the prebuilt
+`NativeScript/libffi/*/libffi.a` have no unwind info for it: `sysv.o` has only a
+`__text` section. They were built with `-fembed-bitcode` (`scripts/build_libffi.sh`),
+which most likely made configure's `.cfi` check fail. With no FDE, the unwinder
+stops there and calls `std::terminate`.
+
+**Fix.** `scripts/build-nativescript.sh` rebuilds the arm64 slices (device,
+simulator, macOS) from the pinned `libffi` submodule without bitcode, so CFI is
+on, and swaps them into `NativeScript/libffi/` (x86_64 slices keep the prebuilt
+code). With CFI on, `src/aarch64/sysv.S` doesn't assemble for Mach-O ("invalid
+CFI advance_loc expression"); the patch fixes that:
+- `cfi_startproc` goes after each global label, not before: on Mach-O a global
+  label starts a new atom, and a CFI region can't span two.
+- The two jump tables lose their `.align 4`: Mach-O can't encode a CFI advance
+  across alignment padding, and both tables are reached with `adr` from their own
+  label, so alignment isn't needed.
+- `ffi_closure_SYSV` drops its epilogue CFI (after the jump table, the same
+  advance problem). Nothing in the epilogue calls or throws, so unwinding never
+  needs it.
+
+Exceptions now reach JS as errors with the Objective-C reason
+(`*** -[__NSArray0 objectAtIndex:]: index 3 beyond bounds…`). Test:
+`NativeTests.objectiveCExceptionsThrowInJS`. Tested on macOS and the iOS simulator.
 
 ## Not patched (found while testing; worth reporting upstream)
 - **Building with Xcode 27.** `NativeScript/CMakeLists.txt` sets the iOS deployment

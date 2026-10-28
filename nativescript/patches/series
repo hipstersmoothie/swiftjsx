@@ -5,3 +5,4 @@ napi-ios-ref-leaks.patch
 napi-ios-pointer-lookups.patch
 napi-ios-main-thread-callbacks.patch
 napi-ios-main-thread-guard.patch
+napi-ios-dead-context-callbacks.patch

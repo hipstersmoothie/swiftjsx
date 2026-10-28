@@ -11,7 +11,7 @@
 #   build/nativescript/macos/…                    used by `swift run Demo` / `swift test`
 #   nativescript/types/ios/*.d.ts                 types for `native` (then: node scripts/gen-native-types.mjs)
 #
-# Needs: Xcode, Node, cmake on PATH, ~1.5 GB of disk (LLVM 17 is downloaded
+# Needs: Xcode, Node, cmake, autoconf and automake on PATH, ~1.5 GB of disk (LLVM 17 is downloaded
 # for NativeScript's metadata generator). Takes 10–20 minutes the first time.
 set -euo pipefail
 
@@ -23,6 +23,7 @@ OUT="$ROOT/build/nativescript"
 step() { printf "\n\033[1m==> %s\033[0m\n" "$*"; }
 
 command -v cmake >/dev/null || { echo "error: cmake not found (brew install cmake, or pipx install cmake)"; exit 1; }
+command -v autoreconf >/dev/null || { echo "error: autoconf/automake not found (brew install autoconf automake)"; exit 1; }
 
 step "NativeScript/napi-ios @ ${PIN:0:7} in $WORK"
 if [ ! -d "$WORK/.git" ]; then
@@ -42,6 +43,32 @@ grep -v '^#' "$ROOT/nativescript/patches/series" | while read -r patch; do
   echo "  $patch"
   git apply "$ROOT/nativescript/patches/$patch"
 done
+# libffi with unwind info. NativeScript's prebuilt libffi.a was built with
+# -fembed-bitcode, so its assembly has no CFI: an Objective-C exception can't
+# unwind through ffi_call and terminates the app instead of reaching
+# NativeScript's @catch (which turns it into a JS error). Rebuild the arm64
+# slices from NativeScript's pinned libffi, with a patch that makes the CFI
+# assemble for Mach-O. Needs autoconf and automake (brew install autoconf automake).
+step "libffi (arm64, with unwind info)"
+git submodule update --init --depth 1 libffi
+git -C libffi checkout -q -- . && git -C libffi clean -qfdx
+git -C libffi apply "$ROOT/nativescript/patches/libffi-darwin-unwind.patch"
+(cd libffi && ./autogen.sh >/dev/null 2>&1)
+build_libffi() { # $1: clang target, $2: SDK name → prints the built libffi.a path
+  local dir="$WORK/.libffi-build/$1"
+  rm -rf "$dir" && mkdir -p "$dir"
+  (cd "$dir" &&
+    CC="$(xcrun -f clang) -target $1 -isysroot $(xcrun --sdk "$2" --show-sdk-path)" \
+      "$WORK/libffi/configure" --disable-shared --disable-docs --host=aarch64-apple-darwin >/dev/null &&
+    make -j8 >/dev/null)
+  echo "$dir/.libs/libffi.a"
+}
+cp "$(build_libffi arm64-apple-ios17.0 iphoneos)" NativeScript/libffi/iphoneos-arm64/libffi.a
+lipo NativeScript/libffi/iphonesimulator-universal/libffi.a -replace arm64 "$(build_libffi arm64-apple-ios17.0-simulator iphonesimulator)" \
+  -output NativeScript/libffi/iphonesimulator-universal/libffi.a
+lipo NativeScript/libffi/macosx-universal/libffi.a -replace arm64 "$(build_libffi arm64-apple-macos11.0 macosx)" \
+  -output NativeScript/libffi/macosx-universal/libffi.a
+
 # Xcode 27 rejects NativeScript's iOS 13 deployment target (build-only tweak, not a patch).
 sed -i '' 's/DEPLOYMENT_TARGET "13.0"/DEPLOYMENT_TARGET "17.0"/' NativeScript/CMakeLists.txt
 

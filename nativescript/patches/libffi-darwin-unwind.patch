@@ -1,0 +1,66 @@
+diff --git a/src/aarch64/sysv.S b/src/aarch64/sysv.S
+index 6761ee1..20adc42 100644
+--- a/src/aarch64/sysv.S
++++ b/src/aarch64/sysv.S
+@@ -76,8 +76,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
+    x5 closure
+ */
+ 
+-	cfi_startproc
+ CNAME(ffi_call_SYSV):
++	cfi_startproc
+ 	/* Use a stack frame allocated by our caller.  */
+ 	cfi_def_cfa(x1, 32);
+ 	stp	x29, x30, [x1]
+@@ -130,7 +130,8 @@ CNAME(ffi_call_SYSV):
+ 	   For integer data, note that we're storing into ffi_arg
+ 	   and therefore we want to extend to 64 bits; these types
+ 	   have two consecutive entries allocated for them.  */
+-	.align	4
++	/* No .align: Mach-O can't encode a CFI advance across alignment padding,
++	   and the table is reached by adr from its own label.  */
+ 0:	ret				/* VOID */
+ 	nop
+ 1:	str	x0, [x3]		/* INT64 */
+@@ -245,8 +246,8 @@ CNAME(ffi_closure_SYSV_V):
+ #endif
+ 
+ 	.align	4
+-	cfi_startproc
+ CNAME(ffi_closure_SYSV):
++	cfi_startproc
+ 	stp     x29, x30, [sp, #-ffi_closure_SYSV_FS]!
+ 	cfi_adjust_cfa_offset (ffi_closure_SYSV_FS)
+ 	cfi_rel_offset (x29, 0)
+@@ -278,7 +279,8 @@ CNAME(ffi_closure_SYSV):
+ 	br	x1
+ 
+ 	/* Note that each table entry is 2 insns, and thus 8 bytes.  */
+-	.align	4
++	/* No .align: Mach-O can't encode a CFI advance across alignment padding,
++	   and the table is reached by adr from its own label.  */
+ 0:	b	99f			/* VOID */
+ 	nop
+ 1:	ldr	x0, [x3]		/* INT64 */
+@@ -343,9 +345,8 @@ CNAME(ffi_closure_SYSV):
+ 	nop
+ 31:					/* reserved */
+ 99:	ldp     x29, x30, [sp], #ffi_closure_SYSV_FS
+-	cfi_adjust_cfa_offset (-ffi_closure_SYSV_FS)
+-	cfi_restore (x29)
+-	cfi_restore (x30)
++	/* No epilogue CFI: Mach-O can't encode the advance past the jump table,
++	   and nothing here calls or throws, so unwinding never needs it.  */
+ 	ret
+ 	cfi_endproc
+ 
+@@ -404,8 +405,8 @@ CNAME(ffi_go_closure_SYSV_V):
+ #endif
+ 
+ 	.align	4
+-	cfi_startproc
+ CNAME(ffi_go_closure_SYSV):
++	cfi_startproc
+ 	stp     x29, x30, [sp, #-ffi_closure_SYSV_FS]!
+ 	cfi_adjust_cfa_offset (ffi_closure_SYSV_FS)
+ 	cfi_rel_offset (x29, 0)

@@ -55,6 +55,28 @@ struct NativeTests {
         #expect(await eventually { runtime.texts().contains("promise false then false") })
     }
 
+    @Test func objectiveCExceptionsThrowInJS() async throws {
+        let runtime = try await makeRuntime()
+        runtime.press("exception")
+        #expect(await eventually { runtime.texts().contains { $0.hasPrefix("exception threw") } })
+        #expect(runtime.error == nil)
+    }
+
+    @Test func callbacksIntoADeadContextAreIgnored() async throws {
+        var runtime: JSXRuntime? = try await makeRuntime()
+        runtime!.press("leave a delegate behind")
+        #expect(await eventually { Thread.main.threadDictionary["SwiftJSXTestCache"] != nil })
+        weak var gone = runtime
+        runtime = nil
+        #expect(await eventually { gone == nil })
+        try await Task.sleep(for: .milliseconds(300))
+        // Evicting calls the delegate, whose JS context is gone: ignored, no crash.
+        let cache = try #require(Thread.main.threadDictionary["SwiftJSXTestCache"] as? NSCache<AnyObject, AnyObject>)
+        cache.setObject("next" as NSString, forKey: "k2" as NSString)
+        cache.removeAllObjects()
+        Thread.main.threadDictionary.removeObject(forKey: "SwiftJSXTestCache")
+    }
+
     @Test func errorsInsideOnMainReject() async throws {
         let runtime = try await makeRuntime()
         runtime.press("reject")

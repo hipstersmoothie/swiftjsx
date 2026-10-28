@@ -1,0 +1,47 @@
+--- a/NativeScript/ffi/napi/Closure.mm
++++ b/NativeScript/ffi/napi/Closure.mm
+@@ -158,6 +158,14 @@
+ 
+ void JSMethodCallback(ffi_cif* cif, void* ret, void* args[], void* data) {
+   Closure* closure = (Closure*)data;
++  // A native object outlived its JS context (a torn-down runtime, a full
++  // reload) and called back: answer zero instead of calling into freed memory.
++  if (!IsBridgeStateLive(closure->bridgeState, closure->bridgeStateToken)) {
++    if (ret != nullptr && cif->rtype->size > 0) {
++      memset(ret, 0, std::max(cif->rtype->size, sizeof(ffi_arg)));
++    }
++    return;
++  }
+   napi_env env = closure->env;
+   // Methods always run on the calling thread.
+   MainThreadCallbackScope mainThreadScope;
+@@ -271,6 +279,14 @@
+ 
+ void JSFunctionCallback(ffi_cif* cif, void* ret, void* args[], void* data) {
+   Closure* closure = (Closure*)data;
++  // A native object outlived its JS context (a torn-down runtime, a full
++  // reload) and called back: answer zero instead of calling into freed memory.
++  if (!IsBridgeStateLive(closure->bridgeState, closure->bridgeStateToken)) {
++    if (ret != nullptr && cif->rtype->size > 0) {
++      memset(ret, 0, std::max(cif->rtype->size, sizeof(ffi_arg)));
++    }
++    return;
++  }
+   napi_env env = closure->env;
+   MainThreadCallbackScope mainThreadScope;
+ 
+@@ -342,6 +358,14 @@
+ 
+ void JSBlockCallback(ffi_cif* cif, void* ret, void* args[], void* data) {
+   Closure* closure = (Closure*)data;
++  // A native object outlived its JS context (a torn-down runtime, a full
++  // reload) and called back: answer zero instead of calling into freed memory.
++  if (!IsBridgeStateLive(closure->bridgeState, closure->bridgeStateToken)) {
++    if (ret != nullptr && cif->rtype->size > 0) {
++      memset(ret, 0, std::max(cif->rtype->size, sizeof(ffi_arg)));
++    }
++    return;
++  }
+   napi_env env = closure->env;
+   closure->retain();
+   struct ClosureRetainGuard {

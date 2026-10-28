@@ -178,8 +178,8 @@ function Battery() {
   safe at module level with the backend off) and updated in place by Fast Refresh.
   `keepAlive(obj)` holds delegates (those properties are weak); `nativePromise((resolve,
   reject) => …)` turns a completion handler on any queue into a Promise that settles on
-  the JS thread. An Objective-C exception inside a native call still crashes the app
-  (see TODO.md).
+  the JS thread. An Objective-C exception inside a native call throws in JS with its
+  reason, and native objects that call back after their runtime is gone are ignored.
 - **Threads.** JS runs on the JS thread; most of UIKit is main-thread-only. `onMain(fn)` runs
   `fn` on main and resumes on the JS thread. Native callbacks fired on main (delegates,
   target-action, UIKit blocks) run on main, so UIKit inside them just works and they can
@@ -195,7 +195,8 @@ function Battery() {
   `native` object.
 - **Patched.** It runs on NativeScript built from upstream plus the fixes in
   [`nativescript/patches`](nativescript/patches/README.md) (use-after-free, leaks, quadratic
-  lookups, main-thread callbacks, the main-thread guard), found or built along the way.
+  lookups, main-thread callbacks, the main-thread guard, dead-context callbacks, and libffi
+  rebuilt with unwind info so Objective-C exceptions reach JS), found or built along the way.
 - **Measured on an iPhone 15 Pro Max** (no JIT): native property ~1.3 µs, `NSObject.new()`
   ~6.6 µs, `onMain` round trip ~0.03 ms, JS callback on main ~0.007 ms; NativeScript init
   ~190 ms once per process.

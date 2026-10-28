@@ -242,18 +242,12 @@ for the record.
 - [x] `defineNativeClass(name, { protocols, methods, exposed })` (registered once, lazily;
       Fast Refresh swaps method bodies), `keepAlive()` for weak delegates, and
       `nativePromise()` for completion handlers on any queue.
-- [ ] An Objective-C exception inside a native call (`objectAtIndex` out of range, an
-      unrecognized selector) terminates the app instead of throwing in JS. NativeScript
-      catches it, but the throw can't unwind through libffi: its prebuilt `libffi.a`
-      (built with `-fembed-bitcode`) has no unwind info in `sysv.o`. Fix: rebuild libffi
-      with CFI in `scripts/build-nativescript.sh`.
-- [ ] A native object that outlives its JS context (a full reload, a torn-down runtime)
-      and calls a JS-defined delegate crashes (NSCache evicting on dealloc did, in tests).
-      Unhook delegates before reloading; NativeScript should ignore calls into a dead
-      context.
+- [x] Objective-C exceptions inside native calls throw in JS (libffi rebuilt with unwind
+      info), and callbacks into a destroyed JS context are ignored instead of crashing.
+      See `nativescript/patches/README.md`.
 - [ ] NativeScript's Node-API runtime is an alpha; its metadata generator (LLVM 17)
       misses some declarations in current SDKs. Long synchronous JS still delays
-      main-thread native callbacks. The six patches in `nativescript/patches/` haven't
+      main-thread native callbacks. The patches in `nativescript/patches/` haven't
       been sent upstream.
 
 ## Build and tooling
