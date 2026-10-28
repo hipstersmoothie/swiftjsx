@@ -60,6 +60,7 @@ struct ScreenHost: View {
         .modifier(SearchableModifier(node: node))
         .modifier(ToolbarStyle(node: node))
         .navigationTitle(node.string("title") ?? "")
+        .modifier(Subtitle(text: node.string("subtitle")))
         #if os(iOS)
         .navigationBarTitleDisplayMode(titleDisplayMode(node.string("titleDisplayMode")))
         #endif
@@ -130,10 +131,17 @@ struct ToolbarStyle: ViewModifier {
 /// `searchText` / `onSearchTextChange` / `searchPrompt` on a `<Screen>`: the
 /// navigation bar's search field. Shows what the user typed until React's
 /// `searchText` catches up.
+/// A screen's search field: `searchText` / `onSearchTextChange`, whether it's
+/// active (`searchActive` / `onSearchActiveChange`: dismiss it from code, or
+/// know when the user cancels), `onSearchSubmit`, scopes
+/// (`searchScopes` + `searchScope` / `onSearchScopeChange`) and suggestions
+/// (`searchSuggestions`: `{ title, completion? }`, tapping fills the field).
 struct SearchableModifier: ViewModifier {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
     @State private var typed: String?
+    @State private var active = false
+    @State private var scope = ""
 
     func body(content: Content) -> some View {
         if node.has("onSearchTextChange") || node.has("searchText") {
@@ -144,10 +152,66 @@ struct SearchableModifier: ViewModifier {
                         typed = text
                         runtime?.dispatch(node.id, "onSearchTextChange", text)
                     }
-                ), placement: searchPlacement(node.string("searchPlacement")), prompt: node.string("searchPrompt").map { Text($0) })
+                ), isPresented: $active, placement: searchPlacement(node.string("searchPlacement")),
+                   prompt: node.string("searchPrompt").map { Text($0) })
                 .onChange(of: node.string("searchText")) { _, text in if text == typed { typed = nil } }
+                .onChange(of: active) { _, isActive in
+                    if node.has("onSearchActiveChange") { runtime?.dispatch(node.id, "onSearchActiveChange", isActive) }
+                }
+                .onChange(of: node.prop("searchActive") as? Bool, initial: true) { _, wanted in
+                    if let wanted, wanted != active { active = wanted }
+                }
+                .onSubmit(of: .search) {
+                    if node.has("onSearchSubmit") { runtime?.dispatch(node.id, "onSearchSubmit", typed ?? node.string("searchText") ?? "") }
+                }
+                .modifier(Scopes(node: node, scope: $scope))
+                .modifier(Suggestions(node: node))
         } else {
             content
+        }
+    }
+
+    private struct Scopes: ViewModifier {
+        let node: Node
+        @Binding var scope: String
+        @Environment(\.jsxRuntime) private var runtime
+
+        func body(content: Content) -> some View {
+            let scopes = (node.props["searchScopes"] as? [[String: Any]]) ?? []
+            if scopes.isEmpty {
+                content
+            } else {
+                content
+                    .searchScopes(Binding(
+                        get: { node.string("searchScope") ?? scope },
+                        set: { value in
+                            scope = value
+                            runtime?.dispatch(node.id, "onSearchScopeChange", value)
+                        }
+                    ), activation: .onSearchPresentation) {
+                        ForEach(scopes.indices, id: \.self) { i in
+                            Text(scopes[i]["label"] as? String ?? "").tag(scopes[i]["value"] as? String ?? "")
+                        }
+                    }
+            }
+        }
+    }
+
+    private struct Suggestions: ViewModifier {
+        let node: Node
+        func body(content: Content) -> some View {
+            let suggestions = (node.props["searchSuggestions"] as? [[String: Any]]) ?? []
+            if node.has("searchSuggestions") {
+                content.searchSuggestions {
+                    ForEach(suggestions.indices, id: \.self) { i in
+                        let title = suggestions[i]["title"] as? String ?? ""
+                        Label(title, systemImage: suggestions[i]["systemImage"] as? String ?? "magnifyingglass")
+                            .searchCompletion(suggestions[i]["completion"] as? String ?? title)
+                    }
+                }
+            } else {
+                content
+            }
         }
     }
 }
@@ -290,3 +354,15 @@ private func titleDisplayMode(_ name: String?) -> NavigationBarItem.TitleDisplay
     }
 }
 #endif
+
+/// `<Screen subtitle>` (iOS 26 / macOS 26: under the title).
+private struct Subtitle: ViewModifier {
+    let text: String?
+    func body(content: Content) -> some View {
+        if let text, #available(iOS 26, macOS 26, *) {
+            content.navigationSubtitle(text)
+        } else {
+            content
+        }
+    }
+}

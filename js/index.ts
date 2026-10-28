@@ -6,7 +6,7 @@
 export { render, withAnimation, openURL, canOpenURL, HostInstance } from "./renderer";
 export type { Frame, ScrollTarget, ScrollOptions } from "./renderer";
 export * from "./components";
-export { Navigator, useNavigation, NavigationSplitView, type Navigation } from "./navigation";
+export { Navigator, useNavigation, NavigationSplitView, createNavigationRef, type Navigation, type NavigationRef } from "./navigation";
 export { VirtualList, type VirtualListProps } from "./virtual-list";
 export {
   native, onMain, onJS, toJS, isNativeAvailable, useNativeValue, defineNativeClass, keepAlive, nativePromise,

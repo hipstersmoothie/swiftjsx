@@ -1,4 +1,6 @@
-import { createContext, useContext, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
+import {
+  createContext, useContext, useLayoutEffect, useRef, useState, type ComponentProps, type ReactElement, type ReactNode,
+} from "react";
 import { NavigationPage, NavigationStack, NavigationSplitViewHost, SplitColumn, type Modifiers } from "./components";
 
 export type Navigation = {
@@ -6,9 +8,48 @@ export type Navigation = {
   push(screen: ReactElement): void;
   pop(): void;
   popToRoot(): void;
+  /** Swap the top screen for another (the root if nothing's pushed is left alone). */
+  replace(screen: ReactElement): void;
   /** Number of screens pushed on top of the root. */
   depth: number;
 };
+
+/**
+ * A navigation stack you can drive from outside it: a notification tap, a
+ * deep link, a store action. Pass it to `<Navigator navigationRef={…}>`.
+ *
+ *   export const navRef = createNavigationRef();
+ *   notifications.addListener("response", (r) => navRef.push(<Timer id={r.data.id} />));
+ */
+export type NavigationRef = Navigation & {
+  /** The mounted Navigator's navigation (null before it mounts). */
+  readonly current: Navigation | null;
+  isReady(): boolean;
+};
+
+export function createNavigationRef(): NavigationRef {
+  let current: Navigation | null = null;
+  // Calls before the Navigator mounts are kept and replayed.
+  const queued: ((nav: Navigation) => void)[] = [];
+  const run = (fn: (nav: Navigation) => void) => (current ? fn(current) : queued.push(fn));
+  return {
+    get current() {
+      return current;
+    },
+    set current(nav: Navigation | null) {
+      current = nav;
+      if (nav) queued.splice(0).forEach((fn) => fn(nav));
+    },
+    isReady: () => current !== null,
+    push: (screen) => run((nav) => nav.push(screen)),
+    pop: () => run((nav) => nav.pop()),
+    popToRoot: () => run((nav) => nav.popToRoot()),
+    replace: (screen) => run((nav) => nav.replace(screen)),
+    get depth() {
+      return current?.depth ?? 0;
+    },
+  } as NavigationRef;
+}
 
 const NavigationContext = createContext<Navigation | null>(null);
 
@@ -19,7 +60,11 @@ const NavigationContext = createContext<Navigation | null>(null);
  *   <Navigator><Inbox /></Navigator>
  *   // in Inbox: nav.push(<Message id={id} />)
  */
-export function Navigator({ children, ...modifiers }: Modifiers & { children: ReactNode }) {
+export function Navigator({
+  children,
+  navigationRef,
+  ...modifiers
+}: Modifiers & { children: ReactNode; navigationRef?: NavigationRef }) {
   const [stack, setStack] = useState<{ key: number; screen: ReactElement }[]>([]);
   // Keys never repeat, so `pop(); push(x)` in one event mounts a fresh screen
   // instead of handing x the popped screen's state.
@@ -34,8 +79,20 @@ export function Navigator({ children, ...modifiers }: Modifiers & { children: Re
     },
     pop: () => setStack((s) => s.slice(0, -1)),
     popToRoot: () => setStack([]),
+    replace: (screen) => {
+      const key = ++lastKey.current;
+      setStack((s) => (s.length ? [...s.slice(0, -1), { key, screen }] : s));
+    },
     depth: stack.length,
   };
+
+  useLayoutEffect(() => {
+    if (!navigationRef) return;
+    (navigationRef as { current: Navigation | null }).current = nav;
+    return () => {
+      (navigationRef as { current: Navigation | null }).current = null;
+    };
+  });
 
   return (
     <NavigationContext.Provider value={nav}>

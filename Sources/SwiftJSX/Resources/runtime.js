@@ -266,7 +266,7 @@
                         dispatcherHookName: "ImperativeHandle"
                       });
                     },
-                    useLayoutEffect: function useLayoutEffect2(create) {
+                    useLayoutEffect: function useLayoutEffect3(create) {
                       nextHook();
                       hookLog.push({
                         displayName: null,
@@ -34042,6 +34042,7 @@ ${error.stack}` : String(error));
     VirtualList: () => VirtualList,
     ZStack: () => ZStack,
     canOpenURL: () => canOpenURL,
+    createNavigationRef: () => createNavigationRef,
     defineNativeClass: () => defineNativeClass,
     haptic: () => haptic,
     hot: () => hot,
@@ -34790,133 +34791,78 @@ ${e.stack}` : String(e);
   var import_compiler_runtime2 = __toESM(require_compiler_runtime(), 1);
   var import_react3 = __toESM(require_react(), 1);
   var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
-  var NavigationContext = (0, import_react3.createContext)(null);
-  function Navigator(t0) {
-    const $ = (0, import_compiler_runtime2.c)(22);
-    if ($[0] !== "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c") {
-      for (let $i = 0; $i < 22; $i += 1) {
-        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+  function createNavigationRef() {
+    let current2 = null;
+    const queued = [];
+    const run = (fn) => current2 ? fn(current2) : queued.push(fn);
+    return {
+      get current() {
+        return current2;
+      },
+      set current(nav) {
+        current2 = nav;
+        if (nav) queued.splice(0).forEach((fn) => fn(nav));
+      },
+      isReady: () => current2 !== null,
+      push: (screen) => run((nav) => nav.push(screen)),
+      pop: () => run((nav) => nav.pop()),
+      popToRoot: () => run((nav) => nav.popToRoot()),
+      replace: (screen) => run((nav) => nav.replace(screen)),
+      get depth() {
+        return current2?.depth ?? 0;
       }
-      $[0] = "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c";
-    }
-    let children;
-    let modifiers;
-    if ($[1] !== t0) {
-      ({
-        children,
-        ...modifiers
-      } = t0);
-      $[1] = t0;
-      $[2] = children;
-      $[3] = modifiers;
-    } else {
-      children = $[2];
-      modifiers = $[3];
-    }
-    let t1;
-    if ($[4] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t1 = [];
-      $[4] = t1;
-    } else {
-      t1 = $[4];
-    }
-    const [stack, setStack] = (0, import_react3.useState)(t1);
+    };
+  }
+  var NavigationContext = (0, import_react3.createContext)(null);
+  function Navigator({
+    children,
+    navigationRef,
+    ...modifiers
+  }) {
+    const [stack, setStack] = (0, import_react3.useState)([]);
     const lastKey = (0, import_react3.useRef)(0);
-    let t2;
-    let t3;
-    let t4;
-    if ($[5] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t2 = (screen) => {
-        const key = lastKey.current = lastKey.current + 1;
+    const nav = {
+      push: (screen) => {
+        const key = ++lastKey.current;
         setStack((s) => [...s, {
           key,
           screen
         }]);
+      },
+      pop: () => setStack((s_0) => s_0.slice(0, -1)),
+      popToRoot: () => setStack([]),
+      replace: (screen_0) => {
+        const key_0 = ++lastKey.current;
+        setStack((s_1) => s_1.length ? [...s_1.slice(0, -1), {
+          key: key_0,
+          screen: screen_0
+        }] : s_1);
+      },
+      depth: stack.length
+    };
+    (0, import_react3.useLayoutEffect)(() => {
+      if (!navigationRef) return;
+      navigationRef.current = nav;
+      return () => {
+        navigationRef.current = null;
       };
-      t3 = () => setStack(_temp);
-      t4 = () => setStack([]);
-      $[5] = t2;
-      $[6] = t3;
-      $[7] = t4;
-    } else {
-      t2 = $[5];
-      t3 = $[6];
-      t4 = $[7];
-    }
-    let t5;
-    if ($[8] !== stack.length) {
-      t5 = {
-        push: t2,
-        pop: t3,
-        popToRoot: t4,
-        depth: stack.length
-      };
-      $[8] = stack.length;
-      $[9] = t5;
-    } else {
-      t5 = $[9];
-    }
-    const nav = t5;
-    let t6;
-    if ($[10] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t6 = (depth) => setStack((s_1) => s_1.slice(0, depth));
-      $[10] = t6;
-    } else {
-      t6 = $[10];
-    }
-    let t7;
-    if ($[11] !== children) {
-      t7 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationPage, { children });
-      $[11] = children;
-      $[12] = t7;
-    } else {
-      t7 = $[12];
-    }
-    let t8;
-    if ($[13] !== stack) {
-      t8 = stack.map(_temp2);
-      $[13] = stack;
-      $[14] = t8;
-    } else {
-      t8 = $[14];
-    }
-    let t9;
-    if ($[15] !== modifiers || $[16] !== t7 || $[17] !== t8) {
-      t9 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(NavigationStack, { ...modifiers, onPathChange: t6, children: [
-        t7,
-        t8
-      ] });
-      $[15] = modifiers;
-      $[16] = t7;
-      $[17] = t8;
-      $[18] = t9;
-    } else {
-      t9 = $[18];
-    }
-    let t10;
-    if ($[19] !== nav || $[20] !== t9) {
-      t10 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationContext.Provider, { value: nav, children: t9 });
-      $[19] = nav;
-      $[20] = t9;
-      $[21] = t10;
-    } else {
-      t10 = $[21];
-    }
-    return t10;
-  }
-  function _temp2(entry) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationPage, { children: entry.screen }, entry.key);
-  }
-  function _temp(s_0) {
-    return s_0.slice(0, -1);
+    });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationContext.Provider, { value: nav, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(NavigationStack, { ...modifiers, onPathChange: (depth) => setStack((s_2) => s_2.slice(0, depth)), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationPage, { children }),
+      stack.map((entry) => (
+        // Each pushed screen gets its own key, so pushing the same component
+        // twice gives two independent instances (own state, own effects).
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationPage, { children: entry.screen }, entry.key)
+      ))
+    ] }) });
   }
   function useNavigation() {
     const $ = (0, import_compiler_runtime2.c)(1);
-    if ($[0] !== "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c") {
+    if ($[0] !== "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c";
+      $[0] = "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793";
     }
     const nav = (0, import_react3.useContext)(NavigationContext);
     if (!nav) {
@@ -34926,11 +34872,11 @@ ${e.stack}` : String(e);
   }
   function NavigationSplitView(t0) {
     const $ = (0, import_compiler_runtime2.c)(22);
-    if ($[0] !== "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c") {
+    if ($[0] !== "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793") {
       for (let $i = 0; $i < 22; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "73510154d725a3cf6cddb02dc6353023f3f480eb79c2a694712a9a481471156c";
+      $[0] = "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793";
     }
     let content;
     let detail;
@@ -35304,7 +35250,7 @@ ${e.stack}` : String(e);
         let live2 = true;
         const refresh = () => {
           const result = mainThread ? onMain(readNow) : Promise.resolve().then(readNow);
-          result.then((v) => live2 && setValue(() => v)).catch(_temp3);
+          result.then((v) => live2 && setValue(() => v)).catch(_temp);
         };
         refresh();
         const center = native.NSNotificationCenter.defaultCenter;
@@ -35339,7 +35285,7 @@ ${e.stack}` : String(e);
     (0, import_react5.useEffect)(t6, t7);
     return value;
   }
-  function _temp3(e) {
+  function _temp(e) {
     return console.error(e);
   }
   function defineNativeClass(name, spec) {
@@ -35454,7 +35400,7 @@ ${e.stack}` : String(e);
     if (presented !== wasPresented) {
       setWasPresented(presented);
       if (presented) {
-        setGeneration(_temp4);
+        setGeneration(_temp2);
       }
     }
     let t0;
@@ -35485,7 +35431,7 @@ ${e.stack}` : String(e);
     }
     return t1;
   }
-  function _temp4(g3) {
+  function _temp2(g3) {
     return g3 + 1;
   }
   function Sheet(props) {
@@ -35785,7 +35731,7 @@ ${e.stack}` : String(e);
       props = $[5];
       value = $[6];
     }
-    const ms = _temp5;
+    const ms = _temp3;
     let t1;
     if ($[7] !== value) {
       t1 = ms(value);
@@ -35832,7 +35778,7 @@ ${e.stack}` : String(e);
     }
     return t5;
   }
-  function _temp5(d) {
+  function _temp3(d) {
     return d === void 0 ? void 0 : typeof d === "number" ? d : d.getTime();
   }
   function NavigationRow(t0) {
@@ -36236,9 +36182,9 @@ ${e.stack}` : String(e);
       }
       $[0] = "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697";
     }
-    return (0, import_react9.useSyncExternalStore)(subscribe, _temp6);
+    return (0, import_react9.useSyncExternalStore)(subscribe, _temp4);
   }
-  function _temp6() {
+  function _temp4() {
     return current;
   }
   function useColorScheme() {

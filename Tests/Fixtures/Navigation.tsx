@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { render, Navigator, useNavigation, Screen, Button, Text, Sheet, Alert } from "swiftjsx";
+import { render, Navigator, useNavigation, createNavigationRef, Screen, Button, Text, Sheet, Alert } from "swiftjsx";
+
+// Driven from outside the stack.
+const navRef = createNavigationRef();
 
 function Detail({ n }: { n: number }) {
   const [likes, setLikes] = useState(0);
@@ -20,6 +23,8 @@ function Home() {
       <Button title="push" onPress={() => nav.push(<Detail n={nav.depth + 1} />)} />
       <Button title="open sheet" onPress={() => setSheet(true)} />
       <Button title="open alert" onPress={() => setAlert(true)} />
+      <Button title="ref push" onPress={() => navRef.push(<Detail n={99} />)} />
+      <Button title="replace" onPress={() => nav.replace(<Detail n={7} />)} />
       <Text>depth {nav.depth}</Text>
       <Sheet isPresented={sheet} onDismiss={() => setSheet(false)}>
         <Text>sheet body</Text>
@@ -32,7 +37,7 @@ function Home() {
 }
 
 render(
-  <Navigator>
+  <Navigator navigationRef={navRef}>
     <Home />
   </Navigator>,
 );

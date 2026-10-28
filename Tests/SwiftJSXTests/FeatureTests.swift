@@ -34,6 +34,18 @@ struct NavigationTests {
         #expect(!runtime.texts().contains("likes 2: 2"))
     }
 
+    @Test func navigationRefAndReplace() throws {
+        let early = try fixture("NavigationRef")
+        #expect(early.texts() == ["root", "pushed before mount"])
+
+        runtime.press("ref push")
+        #expect(stack?.children.count == 2)
+        #expect(runtime.findAll("Screen").compactMap { $0.string("title") }.last == "Detail 99")
+        runtime.press("replace")
+        #expect(stack?.children.count == 2)
+        #expect(runtime.findAll("Screen").compactMap { $0.string("title") }.last == "Detail 7")
+    }
+
     @Test func screenTitles() {
         runtime.press("push")
         let titles = runtime.findAll("Screen").compactMap { $0.string("title") }

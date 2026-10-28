@@ -25,6 +25,7 @@ function HomeScreen() {
   const lists = useTodos((s) => s.lists);
   const todos = useTodos((s) => s.todos);
   const [search, setSearch] = useState("");
+  const [scope, setScope] = useState<SearchScope>("all");
   const [newList, setNewList] = useState({ open: false, key: 0 });
   // The alert keeps showing the list's name while it animates away, so the
   // list and the "presented" flag are separate state.
@@ -36,7 +37,18 @@ function HomeScreen() {
   const deletingCount = todos.filter((t) => t.listId === deleting?.id).length;
 
   return (
-    <Screen title="Todos" searchText={search} onSearchTextChange={setSearch} searchPrompt="Search all todos">
+    <Screen
+      title="Todos"
+      searchText={search}
+      onSearchTextChange={setSearch}
+      searchPrompt="Search all todos"
+      searchScopes={SEARCH_SCOPES}
+      searchScope={scope}
+      onSearchScopeChange={(value) => setScope(value as SearchScope)}
+      // Until something's typed: jump to a list's todos by name.
+      searchSuggestions={search ? [] : lists.map((list) => ({ title: list.name, systemImage: "list.bullet" }))}
+      onSearchActiveChange={(active) => !active && setScope("all")}
+    >
       <ToolbarItem placement="primaryAction">
         <Button onPress={() => setNewList((n) => ({ open: true, key: n.key + 1 }))} accessibilityLabel="Add list">
           <Image systemName="folder.badge.plus" />
@@ -44,7 +56,7 @@ function HomeScreen() {
       </ToolbarItem>
 
       {search.trim() ? (
-        <SearchResults query={search.trim()} today={today} />
+        <SearchResults query={search.trim()} scope={scope} today={today} />
       ) : (
         <List>
           <Section>
@@ -137,12 +149,24 @@ function ListRow({ name, icon, color, count, onPress, onDelete }: {
 }
 
 /** Todos in every list matching `query`, grouped by list. */
-function SearchResults({ query, today }: { query: string; today: number }) {
+type SearchScope = "all" | "open" | "done";
+const SEARCH_SCOPES: { value: SearchScope; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "open", label: "Open" },
+  { value: "done", label: "Done" },
+];
+
+function SearchResults({ query, scope, today }: { query: string; scope: SearchScope; today: number }) {
   const lists = useTodos((s) => s.lists);
   const todos = useTodos((s) => s.todos);
   const q = query.toLowerCase();
+  const inSearchScope = (done: boolean) => scope === "all" || (scope === "done") === done;
   const groups = lists
-    .map((list) => ({ list, todos: sortTodos(todos.filter((t) => t.listId === list.id && matchesSearch(t, q))) }))
+    .map((list) => ({
+      list,
+      // A list's own name matches all of its todos (picking a suggestion).
+      todos: sortTodos(todos.filter((t) => t.listId === list.id && inSearchScope(t.done) && (matchesSearch(t, q) || list.name.toLowerCase() === q))),
+    }))
     .filter((group) => group.todos.length);
 
   return (

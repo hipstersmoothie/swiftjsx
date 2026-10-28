@@ -509,6 +509,24 @@ final class GalleryTests: XCTestCase {
         snapshot("focus-selection")
     }
 
+    func testTodosSearch() {
+        openApp("Todos")
+        let search = app.searchFields.firstMatch
+        XCTAssert(search.waitForExistence(timeout: 5))
+        search.tap()
+        // Suggestions (list names) before typing; scopes while searching.
+        let suggestion = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Inbox'")).firstMatch
+        XCTAssert(suggestion.waitForExistence(timeout: 3), "no suggestions")
+        snapshot("todos-search-suggestions")
+        // The suggestion, not the hidden list row of the same name behind it.
+        let visible = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Inbox'")).allElementsBoundByIndex.first { $0.isHittable }
+        XCTAssertNotNil(visible)
+        visible?.tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "value CONTAINS 'Inbox'"), evaluatedWith: search)], timeout: 3) == .completed)
+        snapshot("todos-search-results")
+        XCTAssert(app.segmentedControls.buttons["Done"].waitForExistence(timeout: 3), "no scopes")
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

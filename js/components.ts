@@ -679,6 +679,8 @@ export const NavigationSplitViewHost = host<
 export const Screen = host<
   Modifiers & WithChildren & {
     title?: string;
+    /** Under the title (iOS 26 and later). */
+    subtitle?: string;
     titleDisplayMode?: "automatic" | "inline" | "large";
     /** A search field in the navigation bar (controlled with `onSearchTextChange`). */
     searchText?: string;
@@ -690,6 +692,17 @@ export const Screen = host<
      * (always under the title), or "toolbar".
      */
     searchPlacement?: "automatic" | "navigationBar" | "toolbar";
+    /** Whether the search field is active (false dismisses it from code); onSearchActiveChange reports the user's taps and Cancel. */
+    searchActive?: boolean;
+    onSearchActiveChange?: (active: boolean) => void;
+    /** The keyboard's Search key. */
+    onSearchSubmit?: (text: string) => void;
+    /** Scopes under the search field while it's active (a segmented control). */
+    searchScopes?: { value: string; label: string }[];
+    searchScope?: string;
+    onSearchScopeChange?: (scope: string) => void;
+    /** Suggestions under the field; tapping one puts `completion` (or `title`) in the field. */
+    searchSuggestions?: { title: string; completion?: string; systemImage?: string }[];
     /** The navigation bar's background (shown even before scrolling), or "hidden". */
     toolbarBackground?: Fill | "hidden";
     /** Light or dark navigation bar items (e.g. "dark" for white items on a dark screen). */

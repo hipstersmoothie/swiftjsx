@@ -140,8 +140,8 @@ for the record.
       drag indicator, corner radius, background; toolbar placements; `searchPlacement`.
 - [ ] Pushed screens are element snapshots: `nav.push(<X value={v} />)` keeps the props
       it was pushed with. Read changing data from state/stores inside the screen.
-- [ ] A navigation ref usable outside a `<Navigator>` (react-navigation's
-      `createNavigationContainerRef`), `Navigator.replace`, a `Screen` subtitle.
+- [x] `createNavigationRef()` + `<Navigator navigationRef>` (push from a notification tap or
+      deep link; calls before mount are replayed), `nav.replace`, `<Screen subtitle>`.
 - [x] `NavigationSplitView` `columnVisibility` / `onColumnVisibilityChange`.
 - [ ] Sheets: an "attempted to dismiss" callback (to ask before discarding changes).
 - [x] `interactiveDismissDisabled` on any view inside a sheet (a dirty form locks it). A `fullScreen` sheet can't be closed
@@ -150,8 +150,8 @@ for the record.
       (`onDismissed`), so its effects (keep-awake, speech) stop; `keepState` keeps it.
 - [ ] Adding or removing a `<SafeAreaInset>` rebuilds the view it's attached to (resets a
       NavigationStack or scroll position); keep it mounted.
-- [ ] Search: `isSearching`, dismiss from code, submit / cancel events, scopes,
-      suggestions.
+- [x] Search: `searchActive` / `onSearchActiveChange` (dismiss from code, know about
+      Cancel), `onSearchSubmit`, `searchScopes`, `searchSuggestions`.
 - [ ] iOS 26 `tabViewBottomAccessory` (mini players); zoom transitions / matched geometry.
 
 ## Gestures and animation
