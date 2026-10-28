@@ -414,6 +414,18 @@ final class GalleryTests: XCTestCase {
         XCTAssert(element("month-grid").waitForExistence(timeout: 5))
         sleep(2)
         snapshot("habits-detail")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // A form with unsaved changes can't be swiped away
+        // (interactiveDismissDisabled set from inside the sheet).
+        element("add-habit").tap()
+        let name = element("habit-name")
+        XCTAssert(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Stretch")
+        app.navigationBars["New Habit"].swipeDown(velocity: .fast)
+        sleep(1)
+        XCTAssert(name.exists, "the dirty form was swiped away")
     }
 
     func testRecipes() {

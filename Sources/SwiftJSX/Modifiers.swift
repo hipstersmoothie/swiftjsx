@@ -104,6 +104,7 @@ struct Modifiers: ViewModifier {
             .modifier(AttachedActions(node: node))
             .modifier(Tag(value: node.string("tag")))
             .redacted(reason: node.bool("redacted") ? .placeholder : [])
+            .modifier(DismissLock(node: node))
             // Last, so the view's own background and border use it too.
             .transformEnvironment(\.colorScheme) { scheme in
                 if let forced = colorScheme(node.string("colorScheme")) { scheme = forced }
@@ -714,6 +715,19 @@ private func edge(_ name: String) -> Edge? {
     case "leading": .leading
     case "trailing": .trailing
     default: nil
+    }
+}
+
+/// `interactiveDismissDisabled` on any view inside a sheet: the sheet can't be
+/// swiped away while it's true (a form with unsaved changes, a game board).
+struct DismissLock: ViewModifier {
+    let node: Node
+    func body(content: Content) -> some View {
+        if node.has("interactiveDismissDisabled") {
+            content.interactiveDismissDisabled(node.bool("interactiveDismissDisabled"))
+        } else {
+            content
+        }
     }
 }
 

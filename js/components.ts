@@ -207,6 +207,11 @@ export interface Modifiers {
   onKeyPress?: (event: { key: string; characters: string; modifiers: ("command" | "shift" | "option" | "control")[] }) => void;
   /** Only these keys go to `onKeyPress`; others pass on (e.g. to text fields). */
   keys?: string[];
+  /**
+   * Inside a sheet: while true, the sheet can't be swiped away (unsaved
+   * changes, a game board's own swipes). Set it from the content itself.
+   */
+  interactiveDismissDisabled?: boolean;
   /** Extend into the safe area (under the status bar and home indicator): true, or some edges. */
   ignoresSafeArea?: boolean | SafeAreaEdge | SafeAreaEdge[];
   /**

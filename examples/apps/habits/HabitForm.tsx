@@ -100,27 +100,19 @@ export function HabitFormSheet({ isPresented, habit, onClose, onDelete }: {
   /** After deleting (editing only). */
   onDelete?: () => void;
 }) {
-  // Sheet's interactiveDismissDisabled is a prop of the presenter, not
-  // something the content can set, so the form reports up.
-  const [dirty, setDirty] = useState(false);
-  const close = () => {
-    setDirty(false);
-    onClose();
-  };
   return (
-    <Sheet isPresented={isPresented} onDismiss={close} interactiveDismissDisabled={dirty}>
+    <Sheet isPresented={isPresented} onDismiss={onClose}>
       {/* A stack of its own, for the sheet's title and Cancel / Save. */}
       <Navigator>
-        <HabitForm habit={habit} onClose={close} onDirtyChange={setDirty} onDelete={onDelete && (() => { setDirty(false); onDelete(); })} />
+        <HabitForm habit={habit} onClose={onClose} onDelete={onDelete} />
       </Navigator>
     </Sheet>
   );
 }
 
-function HabitForm({ habit, onClose, onDirtyChange, onDelete }: {
+function HabitForm({ habit, onClose, onDelete }: {
   habit?: Habit;
   onClose: () => void;
-  onDirtyChange: (dirty: boolean) => void;
   onDelete?: () => void;
 }) {
   const today = useToday();
@@ -141,7 +133,6 @@ function HabitForm({ habit, onClose, onDirtyChange, onDelete }: {
     const next = { ...draft, ...changes };
     setDraft(next);
     if (field) setTouched((t) => ({ ...t, [field]: true }));
-    onDirtyChange(JSON.stringify(next) !== JSON.stringify(initial));
   };
 
   const save = () => {
@@ -163,7 +154,8 @@ function HabitForm({ habit, onClose, onDirtyChange, onDelete }: {
   const preview = { schedule: draft.kind === "weekdays" ? { kind: "weekdays" as const, days: draft.days } : draft.kind === "weekly" ? { kind: "weekly" as const, times: draft.times } : { kind: "daily" as const } };
 
   return (
-    <Screen title={habit ? "Edit Habit" : "New Habit"} titleDisplayMode="inline">
+    // Unsaved changes: no swiping the sheet away (Cancel asks first).
+    <Screen title={habit ? "Edit Habit" : "New Habit"} titleDisplayMode="inline" interactiveDismissDisabled={dirty}>
       <ToolbarItem placement="cancellationAction">
         <Button title="Cancel" onPress={() => (dirty ? setConfirmDiscard(true) : onClose())} accessibilityIdentifier="cancel-habit">
           <ConfirmationDialog isPresented={confirmDiscard} onDismiss={() => setConfirmDiscard(false)} title="Discard your changes?">

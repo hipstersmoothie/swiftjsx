@@ -132,9 +132,8 @@ for the record.
 - [ ] A navigation ref usable outside a `<Navigator>` (react-navigation's
       `createNavigationContainerRef`), `Navigator.replace`, a `Screen` subtitle.
 - [x] `NavigationSplitView` `columnVisibility` / `onColumnVisibilityChange`.
-- [ ] Sheets: an "attempted to dismiss" callback (to ask before discarding changes), and
-      `interactiveDismissDisabled` settable from inside the sheet's content (a dirty form,
-      a game board) rather than only on `<Sheet>`. A `fullScreen` sheet can't be closed
+- [ ] Sheets: an "attempted to dismiss" callback (to ask before discarding changes).
+- [x] `interactiveDismissDisabled` on any view inside a sheet (a dirty form locks it). A `fullScreen` sheet can't be closed
       without its slide (after a custom swipe-down).
 - [x] Sheet content mounts with the presentation and unmounts once the sheet has gone
       (`onDismissed`), so its effects (keep-awake, speech) stop; `keepState` keeps it.
