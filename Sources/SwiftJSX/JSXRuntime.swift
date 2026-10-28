@@ -57,8 +57,9 @@ public final class JSXRuntime {
             report: { [weak self] message in self?.report(message) }
         )
         tree.worklets = worklets
-        let engine = engine!
-        appEvents = AppEvents { type in engine.call("__swiftjsx_windowEvent", [type]) }
+        // Not named `engine`: Swift 6.3 binds the callbacks' `engine` (above) to it.
+        let jsEngine = engine!
+        appEvents = AppEvents { type in jsEngine.call("__swiftjsx_windowEvent", [type]) }
         // Early, so a notification tap that launched the app isn't missed.
         NotificationHub.shared.install()
     }
