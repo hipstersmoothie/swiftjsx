@@ -7,7 +7,7 @@
 //    doesn't carry over what was typed last time. `keepState` opts out.
 
 import { useState, type ReactNode } from "react";
-import { SheetHost, AlertHost, ConfirmationDialogHost } from "./components";
+import { SheetHost, AlertHost, ConfirmationDialogHost, type Fill } from "./components";
 
 type Presentable<T> = {
   /** Called when the user dismisses it (swipe down, a button…): clear your state. */
@@ -38,6 +38,11 @@ type SheetProps<T> = Presentable<T> & {
   detents?: ("medium" | "large" | number)[];
   /** iOS: cover the whole screen instead of a card. */
   fullScreen?: boolean;
+  /** Refuse the swipe down (e.g. while there are unsaved changes; offer Cancel instead). */
+  interactiveDismissDisabled?: boolean;
+  dragIndicator?: "automatic" | "visible" | "hidden";
+  cornerRadius?: number;
+  background?: Fill;
   /** Keep the content's state between presentations (default: start fresh, like SwiftUI). */
   keepState?: boolean;
 };
@@ -45,7 +50,16 @@ type SheetProps<T> = Presentable<T> & {
 export function Sheet<T>(props: SheetProps<T>) {
   const { presented, generation, content } = usePresentation(props);
   return (
-    <SheetHost isPresented={presented} onDismiss={props.onDismiss} detents={props.detents} fullScreen={props.fullScreen}>
+    <SheetHost
+      isPresented={presented}
+      onDismiss={props.onDismiss}
+      detents={props.detents}
+      fullScreen={props.fullScreen}
+      interactiveDismissDisabled={props.interactiveDismissDisabled}
+      dragIndicator={props.dragIndicator}
+      cornerRadius={props.cornerRadius}
+      background={props.background}
+    >
       <Fresh key={props.keepState ? 0 : generation}>{content}</Fresh>
     </SheetHost>
   );

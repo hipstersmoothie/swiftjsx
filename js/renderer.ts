@@ -355,9 +355,18 @@ export function withAnimation<T>(animation: AnimationSpec, fn: () => T): T {
 /**
  * Opens a URL: web links in Safari, or in an in-app Safari sheet with
  * `{ inApp: true }`; other schemes (tel:, mailto:, app links) with the system.
+ * Resolves to whether it opened.
  */
-export function openURL(url: string, options: { inApp?: boolean } = {}) {
-  __native.command(0, "openURL", { url: String(url), inApp: !!options.inApp }, 0);
+export async function openURL(url: string, options: { inApp?: boolean } = {}): Promise<boolean> {
+  return (await nativeCall("openURL", { url: String(url), inApp: !!options.inApp })) as boolean;
+}
+
+/**
+ * Whether something on the device can open the URL. Schemes other than
+ * http(s) must be listed in the app's LSApplicationQueriesSchemes.
+ */
+export async function canOpenURL(url: string): Promise<boolean> {
+  return (await nativeCall("canOpenURL", { url: String(url) })) as boolean;
 }
 
 // Typing faster than the JS round trip: the input builds each keystroke on

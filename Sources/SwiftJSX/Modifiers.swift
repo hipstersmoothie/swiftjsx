@@ -35,7 +35,7 @@ struct FrameTracker: ViewModifier {
     func body(content: Content) -> some View {
         if node.features.contains(.ref) {
             content
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { node.frame = $0 }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { node.setFrame($0) }
                 .id(node.id)
         } else {
             content
@@ -81,6 +81,10 @@ struct Modifiers: ViewModifier {
             .modifier(ViewAttachments(node: node))
             .shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
             .opacity(node.bool("hidden") ? 0 : node.double("opacity") ?? 1)
+            .fixedSize(horizontal: fixedSize.horizontal, vertical: fixedSize.vertical)
+            .allowsHitTesting(!node.has("allowsHitTesting") || node.bool("allowsHitTesting"))
+            .preferredColorScheme(colorScheme(node.string("preferredColorScheme")))
+            .modifier(TintModifier(node: node))
             .zIndex(node.double("zIndex") ?? 0)
             .layoutPriority(node.double("layoutPriority") ?? 0)
             .gridCellColumns(Int(node.double("gridColumns") ?? 1))
@@ -102,6 +106,16 @@ struct Modifiers: ViewModifier {
     }
 
     private var corners: Corners { Corners(node.prop("cornerRadius")) }
+
+    /// `fixedSize`: true (both axes), "horizontal" or "vertical": take the
+    /// ideal size instead of what's offered (no truncation).
+    private var fixedSize: (horizontal: Bool, vertical: Bool) {
+        switch node.prop("fixedSize") {
+        case let b as Bool: (b, b)
+        case let s as String: (s == "horizontal", s == "vertical")
+        default: (false, false)
+        }
+    }
 
     private var hasMaterialBackground: Bool {
         (node.prop("background") as? String).flatMap(material) != nil
@@ -161,6 +175,27 @@ struct ViewAttachments: ViewModifier {
         content
             .modifier(Layer(node: node, type: "Background", feature: .backgroundView, front: false))
             .modifier(Layer(node: node, type: "Overlay", feature: .overlay, front: true))
+            .modifier(Inset(node: node))
+    }
+
+    /// `<SafeAreaInset edge="bottom">`: content docked to an edge of this
+    /// view; the rest (scroll content) is inset so nothing hides behind it.
+    /// For mini players and input bars.
+    private struct Inset: ViewModifier {
+        let node: Node
+        func body(content: Content) -> some View {
+            if node.features.contains(.safeAreaInset), let inset = node.children.first(where: { $0.type == "SafeAreaInset" }) {
+                let spacing = inset.cgFloat("spacing")
+                switch inset.string("edge") {
+                case "top": content.safeAreaInset(edge: .top, spacing: spacing) { LayerContent(node: inset) }
+                case "leading": content.safeAreaInset(edge: .leading, spacing: spacing) { LayerContent(node: inset) }
+                case "trailing": content.safeAreaInset(edge: .trailing, spacing: spacing) { LayerContent(node: inset) }
+                default: content.safeAreaInset(edge: .bottom, spacing: spacing) { LayerContent(node: inset) }
+                }
+            } else {
+                content
+            }
+        }
     }
 
     private struct Layer: ViewModifier {
@@ -204,6 +239,7 @@ struct LayoutExtras: ViewModifier {
     func body(content: Content) -> some View {
         content
             .modifier(Shape(node: node))
+            .modifier(Ratio(node: node))
             .modifier(Relative(node: node))
             .modifier(Layout(node: node, runtime: runtime))
             .modifier(ListRow(node: node))
@@ -223,6 +259,22 @@ struct LayoutExtras: ViewModifier {
             case "capsule": AnyShape(Capsule())
             case "circle": AnyShape(Circle())
             default: AnyShape(Rectangle())
+            }
+        }
+    }
+
+    /// `aspectRatio`: a number (width / height, fits the space offered), or
+    /// `{ ratio, contentMode: "fit" | "fill" }`.
+    private struct Ratio: ViewModifier {
+        let node: Node
+        func body(content: Content) -> some View {
+            if node.features.contains(.aspectRatio) {
+                let spec = node.prop("aspectRatio")
+                let ratio = (spec as? NSNumber ?? (spec as? [String: Any])?["ratio"] as? NSNumber).map { CGFloat($0.doubleValue) }
+                let fill = (spec as? [String: Any])?["contentMode"] as? String == "fill"
+                content.aspectRatio(ratio, contentMode: fill ? .fill : .fit)
+            } else {
+                content
             }
         }
     }
@@ -401,6 +453,19 @@ struct FrameModifier: ViewModifier {
         let align = alignment(frame?["alignment"] as? String) ?? .center
         content.frame(width: v("width"), height: v("height"), alignment: align)
             .frame(minWidth: v("minWidth"), maxWidth: v("maxWidth"), minHeight: v("minHeight"), maxHeight: v("maxHeight"), alignment: align)
+    }
+}
+
+/// `tint`, once used. Never forced to nil, so an unset tint inherits the
+/// container's (`.tint(nil)` would reset it).
+struct TintModifier: ViewModifier {
+    let node: Node
+    func body(content: Content) -> some View {
+        if node.features.contains(.tint), let tint = color(node.prop("tint")) {
+            content.tint(tint)
+        } else {
+            content
+        }
     }
 }
 

@@ -101,9 +101,10 @@ function babel({ refresh, dev = true, worklets = false }) {
         const input = worklets && /worklet|useAnimatedStyle/.test(source)
           ? (await transformAsync(source, { ...options, plugins: [workletsPlugin] })).code
           : source;
+        const skipped = [];
         const compiled = await transformAsync(input, {
           ...options,
-          plugins: [["babel-plugin-react-compiler", reactCompilerOptions(file, stats, dev)]],
+          plugins: [["babel-plugin-react-compiler", reactCompilerOptions(file, stats, dev, skipped)]],
         });
         // React Refresh runs as a second pass over the compiler's *printed*
         // output. In a shared pass it reads hook arguments from source text the
@@ -115,16 +116,19 @@ function babel({ refresh, dev = true, worklets = false }) {
         if (!refresh) return { contents: result.code, loader: path.extname(args.path).slice(1) };
         // Per-module registration helpers; esbuild keeps top-level vars module-scoped.
         const id = JSON.stringify(refreshModuleId(file));
+        // Development: also say so in the app's console when the compiler
+        // skipped something (easy to miss in the build log).
+        const warnings = skipped.map((s) => `console.warn(${JSON.stringify(`[React Compiler] skipped ${file}:${s.line} (left unmemoized): ${s.reason}`)});\n`).join("");
         const prelude =
           `var $RefreshReg$ = (type, name) => __swiftjsx_refresh.register(type, ${id} + " " + name);\n` +
-          `var $RefreshSig$ = __swiftjsx_refresh.signature;\n`;
+          `var $RefreshSig$ = __swiftjsx_refresh.signature;\n` + warnings;
         return { contents: prelude + result.code, loader: path.extname(args.path).slice(1) };
       });
     },
   };
 }
 
-function reactCompilerOptions(file, stats, dev) {
+function reactCompilerOptions(file, stats, dev, skipped = []) {
   return {
     target: "19",
     // Skip (and report) components the compiler can't prove safe; never fail the build.
@@ -146,6 +150,7 @@ function reactCompilerOptions(file, stats, dev) {
         const detail = event.detail ?? {};
         const reason = detail.reason ?? detail.options?.reason ?? event.data ?? "unknown reason";
         console.warn(`⚠ React Compiler skipped a function at ${file}:${line} (left unmemoized): ${reason}`);
+        skipped.push({ line, reason: String(reason) });
       },
     },
   };

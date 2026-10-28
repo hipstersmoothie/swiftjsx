@@ -8,16 +8,28 @@ import AppKit
 
 /// `openURL(url, { inApp })` from JS.
 @MainActor
-func openExternal(_ url: URL, inApp: Bool) {
+func openExternal(_ url: URL, inApp: Bool, done: @escaping (Bool) -> Void = { _ in }) {
     #if canImport(UIKit)
     let web = url.scheme == "http" || url.scheme == "https"
     if inApp, web, let presenter = topViewController() {
         presenter.present(SFSafariViewController(url: url), animated: true)
+        done(true)
     } else {
-        UIApplication.shared.open(url)
+        UIApplication.shared.open(url) { done($0) }
     }
     #elseif canImport(AppKit)
-    NSWorkspace.shared.open(url)
+    done(NSWorkspace.shared.open(url))
+    #endif
+}
+
+/// Whether something can open the URL. Schemes other than http(s) must be
+/// listed in the app's LSApplicationQueriesSchemes to answer true.
+@MainActor
+func canOpenExternal(_ url: URL) -> Bool {
+    #if canImport(UIKit)
+    UIApplication.shared.canOpenURL(url)
+    #elseif canImport(AppKit)
+    NSWorkspace.shared.urlForApplication(toOpen: url) != nil
     #endif
 }
 

@@ -15,6 +15,8 @@ public final class JSXRuntime {
     @ObservationIgnored private var appEvents: AppEvents?
     @ObservationIgnored private var waiting: [Int: CheckedContinuation<Void, Never>] = [:]
     @ObservationIgnored private var nextWait = 1
+    /// The SwiftUI environment JS sees through useEnvironment() (sent again after reloads).
+    @ObservationIgnored private var environment: [String: String] = [:]
     @ObservationIgnored private var bundleURL: URL?
     @ObservationIgnored private var watcher: Timer?
     @ObservationIgnored private var lastModified: Date?
@@ -81,6 +83,13 @@ public final class JSXRuntime {
             return report("SwiftJSX: \(name).js is missing from the package resources. Run `npm run build`.")
         }
         engine.start(runtime: runtime, app: app, appURL: sourceURL)
+        if !environment.isEmpty { engine.call("__swiftjsx_environment", [environment]) }
+    }
+
+    func setEnvironment(_ values: [String: String]) {
+        guard values != environment else { return }
+        environment = values
+        engine.call("__swiftjsx_environment", [values])
     }
 
     /// Whether the loaded bundle is a production build.
@@ -142,7 +151,14 @@ public final class JSXRuntime {
         case "clipboardRead":
             engine.resolve(callback: callback, value: readClipboard())
         case "openURL":
-            if let url = (args["url"] as? String).flatMap(URL.init(string:)) { openExternal(url, inApp: args["inApp"] as? Bool ?? false) }
+            guard let url = (args["url"] as? String).flatMap(URL.init(string:)) else {
+                return engine.resolve(callback: callback, value: false)
+            }
+            openExternal(url, inApp: args["inApp"] as? Bool ?? false) { [engine] opened in
+                engine?.resolve(callback: callback, value: opened)
+            }
+        case "canOpenURL":
+            engine.resolve(callback: callback, value: (args["url"] as? String).flatMap(URL.init(string:)).map(canOpenExternal) ?? false)
         case "focus", "blur":
             node.focusRequest = FocusRequest(seq: node.focusRequest.seq + 1, focused: name == "focus")
         case "scrollTo":
@@ -157,8 +173,9 @@ public final class JSXRuntime {
                 animated: args["animated"] as? Bool ?? true
             )
         case "measure":
-            let f = node.frame
-            engine.resolve(callback: callback, value: ["x": f.minX, "y": f.minY, "width": f.width, "height": f.height])
+            node.measure { [engine] f in
+                engine?.resolve(callback: callback, value: ["x": f.minX, "y": f.minY, "width": f.width, "height": f.height])
+            }
         default:
             print("[swiftjsx] unknown command \(name)")
         }

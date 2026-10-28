@@ -1,4 +1,4 @@
-export { render, withAnimation, openURL, HostInstance } from "./renderer";
+export { render, withAnimation, openURL, canOpenURL, HostInstance } from "./renderer";
 export type { Frame, ScrollTarget, ScrollOptions } from "./renderer";
 export * from "./components";
 export { Navigator, useNavigation, NavigationSplitView, type Navigation } from "./navigation";
@@ -11,3 +11,4 @@ export {
 export { Sheet, Alert, ConfirmationDialog } from "./presentations";
 export { DatePicker, NavigationRow } from "./controls";
 export { haptic } from "./platform";
+export { useEnvironment, useColorScheme, type Environment } from "./environment";

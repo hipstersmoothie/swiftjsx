@@ -52,3 +52,13 @@ import Testing
         #expect(BoxShape(corners: Corners(0)).path(in: rect).boundingRect == rect)
     }
 }
+
+@MainActor
+@Suite struct EnvironmentTests {
+    @Test func useEnvironmentFollowsSwiftUI() async throws {
+        let runtime = try fixture("Environment")
+        #expect(runtime.texts() == ["compact light large"])
+        runtime.setEnvironment(["horizontalSizeClass": "regular", "colorScheme": "dark", "dynamicTypeSize": "xLarge"])
+        #expect(await eventually { runtime.texts() == ["regular dark xLarge"] })
+    }
+}

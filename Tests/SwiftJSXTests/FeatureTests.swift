@@ -125,9 +125,19 @@ struct RefTests {
         let box = try #require(runtime.find("Text") { $0.textContent == "box" })
         #expect(box.has("__ref"))
         #expect(runtime.find("Button")?.has("__ref") == false)
-        box.frame = CGRect(x: 10, y: 20, width: 120, height: 44)
+        box.setFrame(CGRect(x: 10, y: 20, width: 120, height: 44))
         runtime.press("measure")
         #expect(await eventually { runtime.texts().contains("measured 120x44") })
+    }
+
+    @Test func measureBeforeLayoutWaitsForIt() async throws {
+        let runtime = try fixture("Refs")
+        let box = try #require(runtime.find("Text") { $0.textContent == "box" })
+        runtime.press("measure")  // not laid out yet
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(runtime.texts().contains("measured none"))
+        box.setFrame(CGRect(x: 0, y: 0, width: 80, height: 30))
+        #expect(await eventually { runtime.texts().contains("measured 80x30") })
     }
 }
 

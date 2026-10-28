@@ -7,9 +7,24 @@ extension EnvironmentValues {
 /// Mounts a `JSXRuntime`'s React tree as SwiftUI.
 public struct ReactView: View {
     let runtime: JSXRuntime
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     public init(runtime: JSXRuntime) {
         self.runtime = runtime
+    }
+
+    private var environment: [String: String] {
+        func sizeClass(_ c: UserInterfaceSizeClass?) -> String { c == .compact ? "compact" : "regular" }
+        return [
+            "horizontalSizeClass": sizeClass(horizontalSizeClass),
+            "verticalSizeClass": sizeClass(verticalSizeClass),
+            "colorScheme": colorScheme == .dark ? "dark" : "light",
+            "dynamicTypeSize": "\(dynamicTypeSize)",
+            "isAccessibilitySize": dynamicTypeSize.isAccessibilitySize ? "true" : "false",
+        ]
     }
 
     public var body: some View {
@@ -21,6 +36,8 @@ public struct ReactView: View {
         }
         .background { Presenters(node: runtime.tree.root) }
         .environment(\.jsxRuntime, runtime)
+        // useEnvironment() / useColorScheme() in JS.
+        .onChange(of: environment, initial: true) { _, values in runtime.setEnvironment(values) }
     }
 }
 
@@ -46,7 +63,7 @@ struct NodeView: View {
 
     /// Controls that take `tint` get it on the control itself (a Button in
     /// `<SwipeActions>` must stay a plain Button for its tint to color the action).
-    private static let tinted: Set<String> = ["Toggle", "Slider", "ProgressView", "Stepper", "Picker", "DatePicker", "Menu", "TextField", "TextEditor"]
+    static let selfTinted: Set<String> = ["Button", "Toggle", "Slider", "ProgressView", "Stepper", "Picker", "DatePicker", "Menu", "TextField", "TextEditor"]
 
     private func fire(_ event: String, _ payload: Any? = nil) {
         runtime?.dispatch(node.id, event, payload)
@@ -55,8 +72,8 @@ struct NodeView: View {
     private static func number(_ v: Any?) -> Double? { (v as? NSNumber)?.doubleValue }
 
     @ViewBuilder private var content: some View {
-        if Self.tinted.contains(node.type) {
-            control.tint(color(node.prop("tint")))
+        if Self.selfTinted.contains(node.type) {
+            control.modifier(TintModifier(node: node))
         } else {
             control
         }
@@ -71,7 +88,9 @@ struct NodeView: View {
             // Font and color come from the modifiers (environment); the rest
             // are Text's own.
             let underline = node.prop("underline")
-            let text = styledText(node)
+            // `markdown`: inline Markdown (bold, italic, code, links that open).
+            let base = node.string("markdown").map { markdownText($0) } ?? styledText(node)
+            let text = base
                 .strikethrough(node.bool("strikethrough"))
                 .italic(node.bool("italic"))
                 .bold(node.bool("bold"))
@@ -85,7 +104,8 @@ struct NodeView: View {
             .lineSpacing(node.cgFloat("lineSpacing") ?? 0)
             .minimumScaleFactor(node.cgFloat("minimumScaleFactor") ?? 1)
             .multilineTextAlignment(textAlignment(node.string("textAlignment")))
-            .contentTransition(node.has("animation") ? .numericText() : .identity)
+            .contentTransition(textTransition(node))
+            .modifier(Selectable(enabled: node.bool("selectable")))
 
         case "VStack":
             VStack(alignment: horizontalAlignment(node.string("alignment")), spacing: node.cgFloat("spacing")) {
@@ -219,7 +239,6 @@ struct NodeView: View {
                 if let title = node.string("title") { Text(title) } else { Children(node: node) }
             }
             .modifier(ButtonStyleModifier(style: node.string("buttonStyle")))
-            .tint(color(node.prop("tint")))
 
         case "DatePicker":
             DatePickerHost(node: node)
@@ -248,10 +267,12 @@ struct NodeView: View {
         case "Slider":
             let range = (node.double("min") ?? 0)...(node.double("max") ?? 1)
             Controlled(node: node, fallback: range.lowerBound, read: Self.number) { value in
+                // onEditingChange(true/false): the finger went down / up (scrubbing).
+                let editing: (Bool) -> Void = { runtime?.dispatch(node.id, "onEditingChange", $0) }
                 if let step = node.double("step") {
-                    Slider(value: value, in: range, step: step)
+                    Slider(value: value, in: range, step: step, onEditingChanged: editing)
                 } else {
-                    Slider(value: value, in: range)
+                    Slider(value: value, in: range, onEditingChanged: editing)
                 }
             }
 
@@ -267,10 +288,15 @@ struct NodeView: View {
             Controlled(node: node, fallback: "") { selection in
                 Picker(node.string("label") ?? "", selection: selection) {
                     ForEach(options.indices, id: \.self) { i in
-                        Text(options[i]["label"] as? String ?? "").tag(options[i]["value"] as? String ?? "")
+                        if let icon = options[i]["systemImage"] as? String {
+                            Label(options[i]["label"] as? String ?? "", systemImage: icon).tag(options[i]["value"] as? String ?? "")
+                        } else {
+                            Text(options[i]["label"] as? String ?? "").tag(options[i]["value"] as? String ?? "")
+                        }
                     }
                 }
                 .modifier(PickerStyleModifier(style: node.string("pickerStyle")))
+                .labelsHidden(node.string("label") == nil)
             }
 
         default:

@@ -28,9 +28,12 @@ struct TransformModifier: ViewModifier {
 struct GestureModifiers: ViewModifier {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
+    /// The view's frame in the window, for drag positions in its own coordinates.
+    @State private var frame: CGRect = .zero
 
     func body(content: Content) -> some View {
         content
+            .modifier(FrameReader(enabled: node.features.contains(.drag), frame: $frame))
             .modifier(Attach(node: node, feature: .doubleTap, enabled: node.has("onDoubleTap"),
                              gesture: TapGesture(count: 2).onEnded { fire("onDoubleTap") }))
             .modifier(Attach(node: node, feature: .longPress, enabled: node.has("onLongPress"),
@@ -57,13 +60,30 @@ struct GestureModifiers: ViewModifier {
     private func drag(_ value: DragGesture.Value) -> [String: Any] {
         func point(_ p: CGPoint) -> [String: Double] { ["x": p.x, "y": p.y] }
         func size(_ s: CGSize) -> [String: Double] { ["x": s.width, "y": s.height] }
+        func local(_ p: CGPoint) -> [String: Double] { ["x": p.x - frame.minX, "y": p.y - frame.minY] }
         return [
             "translation": size(value.translation),
             "location": point(value.location),
             "startLocation": point(value.startLocation),
+            // Relative to the view's top-leading corner (scrubbing a chart).
+            "localLocation": local(value.location),
+            "localStartLocation": local(value.startLocation),
+            "size": ["width": frame.width, "height": frame.height],
             "velocity": size(value.velocity),
             "predictedEndTranslation": size(value.predictedEndTranslation),
         ]
+    }
+
+    private struct FrameReader: ViewModifier {
+        let enabled: Bool
+        @Binding var frame: CGRect
+        func body(content: Content) -> some View {
+            if enabled {
+                content.onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+            } else {
+                content
+            }
+        }
     }
 
     /// One gesture, attached once its feature is in use and disabled (subviews

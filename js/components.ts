@@ -106,6 +106,16 @@ export interface Modifiers {
   colorScheme?: "light" | "dark";
   /** Drawing order among siblings (higher is in front). */
   zIndex?: number;
+  /** Accent color for every control inside (buttons, toggles, links…), like SwiftUI's `.tint`. */
+  tint?: ColorValue;
+  /** Light or dark for the whole screen or sheet this view is in (unlike `colorScheme`, which is just this subtree). */
+  preferredColorScheme?: "light" | "dark";
+  /** Width / height (e.g. 1 for square, 16 / 9), fitting the space offered, or `{ ratio, contentMode: "fill" }`. */
+  aspectRatio?: number | { ratio?: number; contentMode?: "fit" | "fill" };
+  /** Take the ideal size instead of the offered one (no truncation): true, or one axis. */
+  fixedSize?: boolean | "horizontal" | "vertical";
+  /** false: touches pass through to what's behind (like CSS `pointer-events: none`). */
+  allowsHitTesting?: boolean;
   /** Who gets space first in a stack (higher wins; default 0). */
   layoutPriority?: number;
   /** In a `<GridRow>`: how many columns this cell spans. */
@@ -209,8 +219,21 @@ export type AnimationSpec =
     };
 
 type Point = { x: number; y: number };
-/** Positions are in window coordinates; `translation` is from where the drag started. */
-export type DragEvent = { translation: Point; location: Point; startLocation: Point; velocity: Point; predictedEndTranslation: Point };
+/**
+ * `location` / `startLocation` are in window coordinates; `localLocation` /
+ * `localStartLocation` are relative to the view's top-leading corner, and
+ * `size` is the view's size. `translation` is from where the drag started.
+ */
+export type DragEvent = {
+  translation: Point;
+  location: Point;
+  startLocation: Point;
+  localLocation: Point;
+  localStartLocation: Point;
+  size: { width: number; height: number };
+  velocity: Point;
+  predictedEndTranslation: Point;
+};
 
 export type AccessibilityTrait =
   | "button" | "header" | "link" | "image" | "selected" | "staticText" | "searchField" | "summaryElement"
@@ -273,6 +296,11 @@ export const Flow = host<Modifiers & WithChildren & { spacing?: number; lineSpac
 export const Overlay = host<Modifiers & WithChildren & { alignment?: Alignment }>("Overlay");
 /** Drawn behind the parent element, sized to it. */
 export const Background = host<Modifiers & WithChildren & { alignment?: Alignment }>("Background");
+/**
+ * Docked to an edge of the parent element, which insets its content (scroll
+ * views scroll above it): mini players, input bars.
+ */
+export const SafeAreaInset = host<Modifiers & WithChildren & { edge?: "top" | "bottom" | "leading" | "trailing"; spacing?: number }>("SafeAreaInset");
 
 /**
  * Text. Nest `<Text>` for styled runs (`<Text>Hello <Text fontWeight="bold"
@@ -297,6 +325,12 @@ export const Text = host<
     textCase?: "uppercase" | "lowercase";
     /** Runs only: raise (or lower, negative) from the baseline, in points. */
     baselineOffset?: number;
+    /** Inline Markdown instead of children: **bold**, *italic*, `code`, [links](https://…) that open. */
+    markdown?: string;
+    /** Long-press to select and copy. */
+    selectable?: boolean;
+    /** How changes animate: rolling digits ("numericText", the default with `animation`), "opacity", "interpolate" or none. */
+    contentTransition?: "numericText" | "opacity" | "interpolate" | "identity";
     monospacedDigit?: boolean;
     // With an `animation` prop, changing digits roll (numeric content transition).
     /** Maximum lines; the rest is truncated with "…". */
@@ -423,9 +457,20 @@ export const ColorPicker = host<Modifiers & { value: string; onChange: (hex: str
  */
 export const Menu = host<Modifiers & WithChildren & { title?: string; systemImage?: string; onPress?: () => void; tint?: ColorValue }>("Menu");
 export const Toggle = host<Modifiers & WithChildren & { value: boolean; onChange: (value: boolean) => void; label?: string; tint?: ColorValue }>("Toggle");
-export const Slider = host<Modifiers & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; tint?: ColorValue }>("Slider");
+export const Slider = host<
+  Modifiers & {
+    value: number;
+    onChange: (value: number) => void;
+    /** true when the finger goes down, false when it lifts (seek on release while scrubbing). */
+    onEditingChange?: (editing: boolean) => void;
+    min?: number;
+    max?: number;
+    step?: number;
+    tint?: ColorValue;
+  }
+>("Slider");
 export const Stepper = host<Modifiers & WithChildren & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; label?: string; tint?: ColorValue }>("Stepper");
-export const Picker = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string }[]; label?: string; pickerStyle?: "menu" | "segmented" | "inline"; tint?: ColorValue }>("Picker");
+export const Picker = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string; systemImage?: string }[]; label?: string; pickerStyle?: "menu" | "segmented" | "inline"; tint?: ColorValue }>("Picker");
 
 // MARK: Lazy containers. SwiftUI only builds the views that are on screen, but
 // React still renders every child; for thousands of rows use <VirtualList>.
@@ -515,7 +560,13 @@ export const SwipeActions = host<WithChildren & { edge?: "leading" | "trailing";
 /** Buttons shown when the parent element is long-pressed. */
 export const ContextMenu = host<WithChildren>("ContextMenu");
 
-export const ToolbarItem = host<WithChildren & { placement?: "automatic" | "primaryAction" | "cancellationAction" | "confirmationAction" | "principal" | "navigation" }>("ToolbarItem");
+export const ToolbarItem = host<
+  WithChildren & {
+    placement?:
+      | "automatic" | "primaryAction" | "cancellationAction" | "confirmationAction" | "principal" | "navigation"
+      | "topBarLeading" | "topBarTrailing" | "bottomBar" | "keyboard";
+  }
+>("ToolbarItem");
 
 export const SheetHost = host<
   WithChildren & {
@@ -525,6 +576,10 @@ export const SheetHost = host<
     detents?: ("medium" | "large" | number)[];
     /** iOS: cover the whole screen instead of a card. */
     fullScreen?: boolean;
+    interactiveDismissDisabled?: boolean;
+    dragIndicator?: "automatic" | "visible" | "hidden";
+    cornerRadius?: number;
+    background?: Fill;
   }
 >("Sheet");
 export const AlertHost = host<WithChildren & { isPresented: boolean; onDismiss: () => void; title: string; message?: string }>("Alert");

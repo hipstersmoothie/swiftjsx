@@ -200,7 +200,19 @@ struct PresentationHost: View {
         VStack(spacing: 0) { Children(node: node) }
             .background { Presenters(node: node) }
             .presentationDetents(detents)
+            // A sheet with unsaved changes can refuse the swipe down.
+            .interactiveDismissDisabled(node.bool("interactiveDismissDisabled"))
+            .presentationDragIndicator(node.string("dragIndicator") == "visible" ? .visible : node.string("dragIndicator") == "hidden" ? .hidden : .automatic)
+            .presentationCornerRadius(node.cgFloat("cornerRadius"))
+            .modifier(SheetBackground(fill: fill(node.prop("background"))))
             .environment(\.jsxRuntime, runtime)
+    }
+
+    private struct SheetBackground: ViewModifier {
+        let fill: AnyShapeStyle?
+        func body(content: Content) -> some View {
+            if let fill { content.presentationBackground(fill) } else { content }
+        }
     }
 
     private var detents: Set<PresentationDetent> {
@@ -223,6 +235,12 @@ private func toolbarPlacement(_ name: String?) -> ToolbarItemPlacement {
     case "confirmationAction": .confirmationAction
     case "principal": .principal
     case "navigation": .navigation
+    #if os(iOS)
+    case "topBarLeading": .topBarLeading
+    case "topBarTrailing": .topBarTrailing
+    case "bottomBar": .bottomBar
+    case "keyboard": .keyboard
+    #endif
     default: .automatic
     }
 }

@@ -234,6 +234,8 @@ func font(_ value: Any?) -> Font? {
         if let name = spec["name"] as? String {
             font = .custom(name, size: size ?? 17, relativeTo: style ?? .body)
             if let weight { font = font.weight(weight) }
+        } else if let size, let style {
+            font = scaledSystemFont(size: size, weight: weight, design: design, relativeTo: style)
         } else if let size {
             font = .system(size: size, weight: weight, design: design)
         } else {
@@ -244,6 +246,30 @@ func font(_ value: Any?) -> Font? {
     default:
         return nil
     }
+}
+
+/// A system font of `size` that grows and shrinks with Dynamic Type like
+/// `relativeTo` does.
+private func scaledSystemFont(size: CGFloat, weight: Font.Weight?, design: Font.Design?, relativeTo style: Font.TextStyle) -> Font {
+    #if canImport(UIKit)
+    let textStyle: UIFont.TextStyle = switch style {
+    case .largeTitle: .largeTitle
+    case .title: .title1
+    case .title2: .title2
+    case .title3: .title3
+    case .headline: .headline
+    case .subheadline: .subheadline
+    case .callout: .callout
+    case .footnote: .footnote
+    case .caption: .caption1
+    case .caption2: .caption2
+    default: .body
+    }
+    let scaled = UIFontMetrics(forTextStyle: textStyle).scaledValue(for: size)
+    return .system(size: scaled, weight: weight, design: design)
+    #else
+    return .system(size: size, weight: weight, design: design)
+    #endif
 }
 
 func fontWidth(_ name: String) -> Font.Width? {
@@ -434,6 +460,33 @@ struct SymbolModifier: ViewModifier {
             }
         }
     }
+}
+
+/// `contentTransition` on Text: "numericText" (rolling digits), "opacity",
+/// "interpolate" or "identity". Default: rolling digits when the text has an
+/// `animation`, otherwise none.
+@MainActor
+func textTransition(_ node: Node) -> ContentTransition {
+    switch node.string("contentTransition") {
+    case "numericText": .numericText()
+    case "opacity": .opacity
+    case "interpolate": .interpolate
+    case "identity": .identity
+    default: node.has("animation") ? .numericText() : .identity
+    }
+}
+
+/// `selectable`: long-press to select and copy the text.
+struct Selectable: ViewModifier {
+    let enabled: Bool
+    func body(content: Content) -> some View {
+        if enabled { content.textSelection(.enabled) } else { content }
+    }
+}
+
+func markdownText(_ markdown: String) -> Text {
+    let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+    return Text((try? AttributedString(markdown: markdown, options: options)) ?? AttributedString(markdown))
 }
 
 // MARK: - Styled text

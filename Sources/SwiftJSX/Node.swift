@@ -24,7 +24,29 @@ public final class Node: Identifiable {
     var focusRequest = FocusRequest()
     var scrollRequest: ScrollRequest?
     /// Last laid-out frame in window coordinates, for `ref.current.measure()`.
-    @ObservationIgnored var frame: CGRect = .zero
+    @ObservationIgnored private(set) var frame: CGRect = .zero
+    /// `measure()` calls made before the first layout, answered by it.
+    @ObservationIgnored private var waitingForLayout: [(CGRect) -> Void] = []
+
+    func setFrame(_ frame: CGRect) {
+        self.frame = frame
+        let waiting = waitingForLayout
+        waitingForLayout = []
+        waiting.forEach { $0(frame) }
+    }
+
+    /// The frame now, or after the first layout if there hasn't been one
+    /// (giving up, with a zero frame, after a second).
+    func measure(_ done: @escaping (CGRect) -> Void) {
+        guard frame == .zero else { return done(frame) }
+        waitingForLayout.append(done)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, !self.waitingForLayout.isEmpty else { return }
+                self.setFrame(self.frame)
+            }
+        }
+    }
     /// `<Image src>`: the URL whose `onLoad`/`onError` was last reported.
     @ObservationIgnored var reportedImageURL: URL?
     /// Controlled inputs: sequence number of the last value sent to JS…
@@ -53,6 +75,7 @@ public final class Node: Identifiable {
         case accessibility, accessibilityElement
         case refresh, swipeActions, contextMenu
         case overlay, backgroundView, contentShape, layout, relativeFrame, listRow
+        case tint, aspectRatio, safeAreaInset
     }
 
     /// Called after props or children change.
@@ -66,11 +89,15 @@ public final class Node: Identifiable {
             case "ContextMenu": features.insert(.contextMenu)
             case "Overlay": features.insert(.overlay)
             case "Background": features.insert(.backgroundView)
+            case "SafeAreaInset": features.insert(.safeAreaInset)
             default: break
             }
         }
         guard !decorated else { return }
+        // `tint` decorates containers (it tints everything inside); controls
+        // apply it themselves (see NodeView.tinted).
         if Self.alwaysDecorated.contains(type) || props.keys.contains(where: Self.modifierKeys.contains)
+            || (has("tint") && !NodeView.selfTinted.contains(type))
             || animatedProps.keys.contains(where: Self.modifierKeys.contains) || has("animatedStyle")
             || has("__ref") || children.contains(where: \.isAttachment) {
             decorated = true
@@ -96,12 +123,14 @@ public final class Node: Identifiable {
         ("contentShape", .contentShape), ("onLayout", .layout),
         ("relativeWidth", .relativeFrame), ("relativeHeight", .relativeFrame),
         ("listRowBackground", .listRow), ("listRowInsets", .listRow), ("listRowSeparator", .listRow), ("badge", .listRow),
+        ("tint", .tint), ("aspectRatio", .aspectRatio),
     ]
 
     static let modifierKeys: Set<String> = Set([
         "padding", "frame", "background", "foregroundStyle", "font", "fontWeight", "fontDesign",
         "cornerRadius", "border", "shadow", "opacity", "disabled", "transition", "onAppear",
         "onTapGesture", "hidden", "onDisappear", "colorScheme", "zIndex", "layoutPriority", "gridColumns",
+        "fixedSize", "allowsHitTesting", "preferredColorScheme",
     ]).union(featureKeys.map(\.0)).subtracting(["__ref"])
 
     /// Views with state of their own get the wrapper from the start, so even
@@ -116,7 +145,7 @@ public final class Node: Identifiable {
     /// Children that aren't laid out but modify their parent: presentations,
     /// `<SwipeActions>`, `<ContextMenu>`.
     var isAttachment: Bool { isPresentation || Self.attachmentTypes.contains(type) }
-    static let attachmentTypes: Set<String> = ["SwipeActions", "ContextMenu", "Overlay", "Background", "SectionHeader", "SectionFooter"]
+    static let attachmentTypes: Set<String> = ["SwipeActions", "ContextMenu", "Overlay", "Background", "SectionHeader", "SectionFooter", "SafeAreaInset"]
     static let presentationTypes: Set<String> = ["Sheet", "Alert", "ConfirmationDialog"]
 
     init(id: Int, type: String, props: [String: Any] = [:], text: String = "") {
@@ -253,12 +282,23 @@ public final class NodeTree {
     /// Mutations to a node that has an `animation` prop (or whose parent does)
     /// run inside `withAnimation`, so `transition` and implicit animations work.
     private func animating(_ node: Node, _ override: Any?? = nil, _ body: () -> Void) {
-        let spec = override ?? node.props["animation"] ?? node.parent?.props["animation"]
+        let spec = override ?? node.props["animation"] ?? inheritedAnimation(node.parent)
         if let animation = parseAnimation(spec) {
             withAnimation(animation, body)
         } else {
             body()
         }
+    }
+
+    /// The nearest ancestor's `animation`: like SwiftUI's `.animation`, it
+    /// covers the whole subtree.
+    private func inheritedAnimation(_ node: Node?) -> Any? {
+        var current = node
+        while let n = current {
+            if let animation = n.props["animation"] { return animation }
+            current = n.parent
+        }
+        return nil
     }
 
     private func int(_ v: Any?) -> Int { (v as? NSNumber)?.intValue ?? -1 }

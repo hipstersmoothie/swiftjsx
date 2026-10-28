@@ -236,7 +236,7 @@ struct MenuHost: View {
     }
 }
 
-private extension View {
+extension View {
     @ViewBuilder func labelsHidden(_ hidden: Bool) -> some View {
         if hidden { labelsHidden() } else { self }
     }
