@@ -78,8 +78,9 @@ for the record.
 - [x] `Stepper` with no label is just the −/+ control. `TextField` `textAlignment`. More
       `textContentType`s (card expiry, security code and name; address lines, state).
 - [ ] Number pads have no return key: a `ToolbarItemGroup placement="keyboard"`.
-- [ ] `Menu` with a custom label view (a styled button that opens a menu); a Button-level
-      `onLongPress` that suppresses `onPress`; press/release events on non-Buttons
+- [x] `<MenuLabel>`: a `Menu`'s label as any view (with `onPress`, tap acts and hold
+      opens). Buttons take `systemImage` (icons in menus).
+- [ ] A Button-level `onLongPress` that suppresses `onPress`; press/release events on non-Buttons
       (SwiftUI's `onPressingChanged`; hold-to-pause).
 - [ ] `<Tab>` takes no modifiers (accessibility identifier, `measure()`, animated badges).
 - [x] Page TabView dots: `pageIndicator` ("always" / "never" / "backed").

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Screen, List, Section, SectionHeader, Text, TextField, TextEditor, DatePicker, ColorPicker, Menu, Button, Divider,
-  NavigationRow, Flow, Grid, GridRow, HStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle,
+  NavigationRow, Flow, Grid, GridRow, HStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle, MenuLabel, Spacer,
   type Color,
 } from "swiftjsx";
 
@@ -19,6 +19,7 @@ export function ControlsDemo() {
   const [likes, setLikes] = useState(0);
   const [showCompleted, setShowCompleted] = useState(true);
   const [presses, setPresses] = useState(0);
+  const [water, setWater] = useState(0);
 
   return (
     <Screen title="Controls & layout" titleDisplayMode="inline">
@@ -70,6 +71,22 @@ export function ControlsDemo() {
           {items.map((item) => (
             <NavigationRow key={item} title={item} value="1" onPress={() => setEditing(item)} />
           ))}
+        </Section>
+
+        <Section header="Menu with a custom label" footer="Tap adds one; hold for more.">
+          <HStack>
+            <Text>Glasses of water</Text>
+            <Spacer />
+            <Menu onPress={() => setWater((w) => w + 1)} accessibilityIdentifier="water-menu">
+              <MenuLabel>
+                <Text font={{ size: 17, weight: "bold", design: "rounded" }} foregroundStyle="white" frame={{ width: 44, height: 44 }} background="blue" cornerRadius="capsule">
+                  {water}
+                </Text>
+              </MenuLabel>
+              <Button title="Add two" systemImage="plus" onPress={() => setWater((w) => w + 2)} />
+              <Button title="Reset" systemImage="arrow.counterclockwise" role="destructive" onPress={() => setWater(0)} />
+            </Menu>
+          </HStack>
         </Section>
 
         <Section header="Rows">

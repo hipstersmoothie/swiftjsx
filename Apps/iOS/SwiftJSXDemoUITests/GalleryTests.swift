@@ -247,6 +247,16 @@ final class GalleryTests: XCTestCase {
         app.buttons["Share"].tap()
         XCTAssert(app.buttons["Copy link"].waitForExistence(timeout: 5))
         app.buttons["Copy link"].tap()
+        // A Menu with a custom label: a tap runs onPress, a hold opens it.
+        let water = element("water-menu")
+        for _ in 0..<4 where !water.isHittable { app.swipeUp() }
+        water.tap()
+        XCTAssert(app.staticTexts["1"].waitForExistence(timeout: 3), "onPress didn't run")
+        water.press(forDuration: 1)
+        XCTAssert(app.buttons["Add two"].waitForExistence(timeout: 3))
+        snapshot("controls-custom-menu")
+        app.buttons["Add two"].tap()
+        XCTAssert(app.staticTexts["3"].waitForExistence(timeout: 3))
         app.swipeUp()
         app.swipeUp()
         XCTAssert(element("mail-badge").waitForExistence(timeout: 5))

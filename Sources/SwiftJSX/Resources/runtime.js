@@ -18014,6 +18014,7 @@ ${error.stack}` : String(error));
     LineMark: () => LineMark,
     List: () => List,
     Menu: () => Menu,
+    MenuLabel: () => MenuLabel,
     NavigationPage: () => NavigationPage,
     NavigationRow: () => NavigationRow,
     NavigationSplitView: () => NavigationSplitView,
@@ -18753,6 +18754,7 @@ ${e.stack}` : String(e);
   var TextEditor = host("TextEditor");
   var ColorPicker = host("ColorPicker");
   var Menu = host("Menu");
+  var MenuLabel = host("MenuLabel");
   var Toggle = host("Toggle");
   var Slider = host("Slider");
   var Stepper = host("Stepper");

@@ -496,6 +496,8 @@ export const Button = host<
   Modifiers & WithChildren & {
     onPress: () => void;
     title?: string;
+    /** An SF Symbol next to `title` (menus, swipe actions, toolbars). */
+    systemImage?: string;
     role?: "destructive" | "cancel";
     buttonStyle?: "automatic" | "bordered" | "borderedProminent" | "borderless" | "plain";
     /** Accent color of the button (and its background in `<SwipeActions>`). */
@@ -567,6 +569,8 @@ export const ColorPicker = host<Modifiers & { value: string; onChange: (hex: str
  * With `onPress`, a tap runs it and a long press opens the menu.
  */
 export const Menu = host<Modifiers & WithChildren & { title?: string; systemImage?: string; onPress?: () => void; tint?: ColorValue }>("Menu");
+/** A `<Menu>`'s label as any view (instead of `title` / `systemImage`). */
+export const MenuLabel = host<Modifiers & WithChildren>("MenuLabel");
 export const Toggle = host<Modifiers & WithChildren & { value: boolean; onChange: (value: boolean) => void; label?: string; tint?: ColorValue }>("Toggle");
 export const Slider = host<
   Modifiers & {

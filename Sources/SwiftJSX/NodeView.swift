@@ -156,7 +156,7 @@ struct NodeView: View {
         case "VirtualList":
             VirtualListHost(node: node)
 
-        case "VirtualRow", "NavigationPage", "ToolbarItem":
+        case "VirtualRow", "NavigationPage", "ToolbarItem", "MenuLabel":
             Children(node: node)
 
         case "NavigationStack":
@@ -262,7 +262,11 @@ struct NodeView: View {
             Button(role: buttonRole(node.string("role"))) {
                 fire("onPress")
             } label: {
-                if let title = node.string("title") { Text(title) } else { Children(node: node) }
+                if let title = node.string("title") {
+                    if let icon = node.string("systemImage") { Label(title, systemImage: icon) } else { Text(title) }
+                } else {
+                    Children(node: node)
+                }
             }
             .modifier(ButtonStyleModifier(node: node))
             .modifier(KeyboardShortcutModifier(spec: node.prop("keyboardShortcut")))

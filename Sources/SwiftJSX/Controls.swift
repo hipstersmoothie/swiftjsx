@@ -226,16 +226,23 @@ struct MenuHost: View {
 
     var body: some View {
         if node.has("onPress") {
-            Menu { Children(node: node) } label: { label } primaryAction: { runtime?.dispatch(node.id, "onPress") }
+            Menu { items } label: { label } primaryAction: { runtime?.dispatch(node.id, "onPress") }
         } else {
-            Menu { Children(node: node) } label: { label }
+            Menu { items } label: { label }
         }
     }
 
+    private var items: some View {
+        ForEach(node.children.filter { !$0.isAttachment && $0.type != "MenuLabel" }) { NodeView(node: $0) }
+    }
+
+    /// `<MenuLabel>` (any view: a styled round button), or `title` / `systemImage`.
     @ViewBuilder private var label: some View {
         let title = node.string("title")
         let icon = node.string("systemImage")
-        if let title, let icon {
+        if let custom = node.children.first(where: { $0.type == "MenuLabel" }) {
+            NodeView(node: custom)
+        } else if let title, let icon {
             Label(title, systemImage: icon)
         } else if let icon {
             Image(systemName: icon)
