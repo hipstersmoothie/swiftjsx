@@ -305,6 +305,13 @@ struct PresentationHost: View {
             .presentationDragIndicator(node.string("dragIndicator") == "visible" ? .visible : node.string("dragIndicator") == "hidden" ? .hidden : .automatic)
             .presentationCornerRadius(node.cgFloat("cornerRadius"))
             .modifier(SheetBackground(fill: fill(node.prop("background"))))
+            #if os(iOS)
+            .background {
+                if node.has("onDismissAttempt") {
+                    DismissAttemptProbe { [weak runtime, node] in runtime?.dispatch(node.id, "onDismissAttempt") }
+                }
+            }
+            #endif
             .environment(\.jsxRuntime, runtime)
     }
 
@@ -366,3 +373,77 @@ private struct Subtitle: ViewModifier {
         }
     }
 }
+
+#if os(iOS)
+/// `onDismissAttempt` on a `<Sheet>`: the user swiped down a sheet that
+/// can't be dismissed (`interactiveDismissDisabled`), the moment to ask
+/// "Discard changes?". UIKit tells the presentation controller's delegate,
+/// which SwiftUI owns; a proxy in front of it adds this one callback and
+/// forwards everything else.
+private struct DismissAttemptProbe: UIViewControllerRepresentable {
+    let onAttempt: () -> Void
+
+    func makeUIViewController(context: Context) -> ProbeController {
+        ProbeController(onAttempt: onAttempt)
+    }
+
+    func updateUIViewController(_ controller: ProbeController, context: Context) {
+        controller.onAttempt = onAttempt
+        controller.install()
+    }
+
+    final class ProbeController: UIViewController {
+        var onAttempt: () -> Void
+        private var proxy: DelegateProxy?
+
+        init(onAttempt: @escaping () -> Void) {
+            self.onAttempt = onAttempt
+            super.init(nibName: nil, bundle: nil)
+        }
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            install()
+        }
+
+        /// (Re)installs the proxy: SwiftUI may set its delegate again.
+        func install() {
+            // The presented controller: the one with a presentation controller.
+            var current: UIViewController? = self
+            while let controller = current, controller.presentingViewController == nil || controller.parent != nil {
+                current = controller.parent
+            }
+            guard let presentation = (current ?? self).presentationController else { return }
+            if let existing = presentation.delegate as? DelegateProxy, existing === proxy { return }
+            let proxy = DelegateProxy(original: presentation.delegate) { [weak self] in self?.onAttempt() }
+            self.proxy = proxy
+            presentation.delegate = proxy
+        }
+    }
+
+    final class DelegateProxy: NSObject, UIAdaptivePresentationControllerDelegate {
+        weak var original: UIAdaptivePresentationControllerDelegate?
+        let onAttempt: () -> Void
+
+        init(original: UIAdaptivePresentationControllerDelegate?, onAttempt: @escaping () -> Void) {
+            self.original = original
+            self.onAttempt = onAttempt
+        }
+
+        func presentationControllerDidAttemptToDismiss(_ presentationController: UIPresentationController) {
+            onAttempt()
+            original?.presentationControllerDidAttemptToDismiss?(presentationController)
+        }
+
+        // Everything else goes to SwiftUI's delegate.
+        override func responds(to selector: Selector!) -> Bool {
+            super.responds(to: selector) || (original?.responds(to: selector) ?? false)
+        }
+
+        override func forwardingTarget(for selector: Selector!) -> Any? {
+            original?.responds(to: selector) == true ? original : nil
+        }
+    }
+}
+#endif

@@ -2,7 +2,7 @@
 // target, and a reminder time. Validated with zod; errors show once a field
 // has been touched (or on Save). With unsaved changes the sheet can't be
 // swiped away, and Cancel asks first.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { set as setTime, startOfToday } from "date-fns";
 import { z } from "zod";
 import {
@@ -92,7 +92,7 @@ function validate(draft: Draft, otherNames: string[]): { input: HabitInput | nul
   return { input: result.success && !Object.keys(errors).length ? (result.data as HabitInput) : null, errors };
 }
 
-/** The sheet: holds whether there are unsaved changes, so it can refuse the swipe down. */
+/** The sheet. With unsaved changes the form refuses the swipe down, and a swipe asks to discard. */
 export function HabitFormSheet({ isPresented, habit, onClose, onDelete }: {
   isPresented: boolean;
   habit?: Habit;
@@ -100,20 +100,24 @@ export function HabitFormSheet({ isPresented, habit, onClose, onDelete }: {
   /** After deleting (editing only). */
   onDelete?: () => void;
 }) {
+  // Each swipe on a dirty form asks again.
+  const [discardAsks, setDiscardAsks] = useState(0);
   return (
-    <Sheet isPresented={isPresented} onDismiss={onClose}>
+    <Sheet isPresented={isPresented} onDismiss={onClose} onDismissAttempt={() => setDiscardAsks((n) => n + 1)}>
       {/* A stack of its own, for the sheet's title and Cancel / Save. */}
       <Navigator>
-        <HabitForm habit={habit} onClose={onClose} onDelete={onDelete} />
+        <HabitForm habit={habit} onClose={onClose} onDelete={onDelete} discardAsks={discardAsks} />
       </Navigator>
     </Sheet>
   );
 }
 
-function HabitForm({ habit, onClose, onDelete }: {
+function HabitForm({ habit, onClose, onDelete, discardAsks }: {
   habit?: Habit;
   onClose: () => void;
   onDelete?: () => void;
+  /** Bumped when the user swipes the dirty sheet down. */
+  discardAsks: number;
 }) {
   const today = useToday();
   const habits = useHabits((s) => s.habits);
@@ -123,6 +127,9 @@ function HabitForm({ habit, onClose, onDelete }: {
   const [submitted, setSubmitted] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  useEffect(() => {
+    if (discardAsks) setConfirmDiscard(true);
+  }, [discardAsks]);
 
   const otherNames = habits.filter((h) => h.id !== habit?.id).map((h) => h.name);
   const { input, errors } = validate(draft, otherNames);

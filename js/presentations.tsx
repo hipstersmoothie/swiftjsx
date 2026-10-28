@@ -49,6 +49,11 @@ type SheetProps<T> = Presentable<T> & {
   keepState?: boolean;
   /** After the sheet has gone (its dismiss animation finished). */
   onDismissed?: () => void;
+  /**
+   * The user swiped down while the sheet can't be dismissed
+   * (`interactiveDismissDisabled`, here or inside it): ask "Discard changes?".
+   */
+  onDismissAttempt?: () => void;
 };
 
 export function Sheet<T>(props: SheetProps<T>) {
@@ -60,6 +65,7 @@ export function Sheet<T>(props: SheetProps<T>) {
     <SheetHost
       isPresented={presented}
       onDismiss={props.onDismiss}
+      onDismissAttempt={props.onDismissAttempt}
       onDismissed={() => {
         if (!presented) setMounted(false);
         props.onDismissed?.();

@@ -144,7 +144,8 @@ for the record.
 - [x] `createNavigationRef()` + `<Navigator navigationRef>` (push from a notification tap or
       deep link; calls before mount are replayed), `nav.replace`, `<Screen subtitle>`.
 - [x] `NavigationSplitView` `columnVisibility` / `onColumnVisibilityChange`.
-- [ ] Sheets: an "attempted to dismiss" callback (to ask before discarding changes).
+- [x] Sheets: `onDismissAttempt` (a swipe on a sheet that can't be dismissed: ask "Discard
+      changes?"); the Habits form uses it.
 - [x] `interactiveDismissDisabled` on any view inside a sheet (a dirty form locks it). A `fullScreen` sheet can't be closed
       without its slide (after a custom swipe-down).
 - [x] Sheet content mounts with the presentation and unmounts once the sheet has gone

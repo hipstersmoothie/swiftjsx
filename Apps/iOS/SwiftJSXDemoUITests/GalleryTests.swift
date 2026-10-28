@@ -444,6 +444,12 @@ final class GalleryTests: XCTestCase {
         app.navigationBars["New Habit"].swipeDown(velocity: .fast)
         sleep(1)
         XCTAssert(name.exists, "the dirty form was swiped away")
+        // …and the swipe asks whether to discard (onDismissAttempt).
+        let discard = app.buttons["Discard Changes"]
+        XCTAssert(discard.waitForExistence(timeout: 3), "no discard prompt")
+        snapshot("habits-discard-prompt")
+        discard.tap()
+        XCTAssert(name.waitForNonExistence(timeout: 3))
     }
 
     func testRecipes() {

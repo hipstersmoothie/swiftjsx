@@ -775,6 +775,8 @@ export const SheetHost = host<
     onDismiss: () => void;
     /** After it has gone (the dismiss animation finished), however it was dismissed. */
     onDismissed?: () => void;
+    /** The user tried to swipe it away while interactiveDismissDisabled: ask "Discard changes?". */
+    onDismissAttempt?: () => void;
     detents?: ("medium" | "large" | number)[];
     /** iOS: cover the whole screen instead of a card. */
     fullScreen?: boolean;

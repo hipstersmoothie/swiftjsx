@@ -35386,11 +35386,11 @@ ${e.stack}` : String(e);
   var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
   function usePresentation(props) {
     const $ = (0, import_compiler_runtime5.c)(9);
-    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
+    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 9; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
+      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
     }
     const presented = props.item !== void 0 ? props.item !== null : !!props.isPresented;
     const [shown, setShown] = (0, import_react6.useState)(props.item);
@@ -35437,12 +35437,12 @@ ${e.stack}` : String(e);
     return g3 + 1;
   }
   function Sheet(props) {
-    const $ = (0, import_compiler_runtime5.c)(20);
-    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
-      for (let $i = 0; $i < 20; $i += 1) {
+    const $ = (0, import_compiler_runtime5.c)(21);
+    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
+      for (let $i = 0; $i < 21; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
+      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
     }
     const {
       presented,
@@ -35479,8 +35479,8 @@ ${e.stack}` : String(e);
       t1 = $[8];
     }
     let t2;
-    if ($[9] !== presented || $[10] !== props.background || $[11] !== props.cornerRadius || $[12] !== props.detents || $[13] !== props.dragIndicator || $[14] !== props.fullScreen || $[15] !== props.interactiveDismissDisabled || $[16] !== props.onDismiss || $[17] !== t0 || $[18] !== t1) {
-      t2 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, onDismissed: t0, detents: props.detents, fullScreen: props.fullScreen, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
+    if ($[9] !== presented || $[10] !== props.background || $[11] !== props.cornerRadius || $[12] !== props.detents || $[13] !== props.dragIndicator || $[14] !== props.fullScreen || $[15] !== props.interactiveDismissDisabled || $[16] !== props.onDismiss || $[17] !== props.onDismissAttempt || $[18] !== t0 || $[19] !== t1) {
+      t2 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, onDismissAttempt: props.onDismissAttempt, onDismissed: t0, detents: props.detents, fullScreen: props.fullScreen, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
       $[9] = presented;
       $[10] = props.background;
       $[11] = props.cornerRadius;
@@ -35489,21 +35489,22 @@ ${e.stack}` : String(e);
       $[14] = props.fullScreen;
       $[15] = props.interactiveDismissDisabled;
       $[16] = props.onDismiss;
-      $[17] = t0;
-      $[18] = t1;
-      $[19] = t2;
+      $[17] = props.onDismissAttempt;
+      $[18] = t0;
+      $[19] = t1;
+      $[20] = t2;
     } else {
-      t2 = $[19];
+      t2 = $[20];
     }
     return t2;
   }
   function useDialog(props) {
     const $ = (0, import_compiler_runtime5.c)(13);
-    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
+    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 13; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
+      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
     }
     const presentation = usePresentation(props);
     let t0;
@@ -35551,11 +35552,11 @@ ${e.stack}` : String(e);
   }
   function Alert(props) {
     const $ = (0, import_compiler_runtime5.c)(7);
-    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
+    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
+      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
     }
     const {
       presented,
@@ -35579,11 +35580,11 @@ ${e.stack}` : String(e);
   }
   function ConfirmationDialog(props) {
     const $ = (0, import_compiler_runtime5.c)(7);
-    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
+    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
+      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
     }
     const {
       presented,
@@ -35607,11 +35608,11 @@ ${e.stack}` : String(e);
   }
   function Fresh(t0) {
     const $ = (0, import_compiler_runtime5.c)(3);
-    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
+    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 3; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
+      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
     }
     const {
       children
