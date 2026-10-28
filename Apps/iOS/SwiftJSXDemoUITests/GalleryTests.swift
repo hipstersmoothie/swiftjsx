@@ -16,10 +16,15 @@ final class GalleryTests: XCTestCase {
         let row = app.buttons.containing(.staticText, identifier: demo).firstMatch
         var swiped = false
         // Hittable isn't enough: a row half under the home indicator misses
-        // the tap. Scroll until it's clear of the bottom edge.
-        let bottom = app.windows.firstMatch.frame.maxY - 100
-        for _ in 0..<8 where !row.isHittable || row.frame.maxY > bottom {
-            app.swipeUp()
+        // the tap. Scroll in short drags (a swipe can fling it off the top)
+        // until it's clear of both edges.
+        let window = app.windows.firstMatch.frame
+        for _ in 0..<12 {
+            let frame = row.exists ? row.frame : .zero
+            if row.exists, row.isHittable, frame.maxY < window.maxY - 100, frame.minY > window.minY + 100 { break }
+            let up = !row.exists || frame.maxY >= window.maxY - 100
+            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.7 : 0.35))
+            from.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.4 : 0.65)))
             swiped = true
         }
         // Let the list stop decelerating before tapping.
@@ -578,6 +583,24 @@ final class GalleryTests: XCTestCase {
         button.tap()
         XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'Taps 2 · holds 1'"), evaluatedWith: button)], timeout: 3) == .completed,
                   "the next tap should count: \(button.label)")
+    }
+
+    func testDragAxis() {
+        open("Animation")
+        let card = element("swipe-card")
+        XCTAssert(card.waitForExistence(timeout: 5))
+        // Sideways: the card's drag.
+        let start = card.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: card.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)))
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'last: right'"), evaluatedWith: card)], timeout: 3) == .completed,
+                  card.label)
+        // Up and down, starting on the card: the page scrolls.
+        let before = card.frame.minY
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)))
+        sleep(1)
+        XCTAssertLessThan(card.frame.minY, before - 50, "a vertical drag on the card should scroll the page")
+        XCTAssert(card.label.contains("last: right"), "a vertical drag shouldn't swipe the card")
     }
 
     func testCharts() {

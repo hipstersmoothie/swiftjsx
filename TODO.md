@@ -159,8 +159,8 @@ for the record.
 - [x] Drag events with view-local positions and size.
 - [x] `gesturePriority` (simultaneous / high), `dragActivation="longPress"` +
       `onDragStart`, cancelled drags (`onDragEnd` with `cancelled`), tap locations.
-- [ ] Drag axis locking inside scroll views (a horizontal drag that leaves vertical
-      scrolling alone needs `gesturePriority="simultaneous"` plus your own axis check).
+- [x] `dragAxis="horizontal" | "vertical"` (iOS): a UIKit pan that only begins along its
+      axis, so the other direction scrolls the surrounding ScrollView.
 - [x] `onDragStart` for immediate drags (with the first event); a cancelled drag's
       `onDragEnd` is decided a turn later, so it can't double-fire whichever order
       SwiftUI resets state and calls `onEnded`.

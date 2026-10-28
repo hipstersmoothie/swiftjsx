@@ -169,6 +169,13 @@ struct GestureModifiers: ViewModifier {
     private var dragAttachment: some ViewModifier {
         let enabled = node.has("onDrag") || node.has("onDragEnd") || node.has("onDragStart")
         let priority = node.string("gesturePriority")
+        #if os(iOS)
+        // `dragAxis`: a UIKit pan that only starts along its axis, so the
+        // other direction still scrolls the surrounding ScrollView.
+        if let axis = node.string("dragAxis"), node.features.contains(.drag) {
+            return AnyViewModifier(AxisDrag(node: node, horizontal: axis == "horizontal", frame: frame, fire: fire))
+        }
+        #endif
         if node.string("dragActivation") == "longPress" {
             let hold = LongPressGesture(minimumDuration: node.double("longPressDuration") ?? 0.4)
                 .onEnded { _ in fire("onDragStart") }
@@ -429,3 +436,96 @@ struct KeyboardShortcutModifier: ViewModifier {
         return KeyboardShortcut(equivalent, modifiers: flags)
     }
 }
+
+#if os(iOS)
+/// `dragAxis="horizontal" | "vertical"`: drag events (same shape as a
+/// SwiftUI drag's) from a pan that begins only when the movement is along the
+/// axis. A ScrollView's own pan waits for it to fail, so a vertical swipe on a
+/// horizontally draggable card still scrolls the list.
+private struct AxisDrag: ViewModifier {
+    let node: Node
+    let horizontal: Bool
+    let frame: CGRect
+    let fire: (String, Any?) -> Void
+
+    func body(content: Content) -> some View {
+        content.gesture(AxisPan(horizontal: horizontal) { phase, event in
+            var payload = event
+            func local(_ p: [String: Double]) -> [String: Double] { ["x": (p["x"] ?? 0) - frame.minX, "y": (p["y"] ?? 0) - frame.minY] }
+            if let location = event["location"] as? [String: Double] { payload["localLocation"] = local(location) }
+            if let start = event["startLocation"] as? [String: Double] { payload["localStartLocation"] = local(start) }
+            payload["size"] = ["width": frame.width, "height": frame.height]
+            switch phase {
+            case .began:
+                fire("onDragStart", payload)
+                fire("onDrag", payload)
+            case .changed:
+                fire("onDrag", payload)
+            case .ended:
+                fire("onDragEnd", payload)
+            default:
+                fire("onDragEnd", payload.merging(["cancelled": true]) { $1 })
+            }
+        })
+    }
+}
+
+private struct AxisPan: UIGestureRecognizerRepresentable {
+    let horizontal: Bool
+    let onEvent: (UIGestureRecognizer.State, [String: Any]) -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        context.coordinator.horizontal = horizontal
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator {
+        Coordinator(horizontal: horizontal)
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let window = recognizer.view?.window
+        let translation = recognizer.translation(in: window)
+        let velocity = recognizer.velocity(in: window)
+        let location = recognizer.location(in: window)
+        if recognizer.state == .began {
+            context.coordinator.start = CGPoint(x: location.x - translation.x, y: location.y - translation.y)
+        }
+        let start = context.coordinator.start
+        func point(_ p: CGPoint) -> [String: Double] { ["x": p.x, "y": p.y] }
+        // About where a fling would come to rest (like DragGesture's prediction).
+        let predicted = CGPoint(x: translation.x + velocity.x * 0.25, y: translation.y + velocity.y * 0.25)
+        onEvent(recognizer.state, [
+            "translation": point(translation),
+            "location": point(location),
+            "startLocation": point(start),
+            "velocity": point(velocity),
+            "predictedEndTranslation": point(predicted),
+        ])
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var horizontal: Bool
+        var start: CGPoint = .zero
+        init(horizontal: Bool) { self.horizontal = horizontal }
+
+        /// Only along the axis; otherwise fail at once and let scrolling happen.
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = recognizer as? UIPanGestureRecognizer else { return true }
+            let v = pan.velocity(in: pan.view)
+            return horizontal ? abs(v.x) > abs(v.y) : abs(v.y) > abs(v.x)
+        }
+
+        /// Scroll views' pans wait for this one to fail.
+        func gestureRecognizer(_ recognizer: UIGestureRecognizer,
+                               shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
+            other.view is UIScrollView && other is UIPanGestureRecognizer
+        }
+    }
+}
+#endif

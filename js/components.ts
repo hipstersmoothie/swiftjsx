@@ -212,6 +212,12 @@ export interface Modifiers {
   onDrag?: (event: DragEvent) => void;
   /** When the finger lifts; `cancelled` if the system cancelled the drag (positions are the last ones seen). */
   onDragEnd?: (event: DragEvent & { cancelled?: boolean }) => void;
+  /**
+   * Only drag along this axis (iOS): a drag the other way is left to the
+   * surrounding ScrollView, so a horizontally swipeable card in a vertical list
+   * still scrolls the list.
+   */
+  dragAxis?: "horizontal" | "vertical";
   /** "longPress": hold (`longPressDuration`) before dragging; `onDragStart` fires when picked up. */
   dragActivation?: "immediate" | "longPress";
   /**

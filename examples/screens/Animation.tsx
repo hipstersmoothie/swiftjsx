@@ -37,6 +37,8 @@ export function AnimationDemo() {
   const [throughTaps, setThroughTaps] = useState(0);
   const [undone, setUndone] = useState(false);
   const [taps, setTaps] = useState({ taps: 0, holds: 0 });
+  const [swipeX, setSwipeX] = useState(0);
+  const [swiped, setSwiped] = useState("none");
 
   const shuffle = () =>
     withAnimation(
@@ -58,6 +60,26 @@ export function AnimationDemo() {
     <Screen title="Animation" titleDisplayMode="inline">
       <ScrollView>
         <VStack alignment="leading" spacing={16} padding={20}>
+          {/* dragAxis: sideways drags swipe the card; vertical ones scroll the page. */}
+          <HStack
+            padding={16}
+            frame={{ maxWidth: "infinity" }}
+            background="secondarySystemBackground"
+            cornerRadius={14}
+            offset={{ x: swipeX }}
+            animation={swipeX === 0 ? "bouncy" : undefined}
+            dragAxis="horizontal"
+            onDrag={(e) => setSwipeX(e.translation.x)}
+            onDragEnd={(e) => {
+              if (Math.abs(e.translation.x) > 80) setSwiped(e.translation.x > 0 ? "right" : "left");
+              setSwipeX(0);
+            }}
+            accessibilityElement="combine"
+            accessibilityIdentifier="swipe-card"
+          >
+            <Text>{`Swipe me sideways · last: ${swiped}`}</Text>
+          </HStack>
+
           <Text font="headline">AbsoluteStack, transitions, exits</Text>
           <Text font="footnote" foregroundStyle="secondary">
             Tiles are placed by percentages of the board. New tiles pop in with their own spring; tapped tiles fly off and fade
