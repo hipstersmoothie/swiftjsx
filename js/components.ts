@@ -431,8 +431,10 @@ export const ScrollView = host<
   Modifiers & WithChildren & ScrollProps & {
     axis?: "vertical" | "horizontal";
     spacing?: number;
-    /** The index of the child at the leading (top) edge, when it changes: a carousel's current page (children of equal size). */
+    /** The index of the child at the leading (top) edge, when it changes: a carousel's current page. */
     onScrollIndexChange?: (index: number) => void;
+    /** false: the user can't scroll it (a paging image viewer while an image is zoomed); it still scrolls from code. */
+    scrollEnabled?: boolean;
   }
 >("ScrollView");
 
@@ -796,6 +798,10 @@ export const Video = host<
     loop?: boolean;
     controls?: boolean;
     contentMode?: "fit" | "fill";
+    /** Plays (with autoPlay) only while at least half of it is on screen: videos in feeds. */
+    playsWhenVisible?: boolean;
+    /** An image URL shown until it starts playing (a video's thumbnail). */
+    poster?: string;
     onReady?: (info: { duration: number }) => void;
     /** About twice a second while playing. */
     onTimeUpdate?: (time: { currentTime: number; duration: number }) => void;
@@ -949,7 +955,9 @@ export const Screen = host<
     /**
      * Where the search field goes: "automatic" (iOS 26: the bottom toolbar, or the tab
      * bar's search tab when the screen is in a `<Tab role="search">`), "navigationBar"
-     * (always under the title), or "toolbar".
+     * (always under the title), or "toolbar". In a screen of an ordinary `<Tab>`,
+     * "automatic" can collapse the field into a toolbar button: use "navigationBar"
+     * to always show it.
      */
     searchPlacement?: "automatic" | "navigationBar" | "toolbar";
     /** Whether the search field is active (false dismisses it from code); onSearchActiveChange reports the user's taps and Cancel. */

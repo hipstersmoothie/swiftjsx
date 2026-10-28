@@ -35,6 +35,7 @@ struct ScrollViewHost: View {
             // Rows in here aren't List rows, even inside one (a carousel in a row).
             .environment(\.inList, false)
             .modifier(ScrollOptions(node: node))
+            .scrollDisabled(node.has("scrollEnabled") && !node.bool("scrollEnabled"))
             .modifier(Position(node: node, horizontal: horizontal, edges: edges))
             .scrollPosition($position)
             .onChange(of: node.scrollRequest) { _, request in
@@ -375,6 +376,7 @@ struct VirtualListHost: View {
     private func slots(count: Int, layout: SlotLayout) -> some View {
         ForEach(0..<count, id: \.self) { index in
             VirtualSlot(list: node, index: index, layout: layout)
+                .id(index)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { [heights] in heights.record(index, $0) }
                 .onAppear { visible.update(inserting: index, report: report) }
                 .onDisappear { visible.update(removing: index, report: report) }
@@ -383,6 +385,18 @@ struct VirtualListHost: View {
 
     private func report(_ first: Int, _ last: Int) {
         runtime?.dispatch(node.id, "onRangeChange", ["first": first, "last": last])
+    }
+}
+
+/// `initialScrollIndex`: the row to start at, once the list has it (and
+/// again when the prop changes: a thread whose ancestors load above the
+/// focused post moves its index from 0 to 3, and the list follows).
+struct InitialScroll: Equatable {
+    let index: Int?
+    let ready: Bool
+    @MainActor init(node: Node, count: Int) {
+        index = node.double("initialScrollIndex").map(Int.init)
+        ready = index.map { $0 >= 0 && $0 < count } ?? false
     }
 }
 
@@ -402,6 +416,10 @@ private struct VirtualStack<Slots: View>: View {
     @State private var position = ScrollPosition()
     @State private var viewport: CGFloat = 0
     @State private var headerHeight: CGFloat = 0
+    /// The `initialScrollIndex` already scrolled to.
+    @State private var initialApplied: Int?
+    /// Keeps that row at the top while the rows above it render.
+    @State private var pinning: Task<Void, Never>?
 
     var body: some View {
         let spacing = node.cgFloat("spacing") ?? 0
@@ -421,6 +439,27 @@ private struct VirtualStack<Slots: View>: View {
             if request.animated { withAnimation(.default, jump) } else { jump() }
         }
         .onAppear { if let request = node.scrollRequest { scroll(to: request, spacing: spacing) } }
+        .onChange(of: InitialScroll(node: node, count: count), initial: true) { _, initial in
+            guard let index = initial.index, initial.ready, index != initialApplied else { return }
+            initialApplied = index
+            // By offset from measured heights, like scrollTo(index). The rows
+            // above it are placeholders until React renders them, and their
+            // real heights push the row down: scroll to it again while they
+            // settle (each time better measured), until the user scrolls.
+            pinning?.cancel()
+            pinning = Task { @MainActor in
+                for delay in [0, 50, 100, 200, 350, 600, 1000] {
+                    try? await Task.sleep(for: .milliseconds(delay == 0 ? 1 : delay))
+                    if Task.isCancelled { return }
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) { scroll(toIndex: index, anchor: nil, spacing: node.cgFloat("spacing") ?? 0) }
+                }
+            }
+        }
+        .onScrollPhaseChange { _, phase in
+            if phase == .interacting { pinning?.cancel() }
+        }
     }
 
     /// `header` / `footer` (VirtualListHeader / VirtualListFooter children):
@@ -447,24 +486,28 @@ private struct VirtualStack<Slots: View>: View {
         case let offset as ScrollOffset:
             position.scrollTo(point: CGPoint(x: offset.x ?? 0, y: offset.y ?? 0))
         case let index as Int:
-            let row = layout.fixed ?? layout.estimated
-            // Grids: rows of `columns` (adaptive columns count as one per row: an estimate).
-            let perRow = max(1, Int(node.double("columns") ?? 1))
-            let header = headerHeight > 0 ? headerHeight + spacing : 0
-            let target = min(max(index, 0), max(count - 1, 0))
-            // Rows of varying height: the ones measured so far, estimates for the rest.
-            let top = perRow == 1 && layout.fixed == nil
-                ? header + heights.offset(of: target, estimated: row, spacing: spacing)
-                : header + CGFloat(target / perRow) * (row + spacing)
-            let y: CGFloat = switch request.anchor {
-            case .center?: top - (viewport - row) / 2
-            case .bottom?: top - (viewport - row)
-            default: top
-            }
-            position.scrollTo(y: max(0, y))
+            scroll(toIndex: index, anchor: request.anchor, spacing: spacing)
         default:
             break
         }
+    }
+
+    private func scroll(toIndex index: Int, anchor: UnitPoint?, spacing: CGFloat) {
+        let row = layout.fixed ?? layout.estimated
+        // Grids: rows of `columns` (adaptive columns count as one per row: an estimate).
+        let perRow = max(1, Int(node.double("columns") ?? 1))
+        let header = headerHeight > 0 ? headerHeight + spacing : 0
+        let target = min(max(index, 0), max(count - 1, 0))
+        // Rows of varying height: the ones measured so far, estimates for the rest.
+        let top = perRow == 1 && layout.fixed == nil
+            ? header + heights.offset(of: target, estimated: row, spacing: spacing)
+            : header + CGFloat(target / perRow) * (row + spacing)
+        let y: CGFloat = switch anchor {
+        case .center?: top - (viewport - row) / 2
+        case .bottom?: top - (viewport - row)
+        default: top
+        }
+        position.scrollTo(y: max(0, y))
     }
 }
 

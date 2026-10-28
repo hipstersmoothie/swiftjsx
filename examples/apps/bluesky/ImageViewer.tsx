@@ -49,6 +49,8 @@ function Gallery({ images, start, onClose }: { images: ImageView[]; start: numbe
         ref={pager}
         axis="horizontal"
         paging
+        // Zoomed in, a horizontal drag pans the image instead of paging.
+        scrollEnabled={!zoomed}
         spacing={0}
         showsIndicators={false}
         onScrollIndexChange={(i) => {

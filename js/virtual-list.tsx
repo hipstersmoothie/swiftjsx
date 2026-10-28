@@ -9,6 +9,12 @@ export type VirtualListProps<T> = Omit<Modifiers, "ref"> & ScrollProps & {
   /** Placeholder height for rows React hasn't rendered yet. */
   estimatedItemHeight?: number;
   /**
+   * Start scrolled to this row (its top at the top), once the data has it;
+   * changing it scrolls again. A thread: the focused post, with the replies it
+   * answers loading above it.
+   */
+  initialScrollIndex?: number;
+  /**
    * Every row is exactly this tall. Fastest option (like FlatList's
    * getItemLayout): no measuring, and no jump when a placeholder becomes a row.
    */

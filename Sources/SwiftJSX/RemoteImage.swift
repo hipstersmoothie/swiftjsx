@@ -66,14 +66,14 @@ struct RemoteImage: View {
         node.reportedImageURL = url
         runtime?.dispatch(node.id, event, payload)
     }
+}
 
-    private func platformImage(_ image: PlatformImage) -> Image {
-        #if canImport(UIKit)
-        Image(uiImage: image)
-        #else
-        Image(nsImage: image)
-        #endif
-    }
+func platformImage(_ image: PlatformImage) -> Image {
+    #if canImport(UIKit)
+    Image(uiImage: image)
+    #else
+    Image(nsImage: image)
+    #endif
 }
 
 /// Shared image cache for `<Image src>`.

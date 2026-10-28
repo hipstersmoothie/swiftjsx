@@ -1,10 +1,10 @@
 // A thread: the ancestors (joined by a thread line), the focused post (large,
 // with the full timestamp and stats), then the replies as a tree, indented
 // by depth with guide lines. Opens scrolled to the focused post.
-import { useEffect, useRef } from "react";
+
 import { useQuery } from "@tanstack/react-query";
 import {
-  Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, Rectangle, Background, ToolbarItem, useNavigation, type HostInstance,
+  Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, Rectangle, Background, ToolbarItem, useNavigation,
 } from "swiftjsx";
 import { getPostThread, getLikes, getRepostedBy } from "./api";
 import { compact, counted, displayName, fullTimestamp } from "./format";
@@ -81,24 +81,11 @@ const rowKey = (row: Row) => (row.kind === "ancestor" || row.kind === "focus" ? 
 export function ThreadScreen({ uri, initial }: { uri: string; initial?: PostView }) {
   const query = useQuery({ queryKey: ["thread", uri], queryFn: ({ signal }) => getPostThread(uri, signal) });
   const openCompose = useUI((s) => s.openCompose);
-  const list = useRef<HostInstance>(null);
-  // Scroll to the focused post once per load (a ref: changing it mustn't re-run the effect and cancel the timer).
-  const scrolledTo = useRef<string | null>(null);
 
   const rows: Row[] = query.data ? flatten(query.data.thread) : initial ? [{ kind: "focus", post: initial, hasParent: false }] : [];
   const focusIndex = rows.findIndex((r) => r.kind === "focus");
   const focused = focusIndex >= 0 ? rows[focusIndex] : null;
   const focusPost = focused && focused.kind === "focus" ? focused.post : null;
-
-  // Once the thread loads, jump to the focused post (ancestors are above it).
-  const loadedKey = query.data ? uri : null;
-  useEffect(() => {
-    if (!loadedKey || scrolledTo.current === loadedKey || focusIndex <= 0) return;
-    scrolledTo.current = loadedKey;
-    // After the rows above have been committed and laid out.
-    const timer = setTimeout(() => list.current?.scrollTo(focusIndex, { animated: false, anchor: "top" }), 50);
-    return () => clearTimeout(timer);
-  }, [loadedKey, focusIndex]);
 
   return (
     <Screen title="Post" titleDisplayMode="inline">
@@ -113,10 +100,11 @@ export function ThreadScreen({ uri, initial }: { uri: string; initial?: PostView
         <ErrorView error={query.error} retry={() => query.refetch()} />
       ) : (
         <VirtualList
-          ref={list}
           data={rows}
           keyExtractor={rowKey}
           estimatedItemHeight={160}
+          // The focused post at the top; its ancestors load above it.
+          initialScrollIndex={focusIndex > 0 ? focusIndex : undefined}
           renderItem={(row) => <ThreadRow row={row} />}
           footer={
             query.isPending ? (

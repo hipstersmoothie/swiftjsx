@@ -69,6 +69,12 @@ struct CollectionList: UIViewRepresentable {
         } else if coordinator.refresh == nil {
             view.refreshControl = nil
         }
+        let initial = InitialScroll(node: node, count: count)
+        if let index = initial.index, initial.ready, index != coordinator.initialApplied {
+            coordinator.initialApplied = index
+            view.layoutIfNeeded()
+            view.scrollToItem(at: IndexPath(item: index, section: 0), at: .top, animated: false)
+        }
         if let request = node.scrollRequest, request.seq != coordinator.lastScroll {
             coordinator.lastScroll = request.seq
             coordinator.scroll(view, request)
@@ -110,6 +116,7 @@ struct CollectionList: UIViewRepresentable {
         var count = 0
         var layout = SlotLayout(fixed: nil, estimated: 44)
         var lastScroll = 0
+        var initialApplied: Int?
         var refresh: RefreshAction?
         private var node: Node?
         private var runtime: JSXRuntime?

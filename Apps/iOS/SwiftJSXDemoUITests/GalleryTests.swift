@@ -480,7 +480,10 @@ final class GalleryTests: XCTestCase {
             app.navigationBars.buttons.element(boundBy: 0).tap()
             sleep(1)
         }
-        element("profile-tab-media").tap()
+        // Back up to the tabs (the search above may have scrolled them away).
+        let media = element("profile-tab-media")
+        for _ in 0..<8 where !(media.exists && media.isHittable) { app.swipeDown(velocity: .fast) }
+        media.tap()
         sleep(4)
         snapshot("bsky-profile-media")
 
@@ -960,5 +963,21 @@ final class GalleryTests: XCTestCase {
         snapshot("puck-home")
         let middle = element("puck").frame.midX
         XCTAssertEqual(middle, app.windows.firstMatch.frame.midX, accuracy: 30, "the puck springs back to the middle")
+    }
+    func testVirtualListInitialScrollIndex() {
+        open("Virtual list")
+        app.buttons["Thread"].tap()
+        let focused = element("focused-row")
+        XCTAssert(focused.waitForExistence(timeout: 5))
+        // The ancestors load above it half a second later; it stays at the top.
+        sleep(2)
+        snapshot("thread-list")
+        let navBottom = app.navigationBars.firstMatch.frame.maxY
+        XCTAssertEqual(focused.frame.minY, navBottom, accuracy: 24, "the focused row stays at the top")
+        XCTAssertFalse(app.staticTexts["Ancestor 7"].isHittable, "the ancestors are above, out of view")
+        // Scrolling up shows them.
+        app.swipeDown()
+        sleep(1)
+        XCTAssert(app.staticTexts["Ancestor 7"].isHittable)
     }
 }

@@ -310,6 +310,9 @@ Things that behave differently from React on the web, or from what you'd guess:
   - Writing a prop or a hook's return value (`navRef.current = …`,
     `offset.value = …` in a component body): use methods (`offset.set(…)`).
   - `let n = 0` updated (`n++`) inside a closure: use an array or a ref.
+  - `?:`, `?.`, `??`, `&&` or `||` inside a `try`/`catch` in a component ("Support value
+    blocks … within a try/catch statement"): move the async work (a submit handler's
+    `try { await … }`) into a module-level function and call it from the component.
   - A compiler bug: `Math.max(0, list.findIndex((x) => …))` (a method call whose argument
     is a method call with a callback) fails with "MethodCall::property must be an
     unpromoted + unmemoized MemberExpression". Split it into two statements.

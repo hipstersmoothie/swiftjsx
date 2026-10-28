@@ -162,8 +162,6 @@ function LinkCard({ external, width, compact }: { external: ExternalView; width:
 function VideoEmbed({ embed, width, compact }: { embed: Extract<MediaView, { $type: "app.bsky.embed.video#view" }>; width: number; compact: boolean }) {
   const autoplay = useSettings((s) => s.autoplayVideos);
   const [playing, setPlaying] = useState(false);
-  // Rows are rendered ahead of the scroll position: only play while on screen.
-  const [visible, setVisible] = useState(false);
   const ratio = embed.aspectRatio ? embed.aspectRatio.width / embed.aspectRatio.height : 16 / 9;
   const height = Math.round(width / Math.min(Math.max(ratio, compact ? 1 : 0.8), 2));
   if (playing || (autoplay && !compact)) {
@@ -171,9 +169,9 @@ function VideoEmbed({ embed, width, compact }: { embed: Extract<MediaView, { $ty
       <Video
         src={embed.playlist}
         autoPlay
-        paused={!visible}
-        onAppear={() => setVisible(true)}
-        onDisappear={() => setVisible(false)}
+        // Rows are rendered ahead of the scroll position: only play while on screen.
+        playsWhenVisible
+        poster={embed.thumbnail}
         muted={!playing}
         loop={!playing}
         controls={playing}

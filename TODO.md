@@ -214,6 +214,21 @@ for the record.
 - [x] `requestAnimationFrame` (60 Hz on the JS thread, one timestamp per frame).
 - [x] Drag and drop anywhere: `draggable` (a string), `onDrop`, `onDropTargetChange`.
 
+## From the Bluesky client
+
+- [x] `VirtualList` `initialScrollIndex` (a thread opens on the focused post, with its
+      ancestors above); `Video` `playsWhenVisible` and `poster`; `ScrollView`
+      `scrollEnabled`; `searchPlacement` documents that "automatic" can collapse the field
+      into a button in an ordinary tab.
+- [ ] A container's `accessibilityIdentifier` disappears when it's nested inside another
+      `accessibilityElement="contain"` container (XCUITest sees only the outer one).
+- [ ] `TextField` can't style ranges of its text (highlighting mentions and links while
+      composing).
+- [ ] Gesture props (`dragAxis`, enabled) can't be driven by shared values: switching them
+      from a worklet takes a round trip through React.
+- [ ] `VirtualList` can't keep the visible rows in place when rows are inserted above them
+      (beyond `initialScrollIndex`): "new posts" at the top of a feed.
+
 ## Rendering
 
 - [ ] `foregroundStyle`, gestures, transforms, accessibility props and refs are attached

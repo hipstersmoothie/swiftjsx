@@ -11,12 +11,17 @@ import WebKit
 /// `controls` (false: just the picture, e.g. a looping background),
 /// `contentMode` ("fit" | "fill"); `onReady({ duration })`,
 /// `onTimeUpdate({ currentTime, duration })` (about twice a second), `onEnd`.
+/// `playsWhenVisible`: plays only while at least half of it is on screen
+/// (feeds render rows ahead of the scroll position). `poster`: an image URL
+/// shown until it starts playing.
 struct VideoHost: View {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
     @State private var player = AVPlayer()
     @State private var observer: Any?
     @State private var endObserver: NSObjectProtocol?
+    @State private var visible = false
+    @State private var started = false
 
     var body: some View {
         Group {
@@ -26,8 +31,19 @@ struct VideoHost: View {
                 VideoPlayer(player: player)
             }
         }
+        .overlay {
+            if !started, let poster = node.string("poster").flatMap(URL.init(string:)) {
+                PosterImage(url: poster, fill: node.string("contentMode") == "fill")
+                    .allowsHitTesting(false)
+            }
+        }
+        .onScrollVisibilityChange(threshold: 0.5) { isVisible in
+            visible = isVisible
+            guard node.bool("playsWhenVisible") else { return }
+            if isVisible, shouldPlay { player.play() } else if !isVisible { player.pause() }
+        }
         .onChange(of: node.string("src"), initial: true) { _, src in load(src) }
-        .onChange(of: node.bool("paused")) { _, paused in paused ? player.pause() : player.play() }
+        .onChange(of: node.bool("paused")) { _, paused in paused || !visibleEnough ? player.pause() : player.play() }
         .onChange(of: node.bool("muted"), initial: true) { _, muted in player.isMuted = muted }
         .onDisappear { player.pause() }
     }
@@ -40,8 +56,11 @@ struct VideoHost: View {
         // The observer also fires while paused (at load, after seeks): report
         // only times that moved.
         let last = LastTime()
+        started = false
+        let begun = $started
         observer = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main) { [node, runtime, player] time in
             MainActor.assumeIsolated {
+                if time.seconds > 0, !begun.wrappedValue { begun.wrappedValue = true }
                 guard node.has("onTimeUpdate"), time.seconds != last.seconds else { return }
                 last.seconds = time.seconds
                 let duration = player.currentItem?.duration.seconds ?? .nan
@@ -62,7 +81,31 @@ struct VideoHost: View {
             let duration = (try? await item.asset.load(.duration))?.seconds ?? 0
             if node.has("onReady") { runtime?.dispatch(node.id, "onReady", ["duration": duration.isFinite ? duration : 0]) }
         }
-        if node.bool("autoPlay"), !node.bool("paused") { player.play() }
+        if shouldPlay { player.play() }
+    }
+
+    /// autoPlay, not paused, and on screen if it has to be.
+    private var shouldPlay: Bool { node.bool("autoPlay") && !node.bool("paused") && visibleEnough }
+    private var visibleEnough: Bool { !node.bool("playsWhenVisible") || visible }
+}
+
+/// A video's `poster`, from the shared image cache.
+private struct PosterImage: View {
+    let url: URL
+    let fill: Bool
+    @State private var image: PlatformImage?
+
+    var body: some View {
+        ZStack {
+            if let image = image ?? ImageLoader.shared.cached(url) {
+                if fill {
+                    Color.clear.overlay { platformImage(image).resizable().scaledToFill() }.clipped()
+                } else {
+                    platformImage(image).resizable().scaledToFit()
+                }
+            }
+        }
+        .task(id: url) { image = try? await ImageLoader.shared.load(url) }
     }
 }
 
