@@ -137,8 +137,8 @@ wanted and couldn't do. Checked items are done and kept for the record.
       (percent-encodes spaces instead of failing).
 - [ ] App lifecycle: no `pagehide` / background-task time for last-chance saves; no
       `document.visibilityState`.
-- [ ] Fast Refresh re-runs whole modules: module-level state resets and native objects
-      created there leak. Wants an `import.meta.hot.dispose`-style hook.
+- [x] `hot.data` / `hot.dispose()` for module-level state and cleanup across Fast Refresh
+      updates (bundle-wide, not per module).
 - [ ] `TextDecoder` is UTF-8 only and has no streaming mode; WebSocket has no
       extensions or ping control; no `document` (by design).
 

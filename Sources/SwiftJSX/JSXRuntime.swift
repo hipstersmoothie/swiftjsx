@@ -202,6 +202,11 @@ public final class JSXRuntime {
         hotUpdate(app: app, sourceURL: url)
     }
 
+    /// Evaluates a script in the app's context and returns its string value (tests only).
+    func evaluateForTests(_ script: String) -> String? {
+        engine.evaluateForTests(script)
+    }
+
     /// Re-run an app bundle in the live context; React Refresh keeps state.
     func hotUpdate(app: String, sourceURL: URL? = nil) {
         // React Refresh only exists in the development runtime; reload instead.

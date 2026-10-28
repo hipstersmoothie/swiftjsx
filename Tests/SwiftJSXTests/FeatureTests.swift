@@ -293,3 +293,17 @@ struct CompilerTests {
         #expect(await eventually { offset(card) == [5, 5] })
     }
 }
+
+@MainActor
+@Suite struct HotTests {
+    @Test func hotDataSurvivesUpdatesAndDisposeRunsFirst() async throws {
+        let runtime = try fixture("Hot")
+        #expect(runtime.texts() == ["runs 1 disposed 0"])
+        // A hot update re-runs the bundle; render() is a no-op the second time,
+        // so read hot.data through a fresh render of the same text instead.
+        runtime.hotUpdate(app: try fixtureSource("Hot"))
+        runtime.hotUpdate(app: try fixtureSource("Hot"))
+        let data = runtime.evaluateForTests("JSON.stringify(globalThis.__swiftjsx_hot.data)")
+        #expect(data == #"{"runs":3,"disposed":2}"#)
+    }
+}

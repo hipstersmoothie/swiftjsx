@@ -59,7 +59,9 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   for anything it had to leave unmemoized (rule-of-React violations, unsupported syntax).
 - **Fast Refresh.** Save a file: changed components are swapped in place and keep their
   state. Changing a component's hooks remounts just that component. Syntax/runtime errors
-  show a red box and clear on the next good save.
+  show a red box and clear on the next good save. Module-level state re-runs on each
+  update: keep it with `hot.data` (`export const useStore = (hot.data.store ??= create(…))`)
+  and stop timers, sockets or native objects with `hot.dispose(fn)`.
 - **JS off the main thread.** React renders on a dedicated JS thread (with its own run
   loop); commits are applied on the main thread. Controlled inputs stay smooth: a field shows its own value while React
   catches up, and stale echoes are dropped by sequence number (like React Native's

@@ -263,6 +263,8 @@ final class JSEngine: @unchecked Sendable {
     /// Refresh swap the changed components in place (state is kept).
     func hotUpdate(app: String, appURL: URL?) {
         perform { ctx in
+            // hot.dispose() callbacks: stop what the old modules started.
+            ctx.objectForKeyedSubscript("__swiftjsx_beforeHotUpdate")?.call(withArguments: [])
             ctx.evaluateScript(app, withSourceURL: appURL)
             ctx.objectForKeyedSubscript("__swiftjsx_hotUpdate")?.call(withArguments: [])
         }
@@ -286,6 +288,11 @@ final class JSEngine: @unchecked Sendable {
 
     func resolve(callback: Int, value: Any) {
         call("__resolveCommand", [callback, value])
+    }
+
+    /// Synchronously evaluates `script` (tests; `.main` threading only).
+    func evaluateForTests(_ script: String) -> String? {
+        context?.evaluateScript(script)?.toString()
     }
 
     /// Calls a global JS function on the JS thread.

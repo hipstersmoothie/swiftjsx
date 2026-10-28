@@ -5992,8 +5992,8 @@
         function findFirstSuspended(row) {
           for (var node = row; null !== node; ) {
             if (13 === node.tag) {
-              var state = node.memoizedState;
-              if (null !== state && (state = state.dehydrated, null === state || isSuspenseInstancePending(state) || isSuspenseInstanceFallback(state)))
+              var state2 = node.memoizedState;
+              if (null !== state2 && (state2 = state2.dehydrated, null === state2 || isSuspenseInstancePending(state2) || isSuspenseInstanceFallback(state2)))
                 return node;
             } else if (19 === node.tag && "independent" !== node.memoizedProps.revealOrder) {
               if (0 !== (node.flags & 128)) return node;
@@ -6295,8 +6295,8 @@
           memoCache.index++;
           return updateQueue;
         }
-        function basicStateReducer(state, action) {
-          return "function" === typeof action ? action(state) : action;
+        function basicStateReducer(state2, action) {
+          return "function" === typeof action ? action(state2) : action;
         }
         function mountReducer(reducer, initialArg, init) {
           var hook = mountWorkInProgressHook();
@@ -6788,12 +6788,12 @@
           stateHook = updateReducer(basicStateReducer)[0];
           if ("object" === typeof currentStateHook && null !== currentStateHook && "function" === typeof currentStateHook.then)
             try {
-              var state = useThenable(currentStateHook);
+              var state2 = useThenable(currentStateHook);
             } catch (x) {
               if (x === SuspenseException) throw SuspenseActionException;
               throw x;
             }
-          else state = currentStateHook;
+          else state2 = currentStateHook;
           currentStateHook = updateWorkInProgressHook();
           var actionQueue = currentStateHook.queue, dispatch = actionQueue.dispatch;
           action !== currentStateHook.memoizedState && (currentlyRenderingFiber.flags |= 2048, pushSimpleEffect(
@@ -6802,7 +6802,7 @@
             actionStateActionEffect.bind(null, actionQueue, action),
             null
           ));
-          return [state, dispatch, stateHook];
+          return [state2, dispatch, stateHook];
         }
         function actionStateActionEffect(actionQueue, action) {
           actionQueue.action = action;
@@ -7880,11 +7880,11 @@
         function updateClassComponent(current3, workInProgress2, Component, nextProps, renderLanes2) {
           switch (shouldErrorImpl(workInProgress2)) {
             case false:
-              var _instance = workInProgress2.stateNode, state = new workInProgress2.type(
+              var _instance = workInProgress2.stateNode, state2 = new workInProgress2.type(
                 workInProgress2.memoizedProps,
                 _instance.context
               ).state;
-              _instance.updater.enqueueSetState(_instance, state, null);
+              _instance.updater.enqueueSetState(_instance, state2, null);
               break;
             case true:
               workInProgress2.flags |= 128;
@@ -7892,15 +7892,15 @@
               _instance = Error("Simulated error coming from DevTools");
               var lane = renderLanes2 & -renderLanes2;
               workInProgress2.lanes |= lane;
-              state = workInProgressRoot;
-              if (null === state)
+              state2 = workInProgressRoot;
+              if (null === state2)
                 throw Error(
                   "Expected a work-in-progress root. This is a bug in React. Please file an issue."
                 );
               lane = createClassErrorUpdate(lane);
               initializeClassErrorUpdate(
                 lane,
-                state,
+                state2,
                 workInProgress2,
                 createCapturedValueAtFiber(_instance, workInProgress2)
               );
@@ -7908,84 +7908,84 @@
           }
           prepareToReadContext(workInProgress2);
           if (null === workInProgress2.stateNode) {
-            state = emptyContextObject;
+            state2 = emptyContextObject;
             _instance = Component.contextType;
             "contextType" in Component && null !== _instance && (void 0 === _instance || _instance.$$typeof !== REACT_CONTEXT_TYPE) && !didWarnAboutInvalidateContextType.has(Component) && (didWarnAboutInvalidateContextType.add(Component), lane = void 0 === _instance ? " However, it is set to undefined. This can be caused by a typo or by mixing up named and default imports. This can also happen due to a circular dependency, so try moving the createContext() call to a separate file." : "object" !== typeof _instance ? " However, it is set to a " + typeof _instance + "." : _instance.$$typeof === REACT_CONSUMER_TYPE ? " Did you accidentally pass the Context.Consumer instead?" : " However, it is set to an object with keys {" + Object.keys(_instance).join(", ") + "}.", console.error(
               "%s defines an invalid contextType. contextType should point to the Context object returned by React.createContext().%s",
               getComponentNameFromType(Component) || "Component",
               lane
             ));
-            "object" === typeof _instance && null !== _instance && (state = readContext(_instance));
-            _instance = new Component(nextProps, state);
+            "object" === typeof _instance && null !== _instance && (state2 = readContext(_instance));
+            _instance = new Component(nextProps, state2);
             if (workInProgress2.mode & 8) {
               setIsStrictModeForDevtools(true);
               try {
-                _instance = new Component(nextProps, state);
+                _instance = new Component(nextProps, state2);
               } finally {
                 setIsStrictModeForDevtools(false);
               }
             }
-            state = workInProgress2.memoizedState = null !== _instance.state && void 0 !== _instance.state ? _instance.state : null;
+            state2 = workInProgress2.memoizedState = null !== _instance.state && void 0 !== _instance.state ? _instance.state : null;
             _instance.updater = classComponentUpdater;
             workInProgress2.stateNode = _instance;
             _instance._reactInternals = workInProgress2;
             _instance._reactInternalInstance = fakeInternalInstance;
-            "function" === typeof Component.getDerivedStateFromProps && null === state && (state = getComponentNameFromType(Component) || "Component", didWarnAboutUninitializedState.has(state) || (didWarnAboutUninitializedState.add(state), console.error(
+            "function" === typeof Component.getDerivedStateFromProps && null === state2 && (state2 = getComponentNameFromType(Component) || "Component", didWarnAboutUninitializedState.has(state2) || (didWarnAboutUninitializedState.add(state2), console.error(
               "`%s` uses `getDerivedStateFromProps` but its initial state is %s. This is not recommended. Instead, define the initial state by assigning an object to `this.state` in the constructor of `%s`. This ensures that `getDerivedStateFromProps` arguments have a consistent shape.",
-              state,
+              state2,
               null === _instance.state ? "null" : "undefined",
-              state
+              state2
             )));
             if ("function" === typeof Component.getDerivedStateFromProps || "function" === typeof _instance.getSnapshotBeforeUpdate) {
-              var foundWillUpdateName = lane = state = null;
-              "function" === typeof _instance.componentWillMount && true !== _instance.componentWillMount.__suppressDeprecationWarning ? state = "componentWillMount" : "function" === typeof _instance.UNSAFE_componentWillMount && (state = "UNSAFE_componentWillMount");
+              var foundWillUpdateName = lane = state2 = null;
+              "function" === typeof _instance.componentWillMount && true !== _instance.componentWillMount.__suppressDeprecationWarning ? state2 = "componentWillMount" : "function" === typeof _instance.UNSAFE_componentWillMount && (state2 = "UNSAFE_componentWillMount");
               "function" === typeof _instance.componentWillReceiveProps && true !== _instance.componentWillReceiveProps.__suppressDeprecationWarning ? lane = "componentWillReceiveProps" : "function" === typeof _instance.UNSAFE_componentWillReceiveProps && (lane = "UNSAFE_componentWillReceiveProps");
               "function" === typeof _instance.componentWillUpdate && true !== _instance.componentWillUpdate.__suppressDeprecationWarning ? foundWillUpdateName = "componentWillUpdate" : "function" === typeof _instance.UNSAFE_componentWillUpdate && (foundWillUpdateName = "UNSAFE_componentWillUpdate");
-              if (null !== state || null !== lane || null !== foundWillUpdateName) {
+              if (null !== state2 || null !== lane || null !== foundWillUpdateName) {
                 _instance = getComponentNameFromType(Component) || "Component";
                 var newApiName = "function" === typeof Component.getDerivedStateFromProps ? "getDerivedStateFromProps()" : "getSnapshotBeforeUpdate()";
                 didWarnAboutLegacyLifecyclesAndDerivedState.has(_instance) || (didWarnAboutLegacyLifecyclesAndDerivedState.add(_instance), console.error(
                   "Unsafe legacy lifecycles will not be called for components using new component APIs.\n\n%s uses %s but also contains the following legacy lifecycles:%s%s%s\n\nThe above lifecycles should be removed. Learn more about this warning here:\nhttps://react.dev/link/unsafe-component-lifecycles",
                   _instance,
                   newApiName,
-                  null !== state ? "\n  " + state : "",
+                  null !== state2 ? "\n  " + state2 : "",
                   null !== lane ? "\n  " + lane : "",
                   null !== foundWillUpdateName ? "\n  " + foundWillUpdateName : ""
                 ));
               }
             }
             _instance = workInProgress2.stateNode;
-            state = getComponentNameFromType(Component) || "Component";
+            state2 = getComponentNameFromType(Component) || "Component";
             _instance.render || (Component.prototype && "function" === typeof Component.prototype.render ? console.error(
               "No `render` method found on the %s instance: did you accidentally return an object from the constructor?",
-              state
+              state2
             ) : console.error(
               "No `render` method found on the %s instance: you may have forgotten to define `render`.",
-              state
+              state2
             ));
             !_instance.getInitialState || _instance.getInitialState.isReactClassApproved || _instance.state || console.error(
               "getInitialState was defined on %s, a plain JavaScript class. This is only supported for classes created using React.createClass. Did you mean to define a state property instead?",
-              state
+              state2
             );
             _instance.getDefaultProps && !_instance.getDefaultProps.isReactClassApproved && console.error(
               "getDefaultProps was defined on %s, a plain JavaScript class. This is only supported for classes created using React.createClass. Use a static property to define defaultProps instead.",
-              state
+              state2
             );
             _instance.contextType && console.error(
               "contextType was defined as an instance property on %s. Use a static property to define contextType instead.",
-              state
+              state2
             );
             Component.childContextTypes && !didWarnAboutChildContextTypes.has(Component) && (didWarnAboutChildContextTypes.add(Component), console.error(
               "%s uses the legacy childContextTypes API which was removed in React 19. Use React.createContext() instead. (https://react.dev/link/legacy-context)",
-              state
+              state2
             ));
             Component.contextTypes && !didWarnAboutContextTypes$1.has(Component) && (didWarnAboutContextTypes$1.add(Component), console.error(
               "%s uses the legacy contextTypes API which was removed in React 19. Use React.createContext() with static contextType instead. (https://react.dev/link/legacy-context)",
-              state
+              state2
             ));
             "function" === typeof _instance.componentShouldUpdate && console.error(
               "%s has a method called componentShouldUpdate(). Did you mean shouldComponentUpdate()? The name is phrased as a question because the function is expected to return a value.",
-              state
+              state2
             );
             Component.prototype && Component.prototype.isPureReactComponent && "undefined" !== typeof _instance.shouldComponentUpdate && console.error(
               "%s has a method called shouldComponentUpdate(). shouldComponentUpdate should not be used when extending React.PureComponent. Please extend React.Component if shouldComponentUpdate is used.",
@@ -7993,29 +7993,29 @@
             );
             "function" === typeof _instance.componentDidUnmount && console.error(
               "%s has a method called componentDidUnmount(). But there is no such lifecycle method. Did you mean componentWillUnmount()?",
-              state
+              state2
             );
             "function" === typeof _instance.componentDidReceiveProps && console.error(
               "%s has a method called componentDidReceiveProps(). But there is no such lifecycle method. If you meant to update the state in response to changing props, use componentWillReceiveProps(). If you meant to fetch data or run side-effects or mutations after React has updated the UI, use componentDidUpdate().",
-              state
+              state2
             );
             "function" === typeof _instance.componentWillRecieveProps && console.error(
               "%s has a method called componentWillRecieveProps(). Did you mean componentWillReceiveProps()?",
-              state
+              state2
             );
             "function" === typeof _instance.UNSAFE_componentWillRecieveProps && console.error(
               "%s has a method called UNSAFE_componentWillRecieveProps(). Did you mean UNSAFE_componentWillReceiveProps()?",
-              state
+              state2
             );
             lane = _instance.props !== nextProps;
             void 0 !== _instance.props && lane && console.error(
               "When calling super() in `%s`, make sure to pass up the same props that your component's constructor was passed.",
-              state
+              state2
             );
             _instance.defaultProps && console.error(
               "Setting defaultProps as an instance property on %s is not supported and will be ignored. Instead, define defaultProps as a static property on %s.",
-              state,
-              state
+              state2,
+              state2
             );
             "function" !== typeof _instance.getSnapshotBeforeUpdate || "function" === typeof _instance.componentDidUpdate || didWarnAboutGetSnapshotBeforeUpdateWithoutDidUpdate.has(Component) || (didWarnAboutGetSnapshotBeforeUpdateWithoutDidUpdate.add(Component), console.error(
               "%s: getSnapshotBeforeUpdate() should be used with componentDidUpdate(). This component defines getSnapshotBeforeUpdate() only.",
@@ -8023,31 +8023,31 @@
             ));
             "function" === typeof _instance.getDerivedStateFromProps && console.error(
               "%s: getDerivedStateFromProps() is defined as an instance method and will be ignored. Instead, declare it as a static method.",
-              state
+              state2
             );
             "function" === typeof _instance.getDerivedStateFromError && console.error(
               "%s: getDerivedStateFromError() is defined as an instance method and will be ignored. Instead, declare it as a static method.",
-              state
+              state2
             );
             "function" === typeof Component.getSnapshotBeforeUpdate && console.error(
               "%s: getSnapshotBeforeUpdate() is defined as a static method and will be ignored. Instead, declare it as an instance method.",
-              state
+              state2
             );
-            (lane = _instance.state) && ("object" !== typeof lane || isArrayImpl(lane)) && console.error("%s.state: must be set to an object or null", state);
+            (lane = _instance.state) && ("object" !== typeof lane || isArrayImpl(lane)) && console.error("%s.state: must be set to an object or null", state2);
             "function" === typeof _instance.getChildContext && "object" !== typeof Component.childContextTypes && console.error(
               "%s.getChildContext(): childContextTypes must be defined in order to use getChildContext().",
-              state
+              state2
             );
             _instance = workInProgress2.stateNode;
             _instance.props = nextProps;
             _instance.state = workInProgress2.memoizedState;
             _instance.refs = {};
             initializeUpdateQueue(workInProgress2);
-            state = Component.contextType;
-            _instance.context = "object" === typeof state && null !== state ? readContext(state) : emptyContextObject;
-            _instance.state === nextProps && (state = getComponentNameFromType(Component) || "Component", didWarnAboutDirectlyAssigningPropsToState.has(state) || (didWarnAboutDirectlyAssigningPropsToState.add(state), console.error(
+            state2 = Component.contextType;
+            _instance.context = "object" === typeof state2 && null !== state2 ? readContext(state2) : emptyContextObject;
+            _instance.state === nextProps && (state2 = getComponentNameFromType(Component) || "Component", didWarnAboutDirectlyAssigningPropsToState.has(state2) || (didWarnAboutDirectlyAssigningPropsToState.add(state2), console.error(
               "%s: It is not recommended to assign props directly to state because updates to props won't be reflected in state. In most cases, it is better to use props directly.",
-              state
+              state2
             )));
             workInProgress2.mode & 8 && ReactStrictModeWarnings.recordLegacyContextWarning(
               workInProgress2,
@@ -8058,14 +8058,14 @@
               _instance
             );
             _instance.state = workInProgress2.memoizedState;
-            state = Component.getDerivedStateFromProps;
-            "function" === typeof state && (applyDerivedStateFromProps(
+            state2 = Component.getDerivedStateFromProps;
+            "function" === typeof state2 && (applyDerivedStateFromProps(
               workInProgress2,
               Component,
-              state,
+              state2,
               nextProps
             ), _instance.state = workInProgress2.memoizedState);
-            "function" === typeof Component.getDerivedStateFromProps || "function" === typeof _instance.getSnapshotBeforeUpdate || "function" !== typeof _instance.UNSAFE_componentWillMount && "function" !== typeof _instance.componentWillMount || (state = _instance.state, "function" === typeof _instance.componentWillMount && _instance.componentWillMount(), "function" === typeof _instance.UNSAFE_componentWillMount && _instance.UNSAFE_componentWillMount(), state !== _instance.state && (console.error(
+            "function" === typeof Component.getDerivedStateFromProps || "function" === typeof _instance.getSnapshotBeforeUpdate || "function" !== typeof _instance.UNSAFE_componentWillMount && "function" !== typeof _instance.componentWillMount || (state2 = _instance.state, "function" === typeof _instance.componentWillMount && _instance.componentWillMount(), "function" === typeof _instance.UNSAFE_componentWillMount && _instance.UNSAFE_componentWillMount(), state2 !== _instance.state && (console.error(
               "%s.componentWillMount(): Assigning directly to this.state is deprecated (except inside a component's constructor). Use setState instead.",
               getComponentNameFromFiber(workInProgress2) || "Component"
             ), classComponentUpdater.enqueueReplaceState(
@@ -8083,16 +8083,16 @@
             _instance.props = lane;
             var oldContext = _instance.context;
             foundWillUpdateName = Component.contextType;
-            state = emptyContextObject;
-            "object" === typeof foundWillUpdateName && null !== foundWillUpdateName && (state = readContext(foundWillUpdateName));
+            state2 = emptyContextObject;
+            "object" === typeof foundWillUpdateName && null !== foundWillUpdateName && (state2 = readContext(foundWillUpdateName));
             newApiName = Component.getDerivedStateFromProps;
             foundWillUpdateName = "function" === typeof newApiName || "function" === typeof _instance.getSnapshotBeforeUpdate;
             unresolvedOldProps = workInProgress2.pendingProps !== unresolvedOldProps;
-            foundWillUpdateName || "function" !== typeof _instance.UNSAFE_componentWillReceiveProps && "function" !== typeof _instance.componentWillReceiveProps || (unresolvedOldProps || oldContext !== state) && callComponentWillReceiveProps(
+            foundWillUpdateName || "function" !== typeof _instance.UNSAFE_componentWillReceiveProps && "function" !== typeof _instance.componentWillReceiveProps || (unresolvedOldProps || oldContext !== state2) && callComponentWillReceiveProps(
               workInProgress2,
               _instance,
               nextProps,
-              state
+              state2
             );
             hasForceUpdate = false;
             var oldState = workInProgress2.memoizedState;
@@ -8112,13 +8112,13 @@
               nextProps,
               oldState,
               oldContext,
-              state
-            )) ? (foundWillUpdateName || "function" !== typeof _instance.UNSAFE_componentWillMount && "function" !== typeof _instance.componentWillMount || ("function" === typeof _instance.componentWillMount && _instance.componentWillMount(), "function" === typeof _instance.UNSAFE_componentWillMount && _instance.UNSAFE_componentWillMount()), "function" === typeof _instance.componentDidMount && (workInProgress2.flags |= 4194308), (workInProgress2.mode & 16) !== NoMode && (workInProgress2.flags |= 268435456)) : ("function" === typeof _instance.componentDidMount && (workInProgress2.flags |= 4194308), (workInProgress2.mode & 16) !== NoMode && (workInProgress2.flags |= 268435456), workInProgress2.memoizedProps = nextProps, workInProgress2.memoizedState = oldContext), _instance.props = nextProps, _instance.state = oldContext, _instance.context = state, _instance = lane) : ("function" === typeof _instance.componentDidMount && (workInProgress2.flags |= 4194308), (workInProgress2.mode & 16) !== NoMode && (workInProgress2.flags |= 268435456), _instance = false);
+              state2
+            )) ? (foundWillUpdateName || "function" !== typeof _instance.UNSAFE_componentWillMount && "function" !== typeof _instance.componentWillMount || ("function" === typeof _instance.componentWillMount && _instance.componentWillMount(), "function" === typeof _instance.UNSAFE_componentWillMount && _instance.UNSAFE_componentWillMount()), "function" === typeof _instance.componentDidMount && (workInProgress2.flags |= 4194308), (workInProgress2.mode & 16) !== NoMode && (workInProgress2.flags |= 268435456)) : ("function" === typeof _instance.componentDidMount && (workInProgress2.flags |= 4194308), (workInProgress2.mode & 16) !== NoMode && (workInProgress2.flags |= 268435456), workInProgress2.memoizedProps = nextProps, workInProgress2.memoizedState = oldContext), _instance.props = nextProps, _instance.state = oldContext, _instance.context = state2, _instance = lane) : ("function" === typeof _instance.componentDidMount && (workInProgress2.flags |= 4194308), (workInProgress2.mode & 16) !== NoMode && (workInProgress2.flags |= 268435456), _instance = false);
           } else {
             _instance = workInProgress2.stateNode;
             cloneUpdateQueue(current3, workInProgress2);
-            state = workInProgress2.memoizedProps;
-            foundWillUpdateName = resolveClassComponentProps(Component, state);
+            state2 = workInProgress2.memoizedProps;
+            foundWillUpdateName = resolveClassComponentProps(Component, state2);
             _instance.props = foundWillUpdateName;
             newApiName = workInProgress2.pendingProps;
             oldState = _instance.context;
@@ -8126,7 +8126,7 @@
             lane = emptyContextObject;
             "object" === typeof oldContext && null !== oldContext && (lane = readContext(oldContext));
             unresolvedOldProps = Component.getDerivedStateFromProps;
-            (oldContext = "function" === typeof unresolvedOldProps || "function" === typeof _instance.getSnapshotBeforeUpdate) || "function" !== typeof _instance.UNSAFE_componentWillReceiveProps && "function" !== typeof _instance.componentWillReceiveProps || (state !== newApiName || oldState !== lane) && callComponentWillReceiveProps(
+            (oldContext = "function" === typeof unresolvedOldProps || "function" === typeof _instance.getSnapshotBeforeUpdate) || "function" !== typeof _instance.UNSAFE_componentWillReceiveProps && "function" !== typeof _instance.componentWillReceiveProps || (state2 !== newApiName || oldState !== lane) && callComponentWillReceiveProps(
               workInProgress2,
               _instance,
               nextProps,
@@ -8138,7 +8138,7 @@
             processUpdateQueue(workInProgress2, nextProps, _instance, renderLanes2);
             suspendIfUpdateReadFromEntangledAsyncAction();
             var newState = workInProgress2.memoizedState;
-            state !== newApiName || oldState !== newState || hasForceUpdate || null !== current3 && null !== current3.dependencies && checkIfContextChanged(current3.dependencies) ? ("function" === typeof unresolvedOldProps && (applyDerivedStateFromProps(
+            state2 !== newApiName || oldState !== newState || hasForceUpdate || null !== current3 && null !== current3.dependencies && checkIfContextChanged(current3.dependencies) ? ("function" === typeof unresolvedOldProps && (applyDerivedStateFromProps(
               workInProgress2,
               Component,
               unresolvedOldProps,
@@ -8155,15 +8155,15 @@
               nextProps,
               newState,
               lane
-            )), "function" === typeof _instance.componentDidUpdate && (workInProgress2.flags |= 4), "function" === typeof _instance.getSnapshotBeforeUpdate && (workInProgress2.flags |= 1024)) : ("function" !== typeof _instance.componentDidUpdate || state === current3.memoizedProps && oldState === current3.memoizedState || (workInProgress2.flags |= 4), "function" !== typeof _instance.getSnapshotBeforeUpdate || state === current3.memoizedProps && oldState === current3.memoizedState || (workInProgress2.flags |= 1024), workInProgress2.memoizedProps = nextProps, workInProgress2.memoizedState = newState), _instance.props = nextProps, _instance.state = newState, _instance.context = lane, _instance = foundWillUpdateName) : ("function" !== typeof _instance.componentDidUpdate || state === current3.memoizedProps && oldState === current3.memoizedState || (workInProgress2.flags |= 4), "function" !== typeof _instance.getSnapshotBeforeUpdate || state === current3.memoizedProps && oldState === current3.memoizedState || (workInProgress2.flags |= 1024), _instance = false);
+            )), "function" === typeof _instance.componentDidUpdate && (workInProgress2.flags |= 4), "function" === typeof _instance.getSnapshotBeforeUpdate && (workInProgress2.flags |= 1024)) : ("function" !== typeof _instance.componentDidUpdate || state2 === current3.memoizedProps && oldState === current3.memoizedState || (workInProgress2.flags |= 4), "function" !== typeof _instance.getSnapshotBeforeUpdate || state2 === current3.memoizedProps && oldState === current3.memoizedState || (workInProgress2.flags |= 1024), workInProgress2.memoizedProps = nextProps, workInProgress2.memoizedState = newState), _instance.props = nextProps, _instance.state = newState, _instance.context = lane, _instance = foundWillUpdateName) : ("function" !== typeof _instance.componentDidUpdate || state2 === current3.memoizedProps && oldState === current3.memoizedState || (workInProgress2.flags |= 4), "function" !== typeof _instance.getSnapshotBeforeUpdate || state2 === current3.memoizedProps && oldState === current3.memoizedState || (workInProgress2.flags |= 1024), _instance = false);
           }
           lane = _instance;
           markRef(current3, workInProgress2);
-          state = 0 !== (workInProgress2.flags & 128);
-          if (lane || state) {
+          state2 = 0 !== (workInProgress2.flags & 128);
+          if (lane || state2) {
             lane = workInProgress2.stateNode;
             setCurrentFiber(workInProgress2);
-            if (state && "function" !== typeof Component.getDerivedStateFromError)
+            if (state2 && "function" !== typeof Component.getDerivedStateFromError)
               Component = null, profilerStartTime = -1;
             else if (Component = callRenderInDEV(lane), workInProgress2.mode & 8) {
               setIsStrictModeForDevtools(true);
@@ -8174,7 +8174,7 @@
               }
             }
             workInProgress2.flags |= 1;
-            null !== current3 && state ? (workInProgress2.child = reconcileChildFibers(
+            null !== current3 && state2 ? (workInProgress2.child = reconcileChildFibers(
               workInProgress2,
               current3.child,
               null,
@@ -10480,9 +10480,9 @@
         }
         function commitEnterViewTransitions(placement, gesture) {
           if (30 === placement.tag) {
-            var state = placement.stateNode, props = placement.memoizedProps, name = getViewTransitionName(props, state), className = getViewTransitionClassName(
+            var state2 = placement.stateNode, props = placement.memoizedProps, name = getViewTransitionName(props, state2), className = getViewTransitionClassName(
               props.default,
-              state.paired ? props.share : props.enter
+              state2.paired ? props.share : props.enter
             );
             "none" !== className ? applyViewTransitionToHostInstances(
               placement,
@@ -10490,7 +10490,7 @@
               className,
               null,
               false
-            ) ? (commitAppearingPairViewTransitions(placement), state.paired || gesture || scheduleViewTransitionEvent(placement, props.onEnter)) : restoreViewTransitionOnHostInstances(placement.child, false) : commitAppearingPairViewTransitions(placement);
+            ) ? (commitAppearingPairViewTransitions(placement), state2.paired || gesture || scheduleViewTransitionEvent(placement, props.onEnter)) : restoreViewTransitionOnHostInstances(placement.child, false) : commitAppearingPairViewTransitions(placement);
           } else if (0 !== (placement.subtreeFlags & 33554432))
             for (placement = placement.child; null !== placement; )
               commitEnterViewTransitions(placement, gesture), placement = placement.sibling;
@@ -10635,17 +10635,17 @@
         function measureNestedViewTransitions(changedParent, gesture) {
           for (changedParent = changedParent.child; null !== changedParent; ) {
             if (30 === changedParent.tag) {
-              var props = changedParent.memoizedProps, state = changedParent.stateNode, name = getViewTransitionName(props, state), className = getViewTransitionClassName(props.default, props.update);
+              var props = changedParent.memoizedProps, state2 = changedParent.stateNode, name = getViewTransitionName(props, state2), className = getViewTransitionClassName(props.default, props.update);
               if (gesture) {
-                state = state.clones;
-                var previousMeasurements = null === state ? null : state.map(measureClonedInstance);
+                state2 = state2.clones;
+                var previousMeasurements = null === state2 ? null : state2.map(measureClonedInstance);
               } else
                 previousMeasurements = changedParent.memoizedState, changedParent.memoizedState = null;
-              state = changedParent;
+              state2 = changedParent;
               var child = changedParent.child, newName = name;
               viewTransitionHostInstanceIdx = 0;
               className = measureViewTransitionHostInstancesRecursive(
-                state,
+                state2,
                 child,
                 newName,
                 name,
@@ -11744,9 +11744,9 @@
                 viewTransitionContextChanged = false;
                 recursivelyTraverseAfterMutationEffects(root2, finishedWork);
                 viewTransitionContextChanged && (finishedWork.flags |= 4);
-                var props = finishedWork.memoizedProps, state = finishedWork.stateNode;
-                root2 = getViewTransitionName(props, state);
-                state = getViewTransitionName(current3.memoizedProps, state);
+                var props = finishedWork.memoizedProps, state2 = finishedWork.stateNode;
+                root2 = getViewTransitionName(props, state2);
+                state2 = getViewTransitionName(current3.memoizedProps, state2);
                 var className = getViewTransitionClassName(
                   props.default,
                   props.update
@@ -11755,7 +11755,7 @@
                   finishedWork,
                   current3,
                   root2,
-                  state,
+                  state2,
                   className,
                   props,
                   true
@@ -12868,9 +12868,9 @@
         }
         function scheduleViewTransitionEvent(fiber, callback) {
           if (null != callback) {
-            var state = fiber.stateNode, instance = state.ref;
-            null === instance && (instance = state.ref = createViewTransitionInstance(
-              getViewTransitionName(fiber.memoizedProps, state)
+            var state2 = fiber.stateNode, instance = state2.ref;
+            null === instance && (instance = state2.ref = createViewTransitionInstance(
+              getViewTransitionName(fiber.memoizedProps, state2)
             ));
             null === pendingViewTransitionEvents && (pendingViewTransitionEvents = []);
             pendingViewTransitionEvents.push(callback.bind(null, instance));
@@ -18054,6 +18054,7 @@ ${error.stack}` : String(error));
     ZStack: () => ZStack,
     canOpenURL: () => canOpenURL,
     haptic: () => haptic,
+    hot: () => hot,
     isNativeAvailable: () => isNativeAvailable,
     makeMutable: () => makeMutable,
     native: () => native,
@@ -19333,8 +19334,8 @@ ${e.stack}` : String(e);
     }
     return t1;
   }
-  function _temp4(g2) {
-    return g2 + 1;
+  function _temp4(g3) {
+    return g3 + 1;
   }
   function Sheet(props) {
     const $ = (0, import_compiler_runtime5.c)(14);
@@ -19800,6 +19801,32 @@ ${e.stack}` : String(e);
     }
     return useEnvironment().colorScheme;
   }
+
+  // js/hot.ts
+  var g2 = globalThis;
+  var state = g2.__swiftjsx_hot ?? (g2.__swiftjsx_hot = {
+    data: {},
+    dispose: []
+  });
+  g2.__swiftjsx_beforeHotUpdate = () => {
+    const callbacks2 = state.dispose.splice(0);
+    for (const callback of callbacks2) {
+      try {
+        callback();
+      } catch (error) {
+        console.error(error instanceof Error ? `${error.message}
+${error.stack}` : String(error));
+      }
+    }
+  };
+  var hot = {
+    /** Kept across hot updates (the same object every run). */
+    data: state.data,
+    /** Runs once, right before the next hot update re-runs the bundle. */
+    dispose(callback) {
+      state.dispose.push(callback);
+    }
+  };
 
   // js/runtime-entry.ts
   globalThis.__swiftjsx_modules = {
