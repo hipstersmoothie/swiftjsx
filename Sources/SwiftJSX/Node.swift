@@ -269,8 +269,18 @@ public final class NodeTree {
                 // by the new value: `animation={dragging ? undefined : "spring"}`
                 // follows the finger, then springs back on release.
                 let animation: Any?? = changes.keys.contains("animation") ? .some(changes["animation"].flatMap { $0 is NSNull ? nil : $0 }) : nil
+                // Chart marks' styles change without animation: Swift Charts
+                // drops a color change made in an animated transaction.
+                let unanimated = node.type.hasSuffix("Mark") ? changes.filter { Self.markStyleKeys.contains($0.key) } : [:]
+                if !unanimated.isEmpty {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        for (key, value) in unanimated { node.props[key] = value is NSNull ? nil : value }
+                    }
+                }
                 animating(node, animation) {
-                    for (key, value) in changes {
+                    for (key, value) in changes where unanimated[key] == nil {
                         node.props[key] = value is NSNull ? nil : value
                     }
                 }
@@ -316,6 +326,8 @@ public final class NodeTree {
         }
         return nil
     }
+
+    static let markStyleKeys: Set<String> = ["foregroundStyle", "opacity", "lineWidth", "dash", "annotation"]
 
     /// A node's `animation`, or the one this commit is about to give it
     /// (nil when it's being removed).

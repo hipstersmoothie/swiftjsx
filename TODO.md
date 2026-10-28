@@ -20,8 +20,9 @@ for the record.
       `gridlines` / `ticks` / `labels`. Date `x` with `xUnit` (bars span the day/week).
       `cornerRadius` on every mark. A mark's changed props now redraw the chart (Charts
       skipped marks whose inputs looked unchanged).
-- [ ] Charts: under a chart `animation`, a mark's color change doesn't show (values and
-      inserts do); category `y` values, styled or view annotations, continuous color
+- [x] Under a chart `animation`, mark colors change too (style props apply unanimated:
+      Swift Charts drops a color change made in an animated transaction).
+- [ ] Charts: category `y` values, styled or view annotations, continuous color
       scales (heatmaps).
 - [x] `<Path d>` (SVG path data) and `<Polyline points>` in a `viewBox`; `lineCap` /
       `lineJoin`.

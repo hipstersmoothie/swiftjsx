@@ -29,6 +29,7 @@ export function ChartsDemo() {
             <Chart
               frame={{ height: 200 }}
               onXSelectionChange={(x) => typeof x === "number" && setSelected(x)}
+              animation="smooth"
               xAxis={{ stride: { unit: "day", count: 2 }, format: "monthDay", gridlines: false }}
               yAxis={{ values: [0, 5000, 10000], format: "compact" }}
             >
