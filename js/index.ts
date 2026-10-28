@@ -9,6 +9,7 @@ export {
   type SharedValue, type AnimatedStyle, type AnimatableProps,
 } from "./worklets";
 export { Sheet, Alert, ConfirmationDialog } from "./presentations";
+export { AnimatePresence, type AnimatePresenceProps } from "./presence";
 export { DatePicker, NavigationRow } from "./controls";
 export { haptic, prefetchImage } from "./platform";
 export { useEnvironment, useColorScheme, type Environment } from "./environment";

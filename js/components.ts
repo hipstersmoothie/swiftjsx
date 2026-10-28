@@ -212,6 +212,14 @@ export interface Modifiers {
    * changes, a game board's own swipes). Set it from the content itself.
    */
   interactiveDismissDisabled?: boolean;
+  /** Inside an `<AbsoluteStack>`: where this view goes (its top-leading corner, or `anchor`), and its size. */
+  position?: {
+    x?: number | `${number}%`;
+    y?: number | `${number}%`;
+    width?: number | `${number}%`;
+    height?: number | `${number}%`;
+    anchor?: "topLeading" | "top" | "topTrailing" | "leading" | "center" | "trailing" | "bottomLeading" | "bottom" | "bottomTrailing";
+  };
   /** Extend into the safe area (under the status bar and home indicator): true, or some edges. */
   ignoresSafeArea?: boolean | SafeAreaEdge | SafeAreaEdge[];
   /**
@@ -302,6 +310,13 @@ const host = <P,>(tag: string) => tag as unknown as FC<P>;
 export const VStack = host<Modifiers & WithChildren & { spacing?: number; alignment?: "leading" | "center" | "trailing" }>("VStack");
 export const HStack = host<Modifiers & WithChildren & { spacing?: number; alignment?: "top" | "center" | "bottom" | "firstTextBaseline" }>("HStack");
 export const ZStack = host<Modifiers & WithChildren & { alignment?: Alignment }>("ZStack");
+/**
+ * Children placed by their `position` prop (`{ x, y, width, height }` in
+ * points or "25%" of the stack), as layout rather than an offset: a
+ * `transition` scales a child around its own frame, and a changed position
+ * animates. It fills the space it's offered (boards, canvases, overlays).
+ */
+export const AbsoluteStack = host<Modifiers & WithChildren>("AbsoluteStack");
 /** Children are stacked in a VStack (HStack when horizontal) with `spacing` between them (SwiftUI's default if unset). */
 /** Options shared by ScrollView and VirtualList. */
 export type ScrollProps = {

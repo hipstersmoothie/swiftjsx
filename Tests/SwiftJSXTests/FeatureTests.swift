@@ -266,6 +266,24 @@ struct CompilerTests {
         #expect(SwiftJSXDiagnostics.animatedOps == before + 2)
     }
 
+    @Test func animatePresenceAnimatesExitsThenRemoves() async throws {
+        let runtime = try fixture("Presence")
+        runtime.press("remove b")
+        // Still there, animating to its exit props, then gone.
+        #expect(await eventually { runtime.texts().contains("exited b") })
+        #expect(runtime.texts().filter { $0.hasPrefix("item") } == ["item a", "item c"])
+        runtime.press("add b")
+        #expect(runtime.texts().filter { $0.hasPrefix("item") } == ["item a", "item c", "item b"])
+    }
+
+    @Test func animatePresenceExitIsAnimated() async throws {
+        let runtime = try fixture("Presence")
+        let before = SwiftJSXDiagnostics.animatedCommits
+        runtime.press("remove b")
+        // The commit that sets the leaving view's exit props is animated.
+        #expect(await eventually { SwiftJSXDiagnostics.animatedCommits > before })
+    }
+
     @Test func parsesAnimationSpecs() {
         #expect(parseAnimation("spring") != nil)
         #expect(parseAnimation(["type": "easeInOut", "duration": 0.6, "delay": 0.1]) != nil)

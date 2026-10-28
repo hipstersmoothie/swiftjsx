@@ -510,9 +510,9 @@
           return newKey;
         }
         function validateChildKeys(node) {
-          isValidElement(node) ? node._store && (node._store.validated = 1) : "object" === typeof node && null !== node && node.$$typeof === REACT_LAZY_TYPE && ("fulfilled" === node._payload.status ? isValidElement(node._payload.value) && node._payload.value._store && (node._payload.value._store.validated = 1) : node._store && (node._store.validated = 1));
+          isValidElement2(node) ? node._store && (node._store.validated = 1) : "object" === typeof node && null !== node && node.$$typeof === REACT_LAZY_TYPE && ("fulfilled" === node._payload.status ? isValidElement2(node._payload.value) && node._payload.value._store && (node._payload.value._store.validated = 1) : node._store && (node._store.validated = 1));
         }
-        function isValidElement(object) {
+        function isValidElement2(object) {
           return "object" === typeof object && null !== object && object.$$typeof === REACT_ELEMENT_TYPE;
         }
         function escape(key) {
@@ -581,13 +581,13 @@
             var childKey = "" === nameSoFar ? "." + getElementKey(invokeCallback, 0) : nameSoFar;
             isArrayImpl(callback) ? (escapedPrefix = "", null != childKey && (escapedPrefix = childKey.replace(userProvidedKeyEscapeRegex, "$&/") + "/"), mapIntoArray(callback, array, escapedPrefix, "", function(c) {
               return c;
-            })) : null != callback && (isValidElement(callback) && (null != callback.key && (invokeCallback && invokeCallback.key === callback.key || checkKeyStringCoercion(callback.key)), escapedPrefix = cloneAndReplaceKey(
+            })) : null != callback && (isValidElement2(callback) && (null != callback.key && (invokeCallback && invokeCallback.key === callback.key || checkKeyStringCoercion(callback.key)), escapedPrefix = cloneAndReplaceKey(
               callback,
               escapedPrefix + (null == callback.key || invokeCallback && invokeCallback.key === callback.key ? "" : ("" + callback.key).replace(
                 userProvidedKeyEscapeRegex,
                 "$&/"
               ) + "/") + childKey
-            ), "" !== nameSoFar && null != invokeCallback && isValidElement(invokeCallback) && null == invokeCallback.key && invokeCallback._store && !invokeCallback._store.validated && (escapedPrefix._store.validated = 2), callback = escapedPrefix), array.push(callback));
+            ), "" !== nameSoFar && null != invokeCallback && isValidElement2(invokeCallback) && null == invokeCallback.key && invokeCallback._store && !invokeCallback._store.validated && (escapedPrefix._store.validated = 2), callback = escapedPrefix), array.push(callback));
             return 1;
           }
           invokeCallback = 0;
@@ -921,7 +921,7 @@
             }) || [];
           },
           only: function(children) {
-            if (!isValidElement(children))
+            if (!isValidElement2(children))
               throw Error(
                 "React.Children.only expected to receive a single React element child."
               );
@@ -1158,7 +1158,7 @@
           });
           return elementType;
         };
-        exports.isValidElement = isValidElement;
+        exports.isValidElement = isValidElement2;
         exports.lazy = function(ctor) {
           ctor = { _status: -1, _result: ctor };
           var lazyType = {
@@ -1513,9 +1513,9 @@
           );
         }
         function validateChildKeys(node) {
-          isValidElement(node) ? node._store && (node._store.validated = 1) : "object" === typeof node && null !== node && node.$$typeof === REACT_LAZY_TYPE && ("fulfilled" === node._payload.status ? isValidElement(node._payload.value) && node._payload.value._store && (node._payload.value._store.validated = 1) : node._store && (node._store.validated = 1));
+          isValidElement2(node) ? node._store && (node._store.validated = 1) : "object" === typeof node && null !== node && node.$$typeof === REACT_LAZY_TYPE && ("fulfilled" === node._payload.status ? isValidElement2(node._payload.value) && node._payload.value._store && (node._payload.value._store.validated = 1) : node._store && (node._store.validated = 1));
         }
-        function isValidElement(object) {
+        function isValidElement2(object) {
           return "object" === typeof object && null !== object && object.$$typeof === REACT_ELEMENT_TYPE;
         }
         var React2 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_VIEW_TRANSITION_TYPE = /* @__PURE__ */ Symbol.for("react.view_transition"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React2.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
@@ -1796,9 +1796,9 @@
           );
         }
         function validateChildKeys(node) {
-          isValidElement(node) ? node._store && (node._store.validated = 1) : "object" === typeof node && null !== node && node.$$typeof === REACT_LAZY_TYPE && ("fulfilled" === node._payload.status ? isValidElement(node._payload.value) && node._payload.value._store && (node._payload.value._store.validated = 1) : node._store && (node._store.validated = 1));
+          isValidElement2(node) ? node._store && (node._store.validated = 1) : "object" === typeof node && null !== node && node.$$typeof === REACT_LAZY_TYPE && ("fulfilled" === node._payload.status ? isValidElement2(node._payload.value) && node._payload.value._store && (node._payload.value._store.validated = 1) : node._store && (node._store.validated = 1));
         }
-        function isValidElement(object) {
+        function isValidElement2(object) {
           return "object" === typeof object && null !== object && object.$$typeof === REACT_ELEMENT_TYPE;
         }
         var React2 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_VIEW_TRANSITION_TYPE = /* @__PURE__ */ Symbol.for("react.view_transition"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React2.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
@@ -17982,8 +17982,10 @@ ${error.stack}` : String(error));
   // js/index.ts
   var index_exports = {};
   __export(index_exports, {
+    AbsoluteStack: () => AbsoluteStack,
     Alert: () => Alert,
     AlertHost: () => AlertHost,
+    AnimatePresence: () => AnimatePresence,
     AreaMark: () => AreaMark,
     Background: () => Background,
     BarMark: () => BarMark,
@@ -18722,6 +18724,7 @@ ${e.stack}` : String(e);
   var VStack = host("VStack");
   var HStack = host("HStack");
   var ZStack = host("ZStack");
+  var AbsoluteStack = host("AbsoluteStack");
   var ScrollView = host("ScrollView");
   var List = host("List");
   var Form = host("Form");
@@ -19587,9 +19590,77 @@ ${e.stack}` : String(e);
     return t1;
   }
 
+  // js/presence.tsx
+  var import_react7 = __toESM(require_react(), 1);
+  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+  function AnimatePresence({
+    children,
+    exit,
+    animation = "default",
+    onExitComplete
+  }) {
+    "use no memo";
+    const current2 = import_react7.Children.toArray(children).filter(import_react7.isValidElement);
+    const [leaving, setLeaving] = (0, import_react7.useState)(() => /* @__PURE__ */ new Map());
+    const previous = (0, import_react7.useRef)([]);
+    (0, import_react7.useLayoutEffect)(() => {
+      previous.current = current2;
+    });
+    const keys = new Set(current2.map((c) => c.key));
+    let next = leaving;
+    previous.current.forEach((element, index) => {
+      if (keys.has(element.key) || next.has(element.key)) return;
+      if (next === leaving) next = new Map(leaving);
+      next.set(element.key, {
+        element,
+        index,
+        exiting: false
+      });
+    });
+    for (const key of next.keys()) {
+      if (!keys.has(key)) continue;
+      if (next === leaving) next = new Map(leaving);
+      next.delete(key);
+    }
+    if (next !== leaving) setLeaving(next);
+    const started = (0, import_react7.useRef)(/* @__PURE__ */ new Set());
+    (0, import_react7.useLayoutEffect)(() => {
+      for (const [key_0, entry] of leaving) {
+        if (entry.exiting || started.current.has(key_0)) continue;
+        started.current.add(key_0);
+        queueMicrotask(() => withAnimation(animation, () => setLeaving((map) => map.has(key_0) ? new Map(map).set(key_0, {
+          ...map.get(key_0),
+          exiting: true
+        }) : map), () => {
+          started.current.delete(key_0);
+          setLeaving((map_0) => {
+            if (!map_0.has(key_0)) return map_0;
+            const next_0 = new Map(map_0);
+            next_0.delete(key_0);
+            return next_0;
+          });
+          onExitComplete?.(String(key_0).replace(/^\.\$/, ""));
+        }));
+      }
+    });
+    const rendered = [...current2];
+    [...leaving.values()].sort((a, b) => a.index - b.index).forEach(({
+      element: element_0,
+      index: index_0,
+      exiting
+    }) => {
+      const shown = exiting ? (0, import_react7.cloneElement)(element_0, {
+        ...typeof exit === "function" ? exit(element_0) : exit,
+        allowsHitTesting: false
+      }) : element_0;
+      rendered.splice(Math.min(index_0, rendered.length), 0, shown);
+    });
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_jsx_runtime4.Fragment, { children: rendered });
+  }
+
   // js/controls.tsx
   var import_compiler_runtime6 = __toESM(require_compiler_runtime(), 1);
-  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
   var DatePickerHost = "DatePicker";
   function DatePicker(t0) {
     const $ = (0, import_compiler_runtime6.c)(21);
@@ -19660,7 +19731,7 @@ ${e.stack}` : String(e);
     }
     let t5;
     if ($[15] !== props || $[16] !== t1 || $[17] !== t2 || $[18] !== t3 || $[19] !== t4) {
-      t5 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(DatePickerHost, { ...props, value: t1, min: t2, max: t3, onChange: t4 });
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(DatePickerHost, { ...props, value: t1, min: t2, max: t3, onChange: t4 });
       $[15] = props;
       $[16] = t1;
       $[17] = t2;
@@ -19728,7 +19799,7 @@ ${e.stack}` : String(e);
     const iconColor = t1 === void 0 ? "gray" : t1;
     let t2;
     if ($[11] !== iconColor || $[12] !== systemImage) {
-      t2 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Image, { systemName: systemImage, font: "callout", foregroundStyle: "white", frame: {
+      t2 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Image, { systemName: systemImage, font: "callout", foregroundStyle: "white", frame: {
         width: 29,
         height: 29
       }, background: iconColor, cornerRadius: 7 }) : null;
@@ -19740,9 +19811,9 @@ ${e.stack}` : String(e);
     }
     let t3;
     if ($[14] !== children || $[15] !== subtitle || $[16] !== title) {
-      t3 = children ?? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(VStack, { alignment: "leading", spacing: 2, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { children: title }),
-        subtitle ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { font: "caption", foregroundStyle: "secondary", children: subtitle }) : null
+      t3 = children ?? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(VStack, { alignment: "leading", spacing: 2, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { children: title }),
+        subtitle ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { font: "caption", foregroundStyle: "secondary", children: subtitle }) : null
       ] });
       $[14] = children;
       $[15] = subtitle;
@@ -19753,14 +19824,14 @@ ${e.stack}` : String(e);
     }
     let t4;
     if ($[18] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t4 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Spacer, {});
+      t4 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Spacer, {});
       $[18] = t4;
     } else {
       t4 = $[18];
     }
     let t5;
     if ($[19] !== value) {
-      t5 = value != null ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { foregroundStyle: "secondary", lineLimit: 1, children: value }) : null;
+      t5 = value != null ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { foregroundStyle: "secondary", lineLimit: 1, children: value }) : null;
       $[19] = value;
       $[20] = t5;
     } else {
@@ -19768,7 +19839,7 @@ ${e.stack}` : String(e);
     }
     let t6;
     if ($[21] !== badge) {
-      t6 = badge ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { font: "footnote", fontWeight: "semibold", foregroundStyle: "white", padding: {
+      t6 = badge ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { font: "footnote", fontWeight: "semibold", foregroundStyle: "white", padding: {
         horizontal: 7,
         vertical: 2
       }, background: "red", cornerRadius: "capsule", children: String(badge) }) : null;
@@ -19779,14 +19850,14 @@ ${e.stack}` : String(e);
     }
     let t7;
     if ($[23] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t7 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Image, { systemName: "chevron.right", font: "footnote", fontWeight: "semibold", foregroundStyle: "tertiary" });
+      t7 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Image, { systemName: "chevron.right", font: "footnote", fontWeight: "semibold", foregroundStyle: "tertiary" });
       $[23] = t7;
     } else {
       t7 = $[23];
     }
     let t8;
     if ($[24] !== t2 || $[25] !== t3 || $[26] !== t5 || $[27] !== t6) {
-      t8 = /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(HStack, { spacing: 12, children: [
+      t8 = /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(HStack, { spacing: 12, children: [
         t2,
         t3,
         t4,
@@ -19804,7 +19875,7 @@ ${e.stack}` : String(e);
     }
     let t9;
     if ($[29] !== modifiers || $[30] !== onPress || $[31] !== t8) {
-      t9 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Button, { onPress, tint: "primary", ...modifiers, children: t8 });
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Button, { onPress, tint: "primary", ...modifiers, children: t8 });
       $[29] = modifiers;
       $[30] = onPress;
       $[31] = t8;
@@ -19839,7 +19910,7 @@ ${e.stack}` : String(e);
 
   // js/environment.ts
   var import_compiler_runtime7 = __toESM(require_compiler_runtime(), 1);
-  var import_react7 = __toESM(require_react(), 1);
+  var import_react8 = __toESM(require_react(), 1);
   var current = {
     horizontalSizeClass: "compact",
     verticalSizeClass: "regular",
@@ -19890,7 +19961,7 @@ ${e.stack}` : String(e);
       }
       $[0] = "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697";
     }
-    return (0, import_react7.useSyncExternalStore)(subscribe, _temp6);
+    return (0, import_react8.useSyncExternalStore)(subscribe, _temp6);
   }
   function _temp6() {
     return current;

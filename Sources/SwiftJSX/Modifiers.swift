@@ -90,6 +90,7 @@ struct Modifiers: ViewModifier {
             .modifier(TintModifier(node: node))
             .zIndex(node.double("zIndex") ?? 0)
             .layoutPriority(node.double("layoutPriority") ?? 0)
+            .layoutValue(key: AbsolutePosition.self, value: PositionSpec(node.prop("position")))
             .gridCellColumns(Int(node.double("gridColumns") ?? 1))
             .modifier(LayoutExtras(node: node))
             .disabled(node.bool("disabled"))

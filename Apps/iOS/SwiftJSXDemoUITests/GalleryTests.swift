@@ -455,6 +455,25 @@ final class GalleryTests: XCTestCase {
         snapshot("recipes-cooking")
     }
 
+    func testAnimation() {
+        open("Animation")
+        sleep(2)
+        snapshot("animation-start")
+        XCTAssert(element("tile-1").waitForExistence(timeout: 5))
+        let status = element("animation-status")
+        element("shuffle").tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'finished: 1'"), evaluatedWith: status)], timeout: 5) == .completed,
+                  "withAnimation completion: \(status.label)")
+        element("add-tile").tap()
+        XCTAssert(element("tile-4").waitForExistence(timeout: 3))
+        snapshot("animation-shuffled")
+        element("tile-2").tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'exited: 1'"), evaluatedWith: status)], timeout: 5) == .completed,
+                  "exit: \(status.label)")
+        XCTAssert(element("tile-2").waitForNonExistence(timeout: 3))
+        snapshot("animation-exited")
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

@@ -137,6 +137,9 @@ struct NodeView: View {
         case "ZStack":
             ZStack(alignment: alignment(node.string("alignment")) ?? .center) { Children(node: node) }
 
+        case "AbsoluteStack":
+            AbsoluteLayout { Children(node: node) }
+
         case "LazyVStack":
             LazyVStack(alignment: horizontalAlignment(node.string("alignment")), spacing: node.cgFloat("spacing")) {
                 Children(node: node)

@@ -39,9 +39,9 @@ for the record.
 - [x] `relativeWidth` alone no longer forces the full container height (and vice versa);
       `aspectRatio` and relative sizes sit next to `frame`, so backgrounds and corners
       follow them. Several `<Overlay>`s each keep their own `alignment`.
-- [ ] Absolute positioning: a `position` prop that's part of layout. With a top-leading
-      ZStack + `offset` (2048's tiles), a `scale` transition scales the offset too, every
-      layer's `frame` needs `alignment: "topLeading"`, and offsets are points only.
+- [x] `<AbsoluteStack>` with a `position` prop (`{ x, y, width, height, anchor }`, points
+      or "25%"): placement is layout, so transitions scale around a child's own frame and
+      moves animate; no measuring for fractional boards.
 - [x] Window size and safe-area insets in `useEnvironment()`; an `ignoresSafeArea` prop.
 - [ ] `statusBarHidden`, `persistentSystemOverlays`.
 - [ ] On a material background, `cornerRadius` rounds the background but doesn't clip
@@ -175,8 +175,8 @@ for the record.
 - [ ] Value-keyed animations and "animate on appear" (a state change in a mount effect can
       land in the same frame as the mount and not animate).
 - [x] `withAnimation(spec, fn, completion)`: runs when the animation is logically complete.
-- [ ] Exit animations: a removed view can't animate its props first (AnimatePresence);
-      apps keep "ghosts" in state and drop them later.
+- [x] `<AnimatePresence exit={…}>`: a keyed child that leaves animates to its exit props,
+      then unmounts (`onExitComplete`).
 - [x] A transition can carry its own `animation`; an insert or removal in the same commit
       that changes the parent's `animation` uses the new one (React applies child ops
       before the parent's update, so the tree looks ahead).
