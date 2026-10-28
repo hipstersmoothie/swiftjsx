@@ -92,7 +92,7 @@ for the record.
       full Dates; `ColorPicker` returns a hex for the current scheme (no `{light, dark}`).
 - [ ] `LabeledContent` label as a view (font, icon).
 - [x] `Picker`: wheel, navigationLink and palette styles; number values.
-- [ ] `Menu`: checkmark items (Toggle children), colored icons.
+- [x] `Menu` checkmark items: `<Toggle>` children. (Menus draw icons monochrome, as on iOS.)
 - [x] `LabeledContent`.
 - [x] `<Image src>` placeholder/error content (its children, or `placeholder="none"`);
       `redacted` for skeleton loading.
@@ -166,7 +166,7 @@ for the record.
       SwiftUI resets state and calls `onEnded`.
 - [x] Hardware keyboard: `onKeyPress` (with `keys`), Button `keyboardShortcut`; 2048
       takes arrow keys.
-- [ ] Worklets: measuring and reading layout inside worklets, haptics from worklets,
+- [ ] Worklets: measuring and reading layout inside worklets ([x] `haptic()` works in worklets),
       animatable shape props (`trim`, `fill`), scroll offsets as shared values.
       Capturing `obj.member` sends all of `obj`; worklets that capture per-render
       closures are re-sent each render (needs stable `runOnJS` targets).
@@ -174,8 +174,8 @@ for the record.
       completion callbacks, `withDecay`, `withRepeat` or `withSequence`; no
       `useDerivedValue` / `useAnimatedReaction`; springs don't take the finger's velocity.
 - [x] Transforms: `rotation3D` (card flips), `scaleX` / `scaleY`, `transformAnchor`.
-- [ ] Value-keyed animations and "animate on appear" (a state change in a mount effect can
-      land in the same frame as the mount and not animate).
+- [x] Animate on appear: `initial={{ opacity, scale, x, y, rotation }}` (+ `initialAnimation`).
+- [ ] Value-keyed animations (animate only when a given value changes).
 - [x] `withAnimation(spec, fn, completion)`: runs when the animation is logically complete.
 - [x] `<AnimatePresence exit={…}>`: a keyed child that leaves animates to its exit props,
       then unmounts (`onExitComplete`).

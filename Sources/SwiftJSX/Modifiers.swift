@@ -173,6 +173,7 @@ struct Interactions: ViewModifier {
             content
                 .modifier(TransformModifier(node: node))
                 .modifier(KeyframesModifier(node: node))
+                .modifier(AppearModifier(node: node))
                 .modifier(GestureModifiers(node: node))
                 .modifier(AccessibilityModifier(node: node))
                 .modifier(KeyPressModifier(node: node))

@@ -36372,6 +36372,7 @@ ${e.stack}` : String(e);
       kind
     });
   }
+  haptic.__builtin = "haptic";
   async function share(content) {
     return await nativeCall("share", content) === true;
   }

@@ -6,6 +6,9 @@ import { nativeCall } from "./renderer";
 export function haptic(kind: "light" | "medium" | "heavy" | "soft" | "rigid" | "success" | "warning" | "error" | "selection" = "medium") {
   void nativeCall("haptic", { kind });
 }
+// Callable from worklets too: there it plays right away on the main thread
+// (a drag crossing a threshold), without a hop to JS.
+(haptic as unknown as { __builtin: string }).__builtin = "haptic";
 
 /**
  * Downloads and decodes an image into `<Image src>`'s cache, so it shows

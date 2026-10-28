@@ -564,3 +564,30 @@ struct AxisPan: UIGestureRecognizerRepresentable {
     }
 }
 #endif
+
+/// `initial={{ opacity, scale, x, y, rotation }}`: the view mounts like this
+/// and animates to its real props when it appears (with `initialAnimation`,
+/// else `animation`, else a smooth default), like Framer Motion's `initial`.
+/// A state change in a mount effect can land before the first frame and not
+/// animate; this always does.
+struct AppearModifier: ViewModifier {
+    let node: Node
+    @State private var appeared = false
+
+    func body(content: Content) -> some View {
+        if node.features.contains(.appear), let initial = node.dict("initial") {
+            let number = { (key: String, fallback: Double) in (initial[key] as? NSNumber)?.doubleValue ?? fallback }
+            content
+                .opacity(appeared ? 1 : number("opacity", 1))
+                .scaleEffect(appeared ? 1 : number("scale", 1))
+                .rotationEffect(.degrees(appeared ? 0 : number("rotation", 0)))
+                .offset(x: appeared ? 0 : number("x", 0), y: appeared ? 0 : number("y", 0))
+                .onAppear {
+                    let animation = parseAnimation(node.prop("initialAnimation")) ?? parseAnimation(node.prop("animation")) ?? .smooth
+                    withAnimation(animation) { appeared = true }
+                }
+        } else {
+            content
+        }
+    }
+}

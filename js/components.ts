@@ -194,6 +194,13 @@ export interface Modifiers {
    * `[{ x: -8 }, { x: 8 }, { x: -4 }, { x: 0 }]`. Each step's `animation` or
    * `duration` (seconds) gets it there; `settle` is the way back.
    */
+  /**
+   * Mount like this, then animate to the real props as the view appears
+   * (a card sliding up into place, a badge popping in):
+   * `initial={{ opacity: 0, y: 20 }}`. Uses `initialAnimation`, else `animation`.
+   */
+  initial?: { opacity?: number; scale?: number; x?: number; y?: number; rotation?: number };
+  initialAnimation?: AnimationSpec;
   keyframes?: {
     trigger?: unknown;
     steps: { scale?: number; opacity?: number; x?: number; y?: number; rotation?: number; duration?: number; animation?: AnimationSpec }[];

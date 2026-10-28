@@ -41,6 +41,12 @@ final class WorkletRuntime {
         let host = JSValue(newObjectIn: context)!
         let log: @convention(block) (String) -> Void = { print("[worklet] \($0)") }
         host.setObject(log, forKeyedSubscript: "log" as NSString)
+        // Worklets run on main: play it now.
+        let haptic: @convention(block) (JSValue) -> Void = { kind in
+            let name = kind.isString ? kind.toString() : nil
+            MainActor.assumeIsolated { playHaptic(name) }
+        }
+        host.setObject(haptic, forKeyedSubscript: "haptic" as NSString)
         context.setObject(host, forKeyedSubscript: "__host" as NSString)
         api = context.evaluateScript(Self.prelude)!
 
@@ -179,6 +185,7 @@ final class WorkletRuntime {
         }),
         withAnimation: (animation, to) => ({ __animate: true, to, animation }),
         runOnJS: (fn) => fn.__runOnJS ?? fn,
+        haptic: (kind) => __host.haptic(kind),
       };
 
       function hydrate(v) {

@@ -40,6 +40,7 @@ export function AnimationDemo() {
   const [taps, setTaps] = useState({ taps: 0, holds: 0 });
   const [swipeX, setSwipeX] = useState(0);
   const [swiped, setSwiped] = useState("none");
+  const [entrance, setEntrance] = useState(0);
   const [rows, setRows] = useState([
     { id: 1, title: "Groceries", flagged: false, pinned: false },
     { id: 2, title: "Dentist at 3", flagged: false, pinned: false },
@@ -67,6 +68,22 @@ export function AnimationDemo() {
     <Screen title="Animation" titleDisplayMode="inline">
       <ScrollView>
         <VStack alignment="leading" spacing={16} padding={20}>
+          {/* initial: mounts faded and lower, then animates into place. Re-keyed to replay. */}
+          <HStack
+            key={entrance}
+            padding={16}
+            frame={{ maxWidth: "infinity" }}
+            background="indigo/15"
+            cornerRadius={14}
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            initialAnimation={{ type: "spring", duration: 0.6, bounce: 0.3 }}
+            accessibilityIdentifier="entrance-card"
+          >
+            <Text>{`Animated in on appear (#${entrance + 1})`}</Text>
+            <Spacer />
+            <Button title="Replay" buttonStyle="bordered" onPress={() => setEntrance((n) => n + 1)} accessibilityIdentifier="replay-entrance" />
+          </HStack>
+
           <Text font="headline">Swipe actions outside a List</Text>
           <VStack spacing={0} background="secondarySystemBackground" cornerRadius={14}>
             {rows.map((row, i) => (

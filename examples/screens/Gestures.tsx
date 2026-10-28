@@ -1,7 +1,7 @@
 import { useState, type ComponentProps } from "react";
 import {
   Screen, VStack, HStack, Text, Image, Spacer, Picker,
-  useSharedValue, useAnimatedStyle, withSpring, runOnJS,
+  useSharedValue, useAnimatedStyle, withSpring, runOnJS, haptic,
 } from "swiftjsx";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -115,6 +115,8 @@ function WorkletCard({ onDropped }: CardProps) {
       animatedStyle={style}
       onDrag={(e) => {
         "worklet";
+        // Picked up: a haptic right here on the main thread, no hop to JS.
+        if (!dragging.get()) haptic("light");
         if (!dragging.get()) dragging.set(withSpring(true, { duration: 0.25 }));
         offset.set(e.translation);
       }}
