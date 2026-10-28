@@ -11,7 +11,7 @@ import { TabView, Tab, Navigator, VStack, SafeAreaInset } from "swiftjsx";
 import { useRecipes, BASE_SERVINGS } from "./store";
 import { aggregate } from "./quantity";
 import { useTimerAlarm, useTimers } from "./timers";
-import { stopSpeaking } from "./native/speech";
+import { stopSpeaking } from "./services";
 import { BrowseScreen } from "./BrowseScreen";
 import { SearchScreen } from "./SearchScreen";
 import { FavoritesScreen } from "./FavoritesScreen";

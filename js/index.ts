@@ -12,5 +12,9 @@ export { Sheet, Alert, ConfirmationDialog } from "./presentations";
 export { AnimatePresence, type AnimatePresenceProps } from "./presence";
 export { DatePicker, NavigationRow } from "./controls";
 export { haptic, prefetchImage } from "./platform";
+export {
+  notifications, useNotificationListener, speech, keepAwake, useKeepAwake,
+  type NotificationContent, type NotificationResponse, type NotificationRequest, type SpeakOptions,
+} from "./services";
 export { useEnvironment, useColorScheme, type Environment } from "./environment";
 export { hot } from "./hot";

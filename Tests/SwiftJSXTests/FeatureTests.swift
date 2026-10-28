@@ -360,3 +360,29 @@ struct CompilerTests {
         #expect(data == #"{"runs":3,"disposed":2}"#)
     }
 }
+
+@MainActor
+@Suite struct ServiceTests {
+    @Test func notificationsAreUnavailableOutsideAnApp() async throws {
+        let runtime = try fixture("Services")
+        runtime.press("status")
+        #expect(await eventually { runtime.texts().first?.contains("status unavailable") == true })
+    }
+
+    @Test func speaksWithWordEvents() async throws {
+        let runtime = try fixture("Services")
+        runtime.press("voices")
+        #expect(await eventually { runtime.texts().first?.contains("voices true") == true })
+        runtime.press("speak")
+        #expect(await eventually(timeout: .seconds(10)) { runtime.texts().first?.contains("spoke finished true") == true })
+    }
+
+    @Test func notificationTapsWaitForAListener() async throws {
+        let runtime = try fixture("Services")
+        // The tap that launched the app arrives before anything listens.
+        runtime.emit("notificationResponse", ["id": "n1", "title": "Timer", "subtitle": "", "body": "", "data": ["recipe": 7], "action": "open"])
+        try await Task.sleep(for: .milliseconds(100))
+        runtime.press("listen")
+        #expect(await eventually { runtime.texts().first?.contains(#"tapped n1 {"recipe":7}"#) == true })
+    }
+}

@@ -217,9 +217,11 @@ for the record.
 - [ ] Locale: only `navigator.language` is exposed. `locale`, `firstWeekday`,
       `hourCycle` and `timeZone` in `useEnvironment()`, and a significant-time-change event
       (midnight, time zone, DST) instead of every app's own midnight timer.
-- [ ] First-party local notifications (and the notification delegate: banners in the
-      foreground, taps as deep links), badges, keep-awake and text-to-speech, like
-      `haptic()`. Today they need the native backend.
+- [x] First-party `notifications` (SwiftJSX owns the delegate: banners in the foreground,
+      taps as events, a launch tap held until someone listens), badge, `speech` (with word
+      ranges, ducking other audio) and `useKeepAwake`. Recipes uses them instead of its
+      NativeScript code.
+- [ ] Notification actions and categories, attachments, time-sensitive interruption level.
 - [x] `hot.data` / `hot.dispose()` for module-level state and cleanup across Fast Refresh
       updates (bundle-wide, not per module).
 - [ ] `TextDecoder` is UTF-8 only and has no streaming mode; WebSocket has no

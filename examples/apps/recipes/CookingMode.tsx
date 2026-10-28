@@ -3,9 +3,8 @@
 // the spoken word highlighted, and timers for the durations in a step.
 // Running timers dock to the bottom with <SafeAreaInset>.
 //
-// Native pieces (all optional): UIApplication.idleTimerDisabled, AVSpeechSynthesizer,
-// UNUserNotificationCenter. Without them the pages, timers and checklist all
-// still work; a notice says what's missing.
+// Keep-awake, speech and notifications are SwiftJSX's built-in services.
+// Outside an app bundle there are no notifications; a notice says so.
 import { useEffect, useRef, useState } from "react";
 import {
   VStack, HStack, ZStack, Text, Image, Button, ScrollView, Spacer, Capsule, Circle, Menu, Label, Section, Sheet,
@@ -16,9 +15,7 @@ import { findDurations, formatDuration, type Duration } from "./steps";
 import { scaleMeasure, ingredientKey } from "./quantity";
 import { useServings, BASE_SERVINGS, useIsFavorite, useRecipes } from "./store";
 import { useTimers } from "./timers";
-import { useKeepAwake } from "./native/keepAwake";
-import { speak, stopSpeaking, useSpeech } from "./native/speech";
-import { capabilities } from "./native/platform";
+import { useKeepAwake, speak, stopSpeaking, useSpeech, notificationsAvailable } from "./services";
 import { TimerBar } from "./TimerBar";
 import { IngredientList } from "./Ingredients";
 import { TimerButton } from "./TimerButton";
@@ -45,7 +42,7 @@ export function CookingMode({ recipe, open, onClose, checked, onToggleIngredient
   const factor = servings / BASE_SERVINGS;
   const startTimer = useTimers((s) => s.start);
   const speech = useSpeech();
-  const awake = useKeepAwake(open);
+  useKeepAwake(open);
 
   // Closing (or leaving) cooking mode stops reading.
   useEffect(() => {
@@ -88,11 +85,7 @@ export function CookingMode({ recipe, open, onClose, checked, onToggleIngredient
     else if (page < steps.length) void speak(currentKey, steps[page]);
   };
 
-  const missing = [
-    awake ? null : "The screen may dim (keeping it awake needs UIApplication).",
-    speech.available ? null : "Steps can't be read aloud (needs AVSpeechSynthesizer).",
-    capabilities.notifications ? null : "Timers only ring while the app is open (no notifications).",
-  ].filter((m): m is string => m != null);
+  const missing = notificationsAvailable ? [] : ["Timers only ring while the app is open (no notifications)."];
 
   return (
     <VStack spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background="black" colorScheme="dark" tint={ACCENT}>
@@ -105,7 +98,7 @@ export function CookingMode({ recipe, open, onClose, checked, onToggleIngredient
           if (handsFree) void stopSpeaking();
           setHandsFree((h) => !h);
         }}
-        speechAvailable={speech.available}
+        speechAvailable
         onClose={onClose}
         onIngredients={() => setShowIngredients(true)}
         onQuickTimer={(minutes) => startTimer("Timer", minutes * 60, recipe.name)}
@@ -154,7 +147,7 @@ export function CookingMode({ recipe, open, onClose, checked, onToggleIngredient
             page={page}
             pageCount={pageCount}
             reading={reading}
-            canRead={speech.available && page < steps.length}
+            canRead={page < steps.length}
             onPrevious={() => goTo(page - 1)}
             onNext={() => goTo(page + 1)}
             onToggleReading={toggleReading}

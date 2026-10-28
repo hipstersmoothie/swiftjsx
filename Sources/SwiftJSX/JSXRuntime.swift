@@ -59,6 +59,8 @@ public final class JSXRuntime {
         tree.worklets = worklets
         let engine = engine!
         appEvents = AppEvents { type in engine.call("__swiftjsx_windowEvent", [type]) }
+        // Early, so a notification tap that launched the app isn't missed.
+        NotificationHub.shared.install()
     }
 
     /// Load an app bundle from disk. With `hotReload`, the file is watched and
@@ -91,7 +93,19 @@ public final class JSXRuntime {
         }
         engine.start(runtime: runtime, app: app, appURL: sourceURL)
         if !environment.isEmpty { engine.call("__swiftjsx_environment", [environment]) }
+        NotificationHub.shared.attach(self)
     }
+
+    /// An event for JS listeners (`__swiftjsx_emit`): notifications, speech.
+    func emit(_ name: String, _ payload: Any) {
+        engine.call("__swiftjsx_emit", [name, payload])
+    }
+
+    func resolveCommand(_ callback: Int, _ value: Any) {
+        engine.resolve(callback: callback, value: value)
+    }
+
+    @ObservationIgnored private lazy var speaker = Speaker(runtime: self)
 
     func setEnvironment(_ values: [String: String]) {
         guard values != environment else { return }
@@ -157,6 +171,18 @@ public final class JSXRuntime {
                 let loaded = (try? await ImageLoader.shared.load(url)) != nil
                 engine?.resolve(callback: callback, value: loaded)
             }
+        case "notificationsRequest", "notificationsStatus", "notificationsSchedule", "notificationsCancel", "notificationsPending", "badge":
+            handleNotificationCommand(name, args) { [engine] value in engine?.resolve(callback: callback, value: value) }
+        case "keepAwake":
+            setKeepAwake(args["on"] as? Bool ?? false)
+            engine.resolve(callback: callback, value: NSNull())
+        case "speak":
+            speaker.speak(args, callback: callback)
+        case "speechStop", "speechPause", "speechResume":
+            speaker.control(name)
+            engine.resolve(callback: callback, value: NSNull())
+        case "speechVoices":
+            engine.resolve(callback: callback, value: Speaker.voices())
         case "haptic":
             playHaptic(args["kind"] as? String)
             engine.resolve(callback: callback, value: NSNull())

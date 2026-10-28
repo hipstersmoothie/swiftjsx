@@ -107,7 +107,11 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
 - **Animation.** `withAnimation("spring", () => setOpen(true))` animates everything that
   update changes, like SwiftUI's `withAnimation`; the `animation` prop animates one view.
   Both take SwiftUI's curves (`spring`, `bouncy`, `snappy`, `easeInOut`…) or
-  `{ type, duration, bounce, delay, repeatCount }`.
+  `{ type, duration, bounce, delay, repeatCount }`. `withAnimation(spec, fn, done)` calls
+  `done` when it finishes. `transition` takes `{ insert, remove }` and options (edge,
+  scale, its own `animation`); `<AnimatePresence exit={…}>` animates leaving children to
+  exit props before unmounting them; `<AbsoluteStack>` places children by `position`
+  (points or percentages) as layout, so moves animate.
 - **Worklets** (like Reanimated). A handler marked `"worklet"` runs on the main thread
   inside the touch event, so a dragged view moves in the same frame as the finger, with
   no React render:
@@ -143,6 +147,10 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   `<Image src="https://…" contentMode="fill">`. URL images are cached in memory, requested
   once even when several views want them, and decoded off the main thread. They fire
   `onLoad`/`onError`.
+- **Platform services.** `haptic()`, `navigator.clipboard`, `openURL`; local
+  `notifications` (permission, `schedule({ title, at | seconds, data })`, cancel, badge,
+  and tap/arrival listeners, including the tap that launched the app); `speech.speak(text,
+  { onWord })` (text-to-speech with word ranges); `useKeepAwake()`. No native backend needed.
 - **Accessibility.** `accessibilityLabel`, `Hint`, `Value`, `Hidden`, `Identifier` (for UI
   tests, like `testID`), `Traits`, `SortPriority`, and `accessibilityElement="combine"`.
 

@@ -453,6 +453,16 @@ final class GalleryTests: XCTestCase {
         XCTAssert(element("step-page").waitForExistence(timeout: 5))
         sleep(1)
         snapshot("recipes-cooking")
+        // Built-in speech: reading aloud flips the button to "Stop reading"
+        // while words are highlighted, and back when it finishes or stops.
+        let read = element("read-aloud")
+        read.tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'Stop reading'"), evaluatedWith: read)], timeout: 5) == .completed,
+                  "not reading: \(read.label)")
+        sleep(2)
+        snapshot("recipes-reading")
+        read.tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'Read this step aloud'"), evaluatedWith: read)], timeout: 5) == .completed)
     }
 
     func testAnimation() {

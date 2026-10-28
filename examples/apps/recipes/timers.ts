@@ -9,8 +9,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { haptic } from "swiftjsx";
 import {
   requestPermission, getPermission, scheduleTimerNotification, cancelTimerNotification, type NotificationPermission,
-} from "./native/notifications";
-import { speak } from "./native/speech";
+} from "./services";
+import { speak } from "./services";
 import { formatDuration } from "./steps";
 
 export type KitchenTimer = {

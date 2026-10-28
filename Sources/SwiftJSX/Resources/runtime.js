@@ -4747,33 +4747,33 @@
         function pingEngtangledActionScope() {
           if (0 === --currentEntangledPendingCount && (-1 < transitionUpdateTime || (transitionStartTime = -1.1), entangledTransitionTypes = null, null !== currentEntangledListeners)) {
             null !== currentEntangledActionThenable && (currentEntangledActionThenable.status = "fulfilled");
-            var listeners3 = currentEntangledListeners;
+            var listeners4 = currentEntangledListeners;
             currentEntangledListeners = null;
             currentEntangledLane = 0;
             currentEntangledActionThenable = null;
-            for (var i = 0; i < listeners3.length; i++) (0, listeners3[i])();
+            for (var i = 0; i < listeners4.length; i++) (0, listeners4[i])();
           }
         }
         function chainThenableValue(thenable, result) {
-          var listeners3 = [], thenableWithOverride = {
+          var listeners4 = [], thenableWithOverride = {
             status: "pending",
             value: null,
             reason: null,
             then: function(resolve) {
-              listeners3.push(resolve);
+              listeners4.push(resolve);
             }
           };
           thenable.then(
             function() {
               thenableWithOverride.status = "fulfilled";
               thenableWithOverride.value = result;
-              for (var i = 0; i < listeners3.length; i++) (0, listeners3[i])(result);
+              for (var i = 0; i < listeners4.length; i++) (0, listeners4[i])(result);
             },
             function(error) {
               thenableWithOverride.status = "rejected";
               thenableWithOverride.reason = error;
-              for (error = 0; error < listeners3.length; error++)
-                (0, listeners3[error])(void 0);
+              for (error = 0; error < listeners4.length; error++)
+                (0, listeners4[error])(void 0);
             }
           );
           return thenableWithOverride;
@@ -15092,15 +15092,15 @@
         var renderer2CursorDEV = createCursor(null);
         var rendererSigil = {};
         var currentlyRenderingFiber$1 = null, lastContextDependency = null, isDisallowedContextReadInDEV = false, AbortControllerLocal = "undefined" !== typeof AbortController ? AbortController : function() {
-          var listeners3 = [], signal = this.signal = {
+          var listeners4 = [], signal = this.signal = {
             aborted: false,
             addEventListener: function(type, listener) {
-              listeners3.push(listener);
+              listeners4.push(listener);
             }
           };
           this.abort = function() {
             signal.aborted = true;
-            listeners3.forEach(function(listener) {
+            listeners4.forEach(function(listener) {
               return listener();
             });
           };
@@ -18060,20 +18060,25 @@ ${error.stack}` : String(error));
     haptic: () => haptic,
     hot: () => hot,
     isNativeAvailable: () => isNativeAvailable,
+    keepAwake: () => keepAwake,
     makeMutable: () => makeMutable,
     native: () => native,
+    notifications: () => notifications,
     onJS: () => onJS,
     onMain: () => onMain,
     openURL: () => openURL,
     prefetchImage: () => prefetchImage,
     render: () => render,
     runOnJS: () => runOnJS,
+    speech: () => speech,
     toJS: () => toJS,
     useAnimatedStyle: () => useAnimatedStyle,
     useColorScheme: () => useColorScheme,
     useEnvironment: () => useEnvironment,
+    useKeepAwake: () => useKeepAwake,
     useNativeValue: () => useNativeValue,
     useNavigation: () => useNavigation,
+    useNotificationListener: () => useNotificationListener,
     useSharedValue: () => useSharedValue,
     withAnimation: () => withAnimation,
     withSpring: () => withSpring,
@@ -19265,16 +19270,16 @@ ${e.stack}` : String(e);
     }
     const options = t1;
     const {
-      notifications,
+      notifications: notifications2,
       poll,
       mainThread: t2
     } = options;
     const mainThread = t2 === void 0 ? true : t2;
     const [value, setValue] = (0, import_react5.useState)(void 0);
     let t3;
-    if ($[3] !== notifications) {
-      t3 = notifications == null ? [] : Array.isArray(notifications) ? notifications : [notifications];
-      $[3] = notifications;
+    if ($[3] !== notifications2) {
+      t3 = notifications2 == null ? [] : Array.isArray(notifications2) ? notifications2 : [notifications2];
+      $[3] = notifications2;
       $[4] = t3;
     } else {
       t3 = $[4];
@@ -19908,9 +19913,195 @@ ${e.stack}` : String(e);
     }
   };
 
-  // js/environment.ts
+  // js/services.ts
   var import_compiler_runtime7 = __toESM(require_compiler_runtime(), 1);
   var import_react8 = __toESM(require_react(), 1);
+  var listeners2 = /* @__PURE__ */ new Map();
+  var heldResponses = [];
+  globalThis.__swiftjsx_emit = (name, payload) => {
+    const set = listeners2.get(name);
+    if (name === "notificationResponse" && !set?.size) {
+      heldResponses.push(payload);
+      return;
+    }
+    set?.forEach((listener) => listener(payload));
+  };
+  function listen(name, listener) {
+    let set = listeners2.get(name);
+    if (!set) listeners2.set(name, set = /* @__PURE__ */ new Set());
+    set.add(listener);
+    return () => set.delete(listener);
+  }
+  var notifications = {
+    /** Asks once (the system remembers the answer); resolves to whether they're allowed. */
+    async requestPermission(options = {}) {
+      return await nativeCall("notificationsRequest", options) === true;
+    },
+    /** "unavailable" outside an app bundle (e.g. `swift run`). */
+    async getPermission() {
+      return await nativeCall("notificationsStatus", {});
+    },
+    /** Schedules a local notification; resolves to its id (null if it couldn't be added). */
+    async schedule(request) {
+      const {
+        at,
+        ...rest
+      } = request;
+      return await nativeCall("notificationsSchedule", {
+        ...rest,
+        at: at ? +at : void 0
+      });
+    },
+    /** Removes scheduled and delivered notifications: these ids, or all. */
+    async cancel(ids) {
+      await nativeCall("notificationsCancel", ids === void 0 ? {} : {
+        ids: Array.isArray(ids) ? ids : [ids]
+      });
+    },
+    async pending() {
+      const list = await nativeCall("notificationsPending", {}) ?? [];
+      return list.map((item) => ({
+        ...item,
+        at: item.at === void 0 ? void 0 : new Date(item.at)
+      }));
+    },
+    /** The number on the app icon (0 clears it). */
+    async setBadgeCount(count) {
+      await nativeCall("badge", {
+        count
+      });
+    },
+    /**
+     * "receive": one arrived while the app is open (it shows as a banner too).
+     * "response": the user tapped one (or an action), including the tap that
+     * launched the app, which waits for the first listener.
+     */
+    addListener(type, listener) {
+      if (type === "response") {
+        const remove = listen("notificationResponse", listener);
+        heldResponses.splice(0).forEach((response) => listener(response));
+        return remove;
+      }
+      return listen("notification", listener);
+    }
+  };
+  function useNotificationListener(type, listener) {
+    const $ = (0, import_compiler_runtime7.c)(6);
+    if ($[0] !== "bb9694b9133fc80ee1fa6c1bc545b4f8d5dd5d26f31dcfc311287886776777e2") {
+      for (let $i = 0; $i < 6; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "bb9694b9133fc80ee1fa6c1bc545b4f8d5dd5d26f31dcfc311287886776777e2";
+    }
+    const latest = (0, import_react8.useRef)(listener);
+    let t0;
+    if ($[1] !== listener) {
+      t0 = () => {
+        latest.current = listener;
+      };
+      $[1] = listener;
+      $[2] = t0;
+    } else {
+      t0 = $[2];
+    }
+    (0, import_react8.useEffect)(t0);
+    let t1;
+    let t2;
+    if ($[3] !== type) {
+      t1 = () => notifications.addListener(type, (event) => latest.current(event));
+      t2 = [type];
+      $[3] = type;
+      $[4] = t1;
+      $[5] = t2;
+    } else {
+      t1 = $[4];
+      t2 = $[5];
+    }
+    (0, import_react8.useEffect)(t1, t2);
+  }
+  var nextUtterance = 1;
+  var speech = {
+    /**
+     * Speaks `text` (queued after anything already speaking; other audio ducks).
+     * Resolves "finished", or "cancelled" after `stop()`.
+     */
+    async speak(text, options = {}) {
+      const {
+        onWord,
+        ...rest
+      } = options;
+      const id = nextUtterance++;
+      const remove = onWord ? listen("speechWord", (event) => {
+        if (event.id === id) onWord({
+          start: event.start,
+          length: event.length
+        });
+      }) : void 0;
+      try {
+        return await nativeCall("speak", {
+          ...rest,
+          text,
+          id
+        });
+      } finally {
+        remove?.();
+      }
+    },
+    /** Stops now; pending `speak` promises resolve "cancelled". */
+    async stop() {
+      await nativeCall("speechStop", {});
+    },
+    async pause() {
+      await nativeCall("speechPause", {});
+    },
+    async resume() {
+      await nativeCall("speechResume", {});
+    },
+    async voices() {
+      return await nativeCall("speechVoices", {});
+    }
+  };
+  var keepAwakeCount = 0;
+  function keepAwake() {
+    if (keepAwakeCount++ === 0) void nativeCall("keepAwake", {
+      on: true
+    });
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      if (--keepAwakeCount === 0) void nativeCall("keepAwake", {
+        on: false
+      });
+    };
+  }
+  function useKeepAwake(t0) {
+    const $ = (0, import_compiler_runtime7.c)(4);
+    if ($[0] !== "bb9694b9133fc80ee1fa6c1bc545b4f8d5dd5d26f31dcfc311287886776777e2") {
+      for (let $i = 0; $i < 4; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "bb9694b9133fc80ee1fa6c1bc545b4f8d5dd5d26f31dcfc311287886776777e2";
+    }
+    const active = t0 === void 0 ? true : t0;
+    let t1;
+    let t2;
+    if ($[1] !== active) {
+      t1 = () => active ? keepAwake() : void 0;
+      t2 = [active];
+      $[1] = active;
+      $[2] = t1;
+      $[3] = t2;
+    } else {
+      t1 = $[2];
+      t2 = $[3];
+    }
+    (0, import_react8.useEffect)(t1, t2);
+  }
+
+  // js/environment.ts
+  var import_compiler_runtime8 = __toESM(require_compiler_runtime(), 1);
+  var import_react9 = __toESM(require_react(), 1);
   var current = {
     horizontalSizeClass: "compact",
     verticalSizeClass: "regular",
@@ -19928,7 +20119,7 @@ ${e.stack}` : String(e);
       trailing: 0
     }
   };
-  var listeners2 = /* @__PURE__ */ new Set();
+  var listeners3 = /* @__PURE__ */ new Set();
   globalThis.__swiftjsx_environment = (values) => {
     current = {
       horizontalSizeClass: values.horizontalSizeClass === "compact" ? "compact" : "regular",
@@ -19947,27 +20138,27 @@ ${e.stack}` : String(e);
         trailing: Number(values.safeTrailing) || 0
       }
     };
-    listeners2.forEach((listener) => listener());
+    listeners3.forEach((listener) => listener());
   };
   function subscribe(listener) {
-    listeners2.add(listener);
-    return () => listeners2.delete(listener);
+    listeners3.add(listener);
+    return () => listeners3.delete(listener);
   }
   function useEnvironment() {
-    const $ = (0, import_compiler_runtime7.c)(1);
+    const $ = (0, import_compiler_runtime8.c)(1);
     if ($[0] !== "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
       $[0] = "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697";
     }
-    return (0, import_react8.useSyncExternalStore)(subscribe, _temp6);
+    return (0, import_react9.useSyncExternalStore)(subscribe, _temp6);
   }
   function _temp6() {
     return current;
   }
   function useColorScheme() {
-    const $ = (0, import_compiler_runtime7.c)(1);
+    const $ = (0, import_compiler_runtime8.c)(1);
     if ($[0] !== "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
