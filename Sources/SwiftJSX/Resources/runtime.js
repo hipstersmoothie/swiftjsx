@@ -19314,11 +19314,11 @@ ${e.stack}` : String(e);
   var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
   function usePresentation(props) {
     const $ = (0, import_compiler_runtime5.c)(9);
-    if ($[0] !== "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1") {
+    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
       for (let $i = 0; $i < 9; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1";
+      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
     }
     const presented = props.item !== void 0 ? props.item !== null : !!props.isPresented;
     const [shown, setShown] = (0, import_react6.useState)(props.item);
@@ -19365,53 +19365,73 @@ ${e.stack}` : String(e);
     return g3 + 1;
   }
   function Sheet(props) {
-    const $ = (0, import_compiler_runtime5.c)(14);
-    if ($[0] !== "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1") {
-      for (let $i = 0; $i < 14; $i += 1) {
+    const $ = (0, import_compiler_runtime5.c)(20);
+    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
+      for (let $i = 0; $i < 20; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1";
+      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
     }
     const {
       presented,
       generation,
       content
     } = usePresentation(props);
-    const t0 = props.keepState ? 0 : generation;
-    let t1;
-    if ($[1] !== content || $[2] !== t0) {
-      t1 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Fresh, { children: content }, t0);
-      $[1] = content;
-      $[2] = t0;
-      $[3] = t1;
+    const [mounted, setMounted] = (0, import_react6.useState)(presented);
+    if (presented && !mounted) {
+      setMounted(true);
+    }
+    let t0;
+    if ($[1] !== presented || $[2] !== props) {
+      t0 = () => {
+        if (!presented) {
+          setMounted(false);
+        }
+        props.onDismissed?.();
+      };
+      $[1] = presented;
+      $[2] = props;
+      $[3] = t0;
     } else {
-      t1 = $[3];
+      t0 = $[3];
+    }
+    let t1;
+    if ($[4] !== content || $[5] !== generation || $[6] !== mounted || $[7] !== props.keepState) {
+      t1 = mounted || props.keepState ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Fresh, { children: content }, props.keepState ? 0 : generation) : null;
+      $[4] = content;
+      $[5] = generation;
+      $[6] = mounted;
+      $[7] = props.keepState;
+      $[8] = t1;
+    } else {
+      t1 = $[8];
     }
     let t2;
-    if ($[4] !== presented || $[5] !== props.background || $[6] !== props.cornerRadius || $[7] !== props.detents || $[8] !== props.dragIndicator || $[9] !== props.fullScreen || $[10] !== props.interactiveDismissDisabled || $[11] !== props.onDismiss || $[12] !== t1) {
-      t2 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, detents: props.detents, fullScreen: props.fullScreen, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
-      $[4] = presented;
-      $[5] = props.background;
-      $[6] = props.cornerRadius;
-      $[7] = props.detents;
-      $[8] = props.dragIndicator;
-      $[9] = props.fullScreen;
-      $[10] = props.interactiveDismissDisabled;
-      $[11] = props.onDismiss;
-      $[12] = t1;
-      $[13] = t2;
+    if ($[9] !== presented || $[10] !== props.background || $[11] !== props.cornerRadius || $[12] !== props.detents || $[13] !== props.dragIndicator || $[14] !== props.fullScreen || $[15] !== props.interactiveDismissDisabled || $[16] !== props.onDismiss || $[17] !== t0 || $[18] !== t1) {
+      t2 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, onDismissed: t0, detents: props.detents, fullScreen: props.fullScreen, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
+      $[9] = presented;
+      $[10] = props.background;
+      $[11] = props.cornerRadius;
+      $[12] = props.detents;
+      $[13] = props.dragIndicator;
+      $[14] = props.fullScreen;
+      $[15] = props.interactiveDismissDisabled;
+      $[16] = props.onDismiss;
+      $[17] = t0;
+      $[18] = t1;
+      $[19] = t2;
     } else {
-      t2 = $[13];
+      t2 = $[19];
     }
     return t2;
   }
   function useDialog(props) {
     const $ = (0, import_compiler_runtime5.c)(13);
-    if ($[0] !== "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1") {
+    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
       for (let $i = 0; $i < 13; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1";
+      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
     }
     const presentation = usePresentation(props);
     let t0;
@@ -19459,11 +19479,11 @@ ${e.stack}` : String(e);
   }
   function Alert(props) {
     const $ = (0, import_compiler_runtime5.c)(7);
-    if ($[0] !== "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1") {
+    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1";
+      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
     }
     const {
       presented,
@@ -19487,11 +19507,11 @@ ${e.stack}` : String(e);
   }
   function ConfirmationDialog(props) {
     const $ = (0, import_compiler_runtime5.c)(7);
-    if ($[0] !== "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1") {
+    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1";
+      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
     }
     const {
       presented,
@@ -19515,11 +19535,11 @@ ${e.stack}` : String(e);
   }
   function Fresh(t0) {
     const $ = (0, import_compiler_runtime5.c)(3);
-    if ($[0] !== "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1") {
+    if ($[0] !== "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c") {
       for (let $i = 0; $i < 3; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "33a248b49043f9c019097e74d8ff18d35d6e9f1d592dbf48155208128320aed1";
+      $[0] = "3751ebe460d041d84913bc36ed819cf65dbed52c344b78c8b8d7a50360ace54c";
     }
     const {
       children

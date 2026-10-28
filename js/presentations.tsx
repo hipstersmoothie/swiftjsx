@@ -5,6 +5,8 @@
 //    going blank when your state is cleared;
 //  - each presentation starts fresh (children remount), so a form in a sheet
 //    doesn't carry over what was typed last time. `keepState` opts out.
+// A sheet's content unmounts once it has gone (its effects stop), unless
+// `keepState`.
 
 import { useState, type ReactNode } from "react";
 import { SheetHost, AlertHost, ConfirmationDialogHost, type Fill } from "./components";
@@ -45,14 +47,23 @@ type SheetProps<T> = Presentable<T> & {
   background?: Fill;
   /** Keep the content's state between presentations (default: start fresh, like SwiftUI). */
   keepState?: boolean;
+  /** After the sheet has gone (its dismiss animation finished). */
+  onDismissed?: () => void;
 };
 
 export function Sheet<T>(props: SheetProps<T>) {
   const { presented, generation, content } = usePresentation(props);
+  // Mounted from presentation until the sheet has animated away.
+  const [mounted, setMounted] = useState(presented);
+  if (presented && !mounted) setMounted(true);
   return (
     <SheetHost
       isPresented={presented}
       onDismiss={props.onDismiss}
+      onDismissed={() => {
+        if (!presented) setMounted(false);
+        props.onDismissed?.();
+      }}
       detents={props.detents}
       fullScreen={props.fullScreen}
       interactiveDismissDisabled={props.interactiveDismissDisabled}
@@ -60,7 +71,7 @@ export function Sheet<T>(props: SheetProps<T>) {
       cornerRadius={props.cornerRadius}
       background={props.background}
     >
-      <Fresh key={props.keepState ? 0 : generation}>{content}</Fresh>
+      {mounted || props.keepState ? <Fresh key={props.keepState ? 0 : generation}>{content}</Fresh> : null}
     </SheetHost>
   );
 }

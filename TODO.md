@@ -135,8 +135,9 @@ for the record.
 - [ ] Sheets: an "attempted to dismiss" callback (to ask before discarding changes), and
       `interactiveDismissDisabled` settable from inside the sheet's content (a dirty form,
       a game board) rather than only on `<Sheet>`. A `fullScreen` sheet can't be closed
-      without its slide (after a custom swipe-down). Sheet content stays mounted (effects
-      running) after the first presentation; a "dismissed" event to unmount it.
+      without its slide (after a custom swipe-down).
+- [x] Sheet content mounts with the presentation and unmounts once the sheet has gone
+      (`onDismissed`), so its effects (keep-awake, speech) stop; `keepState` keeps it.
 - [ ] Adding or removing a `<SafeAreaInset>` rebuilds the view it's attached to (resets a
       NavigationStack or scroll position); keep it mounted.
 - [ ] Search: `isSearching`, dismiss from code, submit / cancel events, scopes,

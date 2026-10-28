@@ -685,6 +685,8 @@ export const SheetHost = host<
     isPresented: boolean;
     /** Called when the user dismisses it (swipe down, Esc…); set your state to false. */
     onDismiss: () => void;
+    /** After it has gone (the dismiss animation finished), however it was dismissed. */
+    onDismissed?: () => void;
     detents?: ("medium" | "large" | number)[];
     /** iOS: cover the whole screen instead of a card. */
     fullScreen?: boolean;

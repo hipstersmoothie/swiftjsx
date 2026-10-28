@@ -44,11 +44,18 @@ struct NavigationTests {
         let sheet = try #require(runtime.find("Sheet"))
         #expect(sheet.isPresentation)
         #expect(!sheet.bool("isPresented"))
+        // Content mounts with the presentation…
+        #expect(!runtime.texts().contains("sheet body"))
 
         runtime.press("open sheet")
         #expect(sheet.bool("isPresented"))
+        #expect(runtime.texts().contains("sheet body"))
         runtime.dispatch(sheet.id, "onDismiss")
         #expect(!sheet.bool("isPresented"))
+        // …stays while the sheet animates away, and unmounts once it's gone.
+        #expect(runtime.texts().contains("sheet body"))
+        runtime.dispatch(sheet.id, "onDismissed")
+        #expect(!runtime.texts().contains("sheet body"))
 
         let alert = try #require(runtime.find("Alert"))
         runtime.press("open alert")

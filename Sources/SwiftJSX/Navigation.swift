@@ -174,12 +174,12 @@ struct PresentationHost: View {
         case "Sheet":
             #if os(iOS)
             if node.bool("fullScreen") {
-                Color.clear.fullScreenCover(isPresented: isPresented) { sheetContent }
+                Color.clear.fullScreenCover(isPresented: isPresented, onDismiss: reportGone) { sheetContent }
             } else {
-                Color.clear.sheet(isPresented: isPresented) { sheetContent }
+                Color.clear.sheet(isPresented: isPresented, onDismiss: reportGone) { sheetContent }
             }
             #else
-            Color.clear.sheet(isPresented: isPresented) { sheetContent }
+            Color.clear.sheet(isPresented: isPresented, onDismiss: reportGone) { sheetContent }
             #endif
         case "Alert":
             Color.clear.alert(title, isPresented: isPresented) {
@@ -194,6 +194,11 @@ struct PresentationHost: View {
                 if let message { Text(message) }
             }
         }
+    }
+
+    /// The sheet has gone (after its animation), however it was dismissed.
+    private func reportGone() {
+        if node.has("onDismissed") { runtime?.dispatch(node.id, "onDismissed") }
     }
 
     private var sheetContent: some View {
