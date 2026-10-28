@@ -31,7 +31,10 @@ extension JSXRuntime {
         if let path = info["SwiftJSXDevBundlePath"] as? String, !path.isEmpty,
            FileManager.default.fileExists(atPath: path) {
             print("[swiftjsx] loading \(path) (hot reload)")
-            return JSXRuntime(bundleURL: URL(fileURLWithPath: path), hotReload: true, threading: threading, native: native)
+            let runtime = JSXRuntime(threading: threading, native: native)
+            runtime.devToolsHost = "127.0.0.1"
+            runtime.load(bundleAt: URL(fileURLWithPath: path), hotReload: true)
+            return runtime
         }
         #endif
         let servers = devServerURLs(info)
@@ -107,6 +110,7 @@ final class DevServerClient {
                     continue
                 }
                 print("[swiftjsx] connected to dev server \(found.absoluteString)")
+                runtime?.devToolsHost = found.host
             }
 
             var components = URLComponents(url: server!.appendingPathComponent("app.js"), resolvingAgainstBaseURL: false)!

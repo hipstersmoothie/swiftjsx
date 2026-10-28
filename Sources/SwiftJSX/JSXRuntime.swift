@@ -69,9 +69,15 @@ public final class JSXRuntime {
     public convenience init(bundleURL: URL, hotReload: Bool = false, threading: JSThreading = .background,
                             native: NativeOptions? = nil) {
         self.init(threading: threading, native: native)
-        self.bundleURL = bundleURL
+        load(bundleAt: bundleURL, hotReload: hotReload)
+    }
+
+    /// Loads an app bundle from disk; with `hotReload`, changes to the file are
+    /// applied with React Refresh.
+    public func load(bundleAt url: URL, hotReload: Bool = false) {
+        bundleURL = url
         reload()
-        if hotReload { watch() }
+        if hotReload, watcher == nil { watch() }
     }
 
     isolated deinit {
@@ -81,6 +87,17 @@ public final class JSXRuntime {
     }
 
     @ObservationIgnored private var devServer: DevServerClient?
+
+    /// Where React DevTools runs (`npx react-devtools`, port 8097): development
+    /// bundles connect after loading. Set by the dev server client (the Mac
+    /// serving the app) and for the simulator's on-disk bundle (loopback).
+    public var devToolsHost: String? {
+        didSet {
+            if let devToolsHost, devToolsHost != oldValue, !isProduction, !tree.root.children.isEmpty {
+                engine.call("__swiftjsx_connectDevTools", [devToolsHost])
+            }
+        }
+    }
 
     func startDevServerClient(_ servers: [URL], fallback: URL?) {
         devServer = DevServerClient(runtime: self, servers: servers, fallback: fallback)
@@ -107,6 +124,7 @@ public final class JSXRuntime {
         }
         engine.start(runtime: runtime, app: app, appURL: sourceURL)
         if !environment.isEmpty { engine.call("__swiftjsx_environment", [environment]) }
+        if let devToolsHost, !isProduction { engine.call("__swiftjsx_connectDevTools", [devToolsHost]) }
         NotificationHub.shared.attach(self)
     }
 

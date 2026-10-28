@@ -81,6 +81,9 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   `npm run dev` serves the app on port 8081, and Debug builds (`JSXRuntime.app()`) load it
   from the Mac over the local network, falling back to the bundled app.js when it's not
   running. A failed build shows its errors in the app.
+- **React DevTools.** Run `npx react-devtools` on the Mac: development builds connect to it
+  (the dev server's host, or loopback in the simulator) and show the component tree, props,
+  state and hooks, and profile renders. Not in production builds.
 - **JS off the main thread.** React renders on a dedicated JS thread (with its own run
   loop); commits are applied on the main thread. Controlled inputs stay smooth: a field shows its own value while React
   catches up, and stale echoes are dropped by sequence number (like React Native's

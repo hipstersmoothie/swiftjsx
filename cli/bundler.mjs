@@ -35,11 +35,11 @@ export const production = {
   minify: true,
 };
 
-/** React Refresh's runtime refuses to load in production; leave it out. */
+/** React Refresh's runtime refuses to load in production, and DevTools is development-only: leave both out. */
 export const withoutRefresh = {
   name: "swiftjsx-without-refresh",
   setup(build) {
-    build.onResolve({ filter: /\/refresh-setup$/ }, () => ({ path: "refresh-setup", namespace: "swiftjsx-empty" }));
+    build.onResolve({ filter: /\/(refresh-setup|devtools)$/ }, (args) => ({ path: args.path, namespace: "swiftjsx-empty" }));
     build.onLoad({ filter: /.*/, namespace: "swiftjsx-empty" }, () => ({ contents: "", loader: "js" }));
   },
 };

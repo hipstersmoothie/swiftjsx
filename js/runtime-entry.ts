@@ -4,6 +4,8 @@
 // lets a hot update re-run just the app code against the same React instance.
 // Web APIs first: React and npm packages look for them when they load.
 import "./web";
+// DevTools' hook before React Refresh wraps it (both left out of production).
+import "./devtools";
 import "./refresh-setup";
 import * as React from "react";
 import * as JSXRuntime from "react/jsx-runtime";

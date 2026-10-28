@@ -258,7 +258,9 @@ for the record.
       internal error on one function in the Weather app (left unmemoized).
 - [x] CI (GitHub Actions, Xcode 26): typecheck, bundles up to date, `swift test`, the
       packaged template, the iOS demo build. Builds with Xcode 26 and 27.
-- [ ] React DevTools support. The XCUITest suite in CI (about 10 minutes; needs a
+- [x] React DevTools: the standalone app (`npx react-devtools`) over WebSocket, in the
+      development runtime only (it adds ~0.9 MB and ~60 ms to a development launch).
+- [ ] The XCUITest suite in CI (about 10 minutes; needs a
       simulator and network for the toy apps).
 - [ ] `xcodebuild test` hangs after the UI tests finish (an Xcode quirk while writing
       the results); it has to be stopped once it prints "Executed N tests".
