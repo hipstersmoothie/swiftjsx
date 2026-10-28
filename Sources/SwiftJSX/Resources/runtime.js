@@ -18057,12 +18057,15 @@ ${error.stack}` : String(error));
     VirtualList: () => VirtualList,
     ZStack: () => ZStack,
     canOpenURL: () => canOpenURL,
+    defineNativeClass: () => defineNativeClass,
     haptic: () => haptic,
     hot: () => hot,
     isNativeAvailable: () => isNativeAvailable,
+    keepAlive: () => keepAlive,
     keepAwake: () => keepAwake,
     makeMutable: () => makeMutable,
     native: () => native,
+    nativePromise: () => nativePromise,
     notifications: () => notifications,
     onJS: () => onJS,
     onMain: () => onMain,
@@ -19254,11 +19257,11 @@ ${e.stack}` : String(e);
   }
   function useNativeValue(read, t0) {
     const $ = (0, import_compiler_runtime4.c)(18);
-    if ($[0] !== "1a627744145e31b03f6986d5ffd2d349578ae2ad40bfb037d772a5572142a63c") {
+    if ($[0] !== "01713d3ec66f0f3cc4b4cc52f04dd7d5692d6b8060c09fb3cefc5c8ae990c7e4") {
       for (let $i = 0; $i < 18; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "1a627744145e31b03f6986d5ffd2d349578ae2ad40bfb037d772a5572142a63c";
+      $[0] = "01713d3ec66f0f3cc4b4cc52f04dd7d5692d6b8060c09fb3cefc5c8ae990c7e4";
     }
     let t1;
     if ($[1] !== t0) {
@@ -19346,6 +19349,95 @@ ${e.stack}` : String(e);
   }
   function _temp3(e) {
     return console.error(e);
+  }
+  function defineNativeClass(name, spec) {
+    const registry = host2.__swiftjsx_nativeClasses ?? (host2.__swiftjsx_nativeClasses = /* @__PURE__ */ new Map());
+    const existing = registry.get(name);
+    if (existing) {
+      Object.assign(existing.table, spec.methods);
+      const added = Object.keys(spec.methods).filter((key) => !existing.selectors.includes(key));
+      if (added.length) console.warn(`defineNativeClass("${name}"): new methods (${added.join(", ")}) need a full reload`);
+    }
+    const register2 = () => {
+      const known = registry.get(name);
+      if (known?.cls) return known;
+      const n = native;
+      const Base = n[spec.extends ?? "NSObject"];
+      if (!Base) throw new Error(`defineNativeClass("${name}"): no superclass ${spec.extends}`);
+      const table = known?.table ?? {
+        ...spec.methods
+      };
+      const Cls = {
+        [name]: class extends Base {
+        }
+      }[name];
+      for (const key of Object.keys(table)) {
+        Cls.prototype[key] = function(...args) {
+          return table[key].apply(this, args);
+        };
+      }
+      if (spec.protocols?.length) {
+        Cls.ObjCProtocols = spec.protocols.map((p) => {
+          const protocol = n[p];
+          if (!protocol) throw new Error(`defineNativeClass("${name}"): no protocol ${p}`);
+          return protocol;
+        });
+      }
+      if (spec.exposed) {
+        const t = n.interop.types;
+        const type = (name2) => ({
+          void: t.void,
+          id: t.id,
+          bool: t.bool,
+          int: t.int32,
+          double: t.double,
+          string: n.NSString
+        })[name2];
+        Cls.ObjCExposedMethods = Object.fromEntries(Object.entries(spec.exposed).map(([key, sig]) => [key, {
+          returns: type(sig.returns),
+          params: (sig.params ?? []).map(type)
+        }]));
+      }
+      n.NativeClass(Cls);
+      const entry = {
+        cls: Cls,
+        table,
+        selectors: Object.keys(table)
+      };
+      registry.set(name, entry);
+      return entry;
+    };
+    if (!existing) registry.set(name, {
+      cls: null,
+      table: {
+        ...spec.methods
+      },
+      selectors: Object.keys(spec.methods)
+    });
+    return {
+      new: () => register2().cls.new(),
+      get class() {
+        return register2().cls;
+      }
+    };
+  }
+  var kept = /* @__PURE__ */ new Set();
+  function keepAlive(object) {
+    kept.add(object);
+    return Object.assign(object, {
+      release() {
+        kept.delete(object);
+      }
+    });
+  }
+  function nativePromise(start) {
+    return new Promise((resolve, reject) => {
+      try {
+        start(toJS(resolve), toJS(reject));
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   // js/presentations.tsx

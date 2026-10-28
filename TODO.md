@@ -239,11 +239,14 @@ for the record.
 - [ ] Native UIViews can't be embedded (MPVolumeView, AVRoutePickerView); `<Image>`'s
       cache isn't shared with native code.
 - [ ] Apps can't declare capabilities or Info.plist keys (background audio).
-- [ ] Native classes defined in JS (delegates) need an idempotent
-      `defineNativeClass(name, { protocols, methods })` that survives Fast Refresh and a
-      backend that's off; weak `delegate` properties aren't marked; a
-      `nativePromise(done => api(done))` that settles on the JS thread for completion
-      handlers on arbitrary queues; whether Objective-C exceptions become JS throws.
+- [x] `defineNativeClass(name, { protocols, methods, exposed })` (registered once, lazily;
+      Fast Refresh swaps method bodies), `keepAlive()` for weak delegates, and
+      `nativePromise()` for completion handlers on any queue.
+- [ ] An Objective-C exception inside a native call (`objectAtIndex` out of range, an
+      unrecognized selector) terminates the app instead of throwing in JS. NativeScript
+      catches it, but the throw can't unwind through libffi: its prebuilt `libffi.a`
+      (built with `-fembed-bitcode`) has no unwind info in `sysv.o`. Fix: rebuild libffi
+      with CFI in `scripts/build-nativescript.sh`.
 - [ ] NativeScript's Node-API runtime is an alpha; its metadata generator (LLVM 17)
       misses some declarations in current SDKs. Long synchronous JS still delays
       main-thread native callbacks. The six patches in `nativescript/patches/` haven't

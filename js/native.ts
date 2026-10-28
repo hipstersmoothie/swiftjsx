@@ -139,3 +139,143 @@ export function useNativeValue<T>(read: () => T, options: NativeValueOptions = {
 
   return value;
 }
+
+// MARK: Native classes
+
+type MethodTable = Record<string, (this: any, ...args: any[]) => any>;
+type ExposedType = "void" | "id" | "bool" | "int" | "double" | "string";
+
+export type NativeClassSpec = {
+  /** Superclass name (default "NSObject"). */
+  extends?: string;
+  /** Protocol names it adopts: ["AVSpeechSynthesizerDelegate"]. */
+  protocols?: string[];
+  /**
+   * Methods by their JS name (selector parts joined, NativeScript style:
+   * `speechSynthesizerDidFinishSpeechUtterance`). They run on the thread the
+   * caller uses (delegates: usually main); hop with `onJS` / `toJS` to touch
+   * React state.
+   */
+  methods: MethodTable;
+  /**
+   * Methods not in a protocol (target-action selectors): their types, keyed by
+   * the selector as written (one colon per argument), e.g.
+   * `{ "handleTap:": { returns: "void", params: ["id"] } }` with a
+   * `"handleTap:"` method.
+   */
+  exposed?: Record<string, { returns: ExposedType; params?: ExposedType[] }>;
+};
+
+export type NativeClass = {
+  /** A new instance (registers the class on first use). */
+  "new"(): any;
+  /** The registered class, for `isKindOfClass` and the like. */
+  readonly class: any;
+};
+
+type Registered = { cls: any; table: MethodTable; selectors: string[] };
+
+/**
+ * Defines an Objective-C class from JS: a delegate, a target for
+ * target-action. Safe at module level and across Fast Refresh: the class is
+ * registered with the Objective-C runtime once per process (on first `new`;
+ * nothing happens while the native backend is off), and redefining it swaps
+ * in the new method bodies. Adding methods or protocols needs a full reload.
+ *
+ *   const Delegate = defineNativeClass("SpeechDelegate", {
+ *     protocols: ["AVSpeechSynthesizerDelegate"],
+ *     methods: {
+ *       speechSynthesizerDidFinishSpeechUtterance(_s, utterance) { onJS(() => finished(utterance)) },
+ *     },
+ *   });
+ *   synth.delegate = keepAlive(Delegate.new());
+ */
+export function defineNativeClass(name: string, spec: NativeClassSpec): NativeClass {
+  const registry: Map<string, Registered> = (host.__swiftjsx_nativeClasses ??= new Map());
+  const existing = registry.get(name);
+  if (existing) {
+    // Fast Refresh: same Objective-C class, new behavior.
+    Object.assign(existing.table, spec.methods);
+    const added = Object.keys(spec.methods).filter((key) => !existing.selectors.includes(key));
+    if (added.length) console.warn(`defineNativeClass("${name}"): new methods (${added.join(", ")}) need a full reload`);
+  }
+
+  const register = (): Registered => {
+    const known = registry.get(name);
+    if (known?.cls) return known;
+    const n = native as any;
+    const Base = n[spec.extends ?? "NSObject"];
+    if (!Base) throw new Error(`defineNativeClass("${name}"): no superclass ${spec.extends}`);
+    const table: MethodTable = known?.table ?? { ...spec.methods };
+    const Cls = { [name]: class extends Base {} }[name] as any;
+    // Each method calls through the table, so a redefinition reaches it.
+    for (const key of Object.keys(table)) {
+      Cls.prototype[key] = function (this: any, ...args: any[]) {
+        return table[key].apply(this, args);
+      };
+    }
+    if (spec.protocols?.length) {
+      Cls.ObjCProtocols = spec.protocols.map((p) => {
+        const protocol = n[p];
+        if (!protocol) throw new Error(`defineNativeClass("${name}"): no protocol ${p}`);
+        return protocol;
+      });
+    }
+    if (spec.exposed) {
+      const t = n.interop.types;
+      const type = (name: ExposedType) =>
+        ({ void: t.void, id: t.id, bool: t.bool, int: t.int32, double: t.double, string: n.NSString })[name];
+      Cls.ObjCExposedMethods = Object.fromEntries(
+        Object.entries(spec.exposed).map(([key, sig]) => [key, { returns: type(sig.returns), params: (sig.params ?? []).map(type) }]),
+      );
+    }
+    n.NativeClass(Cls);
+    const entry = { cls: Cls, table, selectors: Object.keys(table) };
+    registry.set(name, entry);
+    return entry;
+  };
+
+  // Not registered yet: remember the methods for when it is.
+  if (!existing) registry.set(name, { cls: null, table: { ...spec.methods }, selectors: Object.keys(spec.methods) });
+
+  return {
+    new: () => register().cls.new(),
+    get class() {
+      return register().cls;
+    },
+  };
+}
+
+const kept = new Set<unknown>();
+
+/**
+ * Holds a strong reference to a native object until the returned release
+ * function runs (or forever). For `delegate` and `dataSource` properties,
+ * which are weak: an object only they reference disappears.
+ */
+export function keepAlive<T>(object: T): T & { release(): void } {
+  kept.add(object);
+  return Object.assign(object as any, {
+    release() {
+      kept.delete(object);
+    },
+  });
+}
+
+/**
+ * A Promise for a native completion handler that settles on the JS thread,
+ * whichever queue the handler is called on:
+ *
+ *   const granted = await nativePromise<boolean>((resolve, reject) =>
+ *     center.requestAuthorizationWithOptionsCompletionHandler(options, (ok, error) =>
+ *       error ? reject(new Error(error.localizedDescription)) : resolve(ok)));
+ */
+export function nativePromise<T>(start: (resolve: (value: T) => void, reject: (error: unknown) => void) => void): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    try {
+      start(toJS(resolve), toJS(reject));
+    } catch (error) {
+      reject(error);
+    }
+  });
+}

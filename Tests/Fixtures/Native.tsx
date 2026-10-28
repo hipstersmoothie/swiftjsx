@@ -1,11 +1,37 @@
 import { useState } from "react";
-import { render, VStack, Text, Button, native, onMain, isNativeAvailable, useNativeValue } from "swiftjsx";
+import {
+  render, VStack, Text, Button, native, onMain, isNativeAvailable, useNativeValue, defineNativeClass, keepAlive, nativePromise,
+} from "swiftjsx";
+
+// Module level: nothing registers until first use.
+const pinger = (reply: string) =>
+  defineNativeClass("SwiftJSXTestPinger", {
+    // The selector, as written: one argument, one colon.
+    exposed: { "ping:": { returns: "id", params: ["id"] } },
+    methods: {
+      "ping:"(value: unknown) {
+        return `${reply} ${String(value)}`;
+      },
+    },
+  });
+const Pinger = pinger("pong");
+const evicted: string[] = [];
+const CacheDelegate = defineNativeClass("SwiftJSXTestCacheDelegate", {
+  protocols: ["NSCacheDelegate"],
+  methods: {
+    cacheWillEvictObject(_cache: unknown, object: unknown) {
+      evicted.push(String(object));
+    },
+  },
+});
 
 let reads = 0;
 const countRead = () => ++reads;
 
 function App() {
   const [hop, setHop] = useState("none");
+  const [classes, setClasses] = useState("none");
+  const [promise, setPromise] = useState("none");
   const [after, setAfter] = useState("none");
   const [note, setNote] = useState("none");
   const [rejected, setRejected] = useState("none");
@@ -16,6 +42,33 @@ function App() {
   return (
     <VStack>
       <Text>available {String(isNativeAvailable())}</Text>
+      <Button
+        title="classes"
+        onPress={() => {
+          const p = Pinger.new();
+          const first = String(p.performSelectorWithObject("ping:", "a"));
+          pinger("pang"); // a Fast Refresh redefinition
+          const second = String(p.performSelectorWithObject("ping:", "b"));
+          const cache = native.NSCache.new();
+          cache.countLimit = 1;
+          cache.delegate = keepAlive(CacheDelegate.new());
+          cache.setObjectForKey("one", "k1");
+          cache.setObjectForKey("two", "k2");
+          setClasses(`${first}|${second}|evicted ${evicted.join(",")}`);
+        }}
+      />
+      <Text>classes {classes}</Text>
+      <Button
+        title="promise"
+        onPress={async () => {
+          const onMainQueue = await nativePromise<boolean>((resolve) =>
+            native.NSOperationQueue.new().addOperationWithBlock(() => resolve(native.NSThread.isMainThread)),
+          );
+          setPromise(`${onMainQueue} then ${native.NSThread.isMainThread}`);
+        }}
+      />
+      <Text>promise {promise}</Text>
+
       <Text>process {process ?? "…"}</Text>
       <Text>reads {refreshes ?? 0}</Text>
       <Button

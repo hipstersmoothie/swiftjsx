@@ -42,6 +42,19 @@ struct NativeTests {
         #expect(await eventually { runtime.texts().contains("note true") })
     }
 
+    @Test func nativeClassesFromJS() async throws {
+        let runtime = try await makeRuntime()
+        runtime.press("classes")
+        #expect(await eventually { runtime.texts().contains("classes pong a|pang b|evicted one") })
+        #expect(runtime.error == nil)
+    }
+
+    @Test func nativePromiseSettlesOnTheJSThread() async throws {
+        let runtime = try await makeRuntime()
+        runtime.press("promise")
+        #expect(await eventually { runtime.texts().contains("promise false then false") })
+    }
+
     @Test func errorsInsideOnMainReject() async throws {
         let runtime = try await makeRuntime()
         runtime.press("reject")

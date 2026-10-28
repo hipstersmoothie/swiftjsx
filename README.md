@@ -173,6 +173,13 @@ function Battery() {
 }
 ```
 
+- **Classes from JS.** `defineNativeClass(name, { protocols, methods, exposed })` makes a
+  delegate or target-action class: registered once per process (on first `new()`, so it's
+  safe at module level with the backend off) and updated in place by Fast Refresh.
+  `keepAlive(obj)` holds delegates (those properties are weak); `nativePromise((resolve,
+  reject) => …)` turns a completion handler on any queue into a Promise that settles on
+  the JS thread. An Objective-C exception inside a native call still crashes the app
+  (see TODO.md).
 - **Threads.** JS runs on the JS thread; most of UIKit is main-thread-only. `onMain(fn)` runs
   `fn` on main and resumes on the JS thread. Native callbacks fired on main (delegates,
   target-action, UIKit blocks) run on main, so UIKit inside them just works and they can
