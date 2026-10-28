@@ -101,7 +101,7 @@ func useMockServer() {
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [MockServer.self]
     WebHost.session = URLSession(configuration: configuration)
-    WebStorage.shared = WebStorage(suiteName: "SwiftJSXTests-\(UUID().uuidString)")
+    WebStorage.shared = WebStorage(file: FileManager.default.temporaryDirectory.appendingPathComponent("SwiftJSXTests-\(UUID().uuidString).json"))
 }
 
 @MainActor
@@ -115,5 +115,23 @@ func useMockServer() {
     @Test func npmPackagesWork() async throws {
         useMockServer()
         try await expectChecksPass("Packages")
+    }
+}
+
+@Suite struct StorageTests {
+    @Test func persistsToItsFileAndEnforcesTheQuota() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("storage-\(UUID().uuidString).json")
+        let storage = WebStorage(file: file)
+        #expect(storage.set("name", "Ada"))
+        storage.set("count", "1")
+        storage.remove("count")
+        storage.flush()
+        let reloaded = WebStorage(file: file)
+        #expect(reloaded.get("name") == "Ada")
+        #expect(reloaded.get("count") == nil)
+        // Over the quota: refused, nothing changes.
+        #expect(!reloaded.set("big", String(repeating: "x", count: WebStorage.quota)))
+        #expect(reloaded.get("big") == nil)
+        try? FileManager.default.removeItem(at: file)
     }
 }

@@ -1,6 +1,11 @@
 import Foundation
 import JavaScriptCore
 import Security
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 // Native halves of the web APIs (fetch, crypto, localStorage, URL parsing,
 // UTF-8). The JS halves are in js/web/, bundled into the runtime; they call
@@ -41,7 +46,7 @@ extension JSEngine {
             let store = WebStorage.shared
             switch op {
             case "get": return store.get(key.toString()).map { JSValue(object: $0, in: ctx) } ?? JSValue(nullIn: ctx)
-            case "set": store.set(key.toString(), value.toString())
+            case "set": return JSValue(bool: store.set(key.toString(), value.toString()), in: ctx)
             case "remove": store.remove(key.toString())
             case "clear": store.clear()
             case "keys": return JSValue(object: store.keys(), in: ctx)
@@ -209,28 +214,102 @@ enum WebHost {
     nonisolated(unsafe) static var session = URLSession(configuration: .default)
 }
 
-/// `localStorage`, persisted in UserDefaults.
+/// `localStorage`: in memory, saved to a JSON file in Application Support
+/// on a background queue (coalesced, at most every 200 ms, and right away
+/// when the app leaves the foreground). Like browsers, about 10 MB.
 final class WebStorage: @unchecked Sendable {
-    nonisolated(unsafe) static var shared = WebStorage(suiteName: "SwiftJSX.localStorage")
+    nonisolated(unsafe) static var shared = WebStorage(file: WebStorage.defaultFile)
 
-    private let defaults: UserDefaults
+    /// Characters (UTF-16 units, as browsers count) allowed in total.
+    static let quota = 5 * 1024 * 1024
+
+    static var defaultFile: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let folder = base.appendingPathComponent(Bundle.main.bundleIdentifier ?? "SwiftJSX").appendingPathComponent("SwiftJSX")
+        return folder.appendingPathComponent("localStorage.json")
+    }
+
+    private let file: URL
     private let lock = NSLock()
     private var items: [String: String]
+    private var size: Int
+    private var writeScheduled = false
+    private let queue = DispatchQueue(label: "SwiftJSX.localStorage", qos: .utility)
+    private var observers: [NSObjectProtocol] = []
 
-    init(suiteName: String) {
-        defaults = UserDefaults(suiteName: suiteName) ?? .standard
-        items = defaults.dictionary(forKey: "items") as? [String: String] ?? [:]
+    init(file: URL) {
+        self.file = file
+        var loaded = (try? Data(contentsOf: file)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: String] }
+        if loaded == nil, let old = UserDefaults(suiteName: "SwiftJSX.localStorage")?.dictionary(forKey: "items") as? [String: String] {
+            loaded = old  // migrate from the UserDefaults store of earlier versions
+        }
+        items = loaded ?? [:]
+        size = items.reduce(0) { $0 + $1.key.utf16.count + $1.value.utf16.count }
+        #if canImport(UIKit)
+        let background = [UIApplication.willResignActiveNotification, UIApplication.willTerminateNotification]
+        #else
+        let background = [NSApplication.willResignActiveNotification, NSApplication.willTerminateNotification]
+        #endif
+        observers = background.map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { [weak self] _ in self?.flush() }
+        }
     }
+
+    deinit { observers.forEach(NotificationCenter.default.removeObserver) }
 
     func get(_ key: String) -> String? { lock.withLock { items[key] } }
     func keys() -> [String] { lock.withLock { items.keys.sorted() } }
-    func set(_ key: String, _ value: String) { update { $0[key] = value } }
-    func remove(_ key: String) { update { $0[key] = nil } }
-    func clear() { update { $0 = [:] } }
 
-    private func update(_ change: (inout [String: String]) -> Void) {
-        let snapshot = lock.withLock { change(&items); return items }
-        defaults.set(snapshot, forKey: "items")
+    /// False (and no change) if it would exceed the quota.
+    @discardableResult
+    func set(_ key: String, _ value: String) -> Bool {
+        let ok = lock.withLock {
+            let old = items[key].map { key.utf16.count + $0.utf16.count } ?? 0
+            let new = key.utf16.count + value.utf16.count
+            guard size - old + new <= Self.quota else { return false }
+            items[key] = value
+            size += new - old
+            return true
+        }
+        if ok { scheduleWrite() }
+        return ok
+    }
+
+    func remove(_ key: String) {
+        lock.withLock {
+            if let old = items.removeValue(forKey: key) { size -= key.utf16.count + old.utf16.count }
+        }
+        scheduleWrite()
+    }
+
+    func clear() {
+        lock.withLock {
+            items = [:]
+            size = 0
+        }
+        scheduleWrite()
+    }
+
+    private func scheduleWrite() {
+        let schedule = lock.withLock {
+            guard !writeScheduled else { return false }
+            writeScheduled = true
+            return true
+        }
+        if schedule { queue.asyncAfter(deadline: .now() + 0.2) { [weak self] in self?.write() } }
+    }
+
+    /// Write now (e.g. the app is going to the background).
+    func flush() { queue.sync { write() } }
+
+    private func write() {
+        let snapshot = lock.withLock {
+            writeScheduled = false
+            return items
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: snapshot) else { return }
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: file, options: .atomic)
     }
 }
 

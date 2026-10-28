@@ -130,8 +130,9 @@ wanted and couldn't do. Checked items are done and kept for the record.
       `haptic()`, `openURL` / `canOpenURL`, `useEnvironment()`.
 - [ ] Streams: no `ReadableStream`; `fetch` bodies are buffered (no streaming responses
       or upload progress). No `FormData` bodies, no `XMLHttpRequest`.
-- [ ] `localStorage` is one UserDefaults dictionary rewritten on every `setItem`, all in
-      memory, with no quota error. Wants per-key files or an async storage API.
+- [x] `localStorage` saves to a JSON file in the background (coalesced, flushed when the
+      app leaves the foreground), with a quota (`QuotaExceededError`).
+- [ ] An async storage API for larger data (IndexedDB-like, or a key-value file store).
 - [ ] `URL` parsing goes through Foundation, which is more lenient than WHATWG
       (percent-encodes spaces instead of failing).
 - [ ] App lifecycle: no `pagehide` / background-task time for last-chance saves; no

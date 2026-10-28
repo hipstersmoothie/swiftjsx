@@ -52,10 +52,14 @@ class Storage {
   }
 }
 
-/** Persisted across launches (UserDefaults). */
+/** Persisted across launches (a file in Application Support, written in the background). */
 const localStorage = new Storage({
   get: (k) => __web.storage("get", k),
-  set: (k, v) => __web.storage("set", k, v),
+  set: (k, v) => {
+    if (__web.storage("set", k, v) === false) {
+      throw new DOMException("localStorage is full (about 10 MB).", "QuotaExceededError");
+    }
+  },
   remove: (k) => __web.storage("remove", k),
   clear: () => __web.storage("clear"),
   keys: () => __web.storage("keys"),
