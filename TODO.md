@@ -52,7 +52,7 @@ for the record.
       text and dividers on it vanish.
 - [x] `<Portal alignment interactive>`: a window above everything (sheets, bars) for toasts
       and flying thumbnails; touches pass through unless `interactive`.
-- [ ] Coordinate spaces for `measure()` and drag events (all window coordinates today).
+- [x] `measure(relativeTo)`: a view's frame within another (drag events already carry local positions).
 
 ## Text, color, symbols
 
@@ -186,7 +186,7 @@ for the record.
 - [x] `keyframes={{ trigger, steps, repeat }}` (SwiftUI's phase animator): pops, shakes,
       looping wiggles.
 - [x] `requestAnimationFrame` (60 Hz on the JS thread, one timestamp per frame).
-- [ ] Drag and drop between containers (drop targets) outside `List`.
+- [x] Drag and drop anywhere: `draggable` (a string), `onDrop`, `onDropTargetChange`.
 
 ## Rendering
 
@@ -236,7 +236,7 @@ for the record.
 - [x] Using an SDK class as a bare global (`AVPlayer.new()`, which typechecks because the
       type files declare globals) fails the build with "use native.AVPlayer".
 - [x] `onJS(fn)` / `toJS(fn)`: from a native callback (on main) back to the JS thread.
-- [ ] No KVO observing (AVPlayer status, outputVolume…); apps poll.
+- [x] `observeKeyPath(object, keyPath, callback)`: KVO, delivered on the JS thread.
 - [ ] Generated types: inconsistent enum member names, nullable values typed non-null,
       no inline helpers (`CGRectMake`), no instance type aliases, clumsy NSError
       out-parameters. Which frameworks need main isn't documented beyond UIKit/AppKit.

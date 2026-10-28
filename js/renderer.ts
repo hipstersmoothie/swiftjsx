@@ -86,8 +86,18 @@ export class HostInstance {
       : { edge: target };
     __native.command(this.id, "scrollTo", { ...resolved, animated: options.animated ?? true, anchor: options.anchor ?? null }, 0);
   }
-  /** Frame in window coordinates, after the last layout. */
-  measure(): Promise<Frame> {
+  /**
+   * Frame after the last layout: in window coordinates, or relative to
+   * another view (`measure(container)`: where a dragged card is within its
+   * board).
+   */
+  async measure(relativeTo?: HostInstance): Promise<Frame> {
+    const frame = await this._measureInWindow();
+    if (!relativeTo) return frame;
+    const origin = await relativeTo._measureInWindow();
+    return { ...frame, x: frame.x - origin.x, y: frame.y - origin.y };
+  }
+  /** @internal */ _measureInWindow(): Promise<Frame> {
     return new Promise((resolve) => {
       const cb = nextCallback++;
       callbacks.set(cb, resolve as (v: unknown) => void);

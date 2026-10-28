@@ -726,6 +726,16 @@ final class GalleryTests: XCTestCase {
         snapshot("media-map")
     }
 
+    func testDragAndDrop() {
+        open("Animation")
+        let apple = element("fruit-🍎")
+        XCTAssert(apple.waitForExistence(timeout: 5))
+        // A system drag: hold to lift, then move onto the basket.
+        apple.press(forDuration: 1.0, thenDragTo: element("basket"), withVelocity: .slow, thenHoldForDuration: 0.5)
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS '🍎'"), evaluatedWith: element("basket-contents"))], timeout: 5) == .completed,
+                  element("basket-contents").label)
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

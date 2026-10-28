@@ -163,6 +163,15 @@ struct RefTests {
         #expect(await eventually { runtime.texts().contains("measured 120x44") })
     }
 
+    @Test func measureRelativeToAnotherView() async throws {
+        let box = try #require(runtime.find("Text") { $0.textContent == "box" })
+        let scroller = try #require(runtime.find("ScrollView"))
+        box.setFrame(CGRect(x: 30, y: 120, width: 100, height: 20))
+        scroller.setFrame(CGRect(x: 10, y: 100, width: 300, height: 400))
+        runtime.press("measure relative")
+        #expect(await eventually { runtime.texts().contains("measured at 20.0,20.0") || runtime.texts().contains("measured at 20,20") })
+    }
+
     @Test func measureBeforeLayoutWaitsForIt() async throws {
         let runtime = try fixture("Refs")
         let box = try #require(runtime.find("Text") { $0.textContent == "box" })

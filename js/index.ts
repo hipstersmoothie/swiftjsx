@@ -9,7 +9,7 @@ export * from "./components";
 export { Navigator, useNavigation, NavigationSplitView, createNavigationRef, type Navigation, type NavigationRef } from "./navigation";
 export { VirtualList, type VirtualListProps } from "./virtual-list";
 export {
-  native, onMain, onJS, toJS, isNativeAvailable, useNativeValue, defineNativeClass, keepAlive, nativePromise,
+  native, onMain, onJS, toJS, isNativeAvailable, useNativeValue, defineNativeClass, keepAlive, nativePromise, observeKeyPath,
   type Native, type NativeValueOptions, type NativeClass, type NativeClassSpec,
 } from "./native";
 export {

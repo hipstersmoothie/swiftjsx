@@ -200,7 +200,9 @@ function Battery() {
   safe at module level with the backend off) and updated in place by Fast Refresh.
   `keepAlive(obj)` holds delegates (those properties are weak); `nativePromise((resolve,
   reject) => …)` turns a completion handler on any queue into a Promise that settles on
-  the JS thread. An Objective-C exception inside a native call throws in JS with its
+  the JS thread. `observeKeyPath(object, keyPath, fn)` is KVO (AVPlayer status, volume).
+  Compare native objects with `a.isEqual(b)`: wrappers and `interop.handleof` aren't stable
+  identities across calls. An Objective-C exception inside a native call throws in JS with its
   reason, and native objects that call back after their runtime is gone are ignored.
 - **Threads.** JS runs on the JS thread; most of UIKit is main-thread-only. `onMain(fn)` runs
   `fn` on main and resumes on the JS thread. Native callbacks fired on main (delegates,

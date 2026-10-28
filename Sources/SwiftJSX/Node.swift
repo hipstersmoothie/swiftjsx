@@ -135,6 +135,7 @@ public final class Node: Identifiable {
         "onTapGesture", "hidden", "onDisappear", "colorScheme", "zIndex", "layoutPriority", "gridColumns",
         "fixedSize", "allowsHitTesting", "preferredColorScheme", "tag", "redacted", "ignoresSafeArea", "interactiveDismissDisabled", "position",
         "controlSize", "labelStyle", "statusBarHidden", "persistentSystemOverlays", "transitionSource",
+        "draggable", "onDrop", "onDropTargetChange",
     ]).union(featureKeys.map(\.0)).subtracting(["__ref"])
 
     /// Views with state of their own get the wrapper from the start, so even

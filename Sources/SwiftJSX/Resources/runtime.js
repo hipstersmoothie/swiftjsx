@@ -34418,6 +34418,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     native: () => native,
     nativePromise: () => nativePromise,
     notifications: () => notifications,
+    observeKeyPath: () => observeKeyPath,
     onJS: () => onJS,
     onMain: () => onMain,
     openURL: () => openURL,
@@ -34685,8 +34686,23 @@ Content-Type: ${value.type || "application/octet-stream"}\r
         anchor: options.anchor ?? null
       }, 0);
     }
-    /** Frame in window coordinates, after the last layout. */
-    measure() {
+    /**
+     * Frame after the last layout: in window coordinates, or relative to
+     * another view (`measure(container)`: where a dragged card is within its
+     * board).
+     */
+    async measure(relativeTo) {
+      const frame = await this._measureInWindow();
+      if (!relativeTo) return frame;
+      const origin = await relativeTo._measureInWindow();
+      return {
+        ...frame,
+        x: frame.x - origin.x,
+        y: frame.y - origin.y
+      };
+    }
+    /** @internal */
+    _measureInWindow() {
       return new Promise((resolve) => {
         const cb = nextCallback++;
         callbacks.set(cb, resolve);
@@ -35571,11 +35587,11 @@ ${e.stack}` : String(e);
   }
   function useNativeValue(read, t0) {
     const $ = (0, import_compiler_runtime4.c)(18);
-    if ($[0] !== "395ed78108e70e35e7f1558d2475a5618e2223f952f958301a94dd996b50458c") {
+    if ($[0] !== "01044f7b19a7d200b4ede2040d495e951247117197376ea9cf4680edcfbfea03") {
       for (let $i = 0; $i < 18; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "395ed78108e70e35e7f1558d2475a5618e2223f952f958301a94dd996b50458c";
+      $[0] = "01044f7b19a7d200b4ede2040d495e951247117197376ea9cf4680edcfbfea03";
     }
     let t1;
     if ($[1] !== t0) {
@@ -35752,6 +35768,35 @@ ${e.stack}` : String(e);
         reject(error);
       }
     });
+  }
+  var observations = [];
+  var KeyValueObserver = defineNativeClass("SwiftJSXKeyValueObserver", {
+    methods: {
+      observeValueForKeyPathOfObjectChangeContext(keyPath, object) {
+        const entry = observations.find((o) => o.observer.isEqual(this));
+        if (!entry) return;
+        const value = object.valueForKey(keyPath);
+        onJS(() => entry.callback(value));
+      }
+    }
+  });
+  function observeKeyPath(object, keyPath, callback, options = {}) {
+    const observer = keepAlive(KeyValueObserver.new());
+    const entry = {
+      observer,
+      callback
+    };
+    observations.push(entry);
+    const NEW = 1, INITIAL = 4;
+    object.addObserverForKeyPathOptionsContext(observer, keyPath, options.initial === false ? NEW : NEW | INITIAL, null);
+    let stopped = false;
+    return () => {
+      if (stopped) return;
+      stopped = true;
+      object.removeObserverForKeyPath(observer, keyPath);
+      observations.splice(observations.indexOf(entry), 1);
+      observer.release();
+    };
   }
 
   // js/presentations.tsx

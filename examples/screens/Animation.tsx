@@ -41,6 +41,8 @@ export function AnimationDemo() {
   const [swipeX, setSwipeX] = useState(0);
   const [swiped, setSwiped] = useState("none");
   const [entrance, setEntrance] = useState(0);
+  const [basket, setBasket] = useState<string[]>([]);
+  const [over, setOver] = useState(false);
   const [rows, setRows] = useState([
     { id: 1, title: "Groceries", flagged: false, pinned: false },
     { id: 2, title: "Dentist at 3", flagged: false, pinned: false },
@@ -82,6 +84,28 @@ export function AnimationDemo() {
             <Text>{`Animated in on appear (#${entrance + 1})`}</Text>
             <Spacer />
             <Button title="Replay" buttonStyle="bordered" onPress={() => setEntrance((n) => n + 1)} accessibilityIdentifier="replay-entrance" />
+          </HStack>
+
+          <Text font="headline">Drag and drop</Text>
+          <HStack spacing={10}>
+            {["🍎", "🍌", "🍇"].map((fruit) => (
+              <Text key={fruit} font="largeTitle" padding={8} background="secondarySystemBackground" cornerRadius={12} draggable={fruit} accessibilityIdentifier={`fruit-${fruit}`}>
+                {fruit}
+              </Text>
+            ))}
+            <Spacer />
+            <VStack
+              frame={{ width: 120, height: 70 }}
+              background={over ? "green/30" : "secondarySystemBackground"}
+              cornerRadius={14}
+              animation="snappy"
+              onDrop={({ items }) => setBasket((b) => [...b, ...items])}
+              onDropTargetChange={setOver}
+              accessibilityIdentifier="basket"
+              accessibilityElement="contain"
+            >
+              <Text accessibilityIdentifier="basket-contents">{basket.length ? basket.join("") : "Drop here"}</Text>
+            </VStack>
           </HStack>
 
           <Text font="headline">Swipe actions outside a List</Text>

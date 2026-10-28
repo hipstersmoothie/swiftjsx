@@ -77,6 +77,17 @@ struct NativeTests {
         Thread.main.threadDictionary.removeObject(forKey: "SwiftJSXTestCache")
     }
 
+    @Test func keyValueObserving() async throws {
+        let runtime = try await makeRuntime()
+        runtime.press("kvo")
+        // The initial value, both changes, and nothing after stop().
+        let ok = await eventually { runtime.texts().contains("kvo 0,3,7") }
+        if !ok { print("KVO texts:", runtime.texts().filter { $0.hasPrefix("kvo") }, runtime.error ?? "no error") }
+        #expect(ok)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(runtime.texts().contains("kvo 0,3,7"))
+    }
+
     @Test func errorsInsideOnMainReject() async throws {
         let runtime = try await makeRuntime()
         runtime.press("reject")

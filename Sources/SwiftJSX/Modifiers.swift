@@ -112,6 +112,7 @@ struct Modifiers: ViewModifier {
             }
             .modifier(LabelStyleModifier(style: node.string("labelStyle")))
             .modifier(ZoomSource(id: node.string("transitionSource")))
+            .modifier(DragAndDrop(node: node))
             .modifier(SystemOverlays(node: node))
             // Last, so the view's own background and border use it too.
             .transformEnvironment(\.colorScheme) { scheme in
@@ -811,6 +812,44 @@ struct SystemOverlays: ViewModifier {
         }
         func body(content: Content) -> some View {
             if let value { transform(content, value) } else { content }
+        }
+    }
+}
+
+/// Drag and drop between any views (and other apps): `draggable="payload"`
+/// makes a view draggable with that string; `onDrop(items, location)` makes
+/// one a target, `onDropTargetChange(over)` says when something hovers.
+struct DragAndDrop: ViewModifier {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+
+    func body(content: Content) -> some View {
+        content
+            .modifier(Source(payload: node.string("draggable")))
+            .modifier(Target(node: node, runtime: runtime))
+    }
+
+    private struct Source: ViewModifier {
+        let payload: String?
+        func body(content: Content) -> some View {
+            if let payload { content.draggable(payload) } else { content }
+        }
+    }
+
+    private struct Target: ViewModifier {
+        let node: Node
+        let runtime: JSXRuntime?
+        func body(content: Content) -> some View {
+            if node.has("onDrop") {
+                content.dropDestination(for: String.self) { items, location in
+                    runtime?.dispatch(node.id, "onDrop", ["items": items, "location": ["x": location.x, "y": location.y]])
+                    return true
+                } isTargeted: { over in
+                    if node.has("onDropTargetChange") { runtime?.dispatch(node.id, "onDropTargetChange", over) }
+                }
+            } else {
+                content
+            }
         }
     }
 }

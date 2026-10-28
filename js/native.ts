@@ -279,3 +279,47 @@ export function nativePromise<T>(start: (resolve: (value: T) => void, reject: (e
     }
   });
 }
+
+// MARK: Key-value observing
+
+// Live observations. Wrappers and handles aren't stable identities for a
+// native object across calls, so the observer is found with isEqual
+// (pointer equality for an NSObject).
+const observations: { observer: any; callback: (value: unknown) => void }[] = [];
+
+const KeyValueObserver = defineNativeClass("SwiftJSXKeyValueObserver", {
+  methods: {
+    observeValueForKeyPathOfObjectChangeContext(this: any, keyPath: string, object: any) {
+      const entry = observations.find((o) => o.observer.isEqual(this));
+      if (!entry) return;
+      // KVO calls back on the thread that made the change (often main).
+      const value = object.valueForKey(keyPath);
+      onJS(() => entry.callback(value));
+    },
+  },
+});
+
+/**
+ * Key-value observing: `callback` gets the property's value whenever it
+ * changes (and once now, unless `initial: false`), on the JS thread. For
+ * native objects that announce changes this way: AVPlayer's `status` and
+ * `timeControlStatus`, AVAudioSession's `outputVolume`, NSProgress…
+ * Returns a function that stops observing.
+ *
+ *   const stop = observeKeyPath(player, "timeControlStatus", (status) => setPlaying(status === 2));
+ */
+export function observeKeyPath(object: any, keyPath: string, callback: (value: any) => void, options: { initial?: boolean } = {}): () => void {
+  const observer = keepAlive(KeyValueObserver.new());
+  const entry = { observer, callback };
+  observations.push(entry);
+  const NEW = 1, INITIAL = 4;
+  object.addObserverForKeyPathOptionsContext(observer, keyPath, options.initial === false ? NEW : NEW | INITIAL, null);
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    object.removeObserverForKeyPath(observer, keyPath);
+    observations.splice(observations.indexOf(entry), 1);
+    observer.release();
+  };
+}

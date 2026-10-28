@@ -257,6 +257,12 @@ export interface Modifiers {
     height?: number | `${number}%`;
     anchor?: "topLeading" | "top" | "topTrailing" | "leading" | "center" | "trailing" | "bottomLeading" | "bottom" | "bottomTrailing";
   };
+  /** Long-press and drag this view (to another view's `onDrop`, or another app) carrying this string. */
+  draggable?: string;
+  /** A drop target: the dropped strings, and where they landed in this view. */
+  onDrop?: (drop: { items: string[]; location: { x: number; y: number } }) => void;
+  /** Something is dragged over this target (true) or left (false). */
+  onDropTargetChange?: (over: boolean) => void;
   /** Marks this view as where a `<Screen zoomFrom="…">` zooms from (and back into). iOS. */
   transitionSource?: string;
   /** The size of controls inside (buttons, pickers, steppers, toggles). */

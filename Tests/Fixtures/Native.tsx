@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   render, VStack, Text, Button, native, onMain, isNativeAvailable, useNativeValue, defineNativeClass, keepAlive, nativePromise,
+  observeKeyPath,
 } from "swiftjsx";
 
 // Module level: nothing registers until first use.
@@ -32,6 +33,7 @@ function App() {
   const [hop, setHop] = useState("none");
   const [classes, setClasses] = useState("none");
   const [promise, setPromise] = useState("none");
+  const [kvo, setKvo] = useState<number[]>([]);
   const [exception, setException] = useState("none");
   const [after, setAfter] = useState("none");
   const [note, setNote] = useState("none");
@@ -69,6 +71,21 @@ function App() {
         }}
       />
       <Text>promise {promise}</Text>
+      <Button
+        title="kvo"
+        onPress={() => {
+          const defaults = native.NSUserDefaults.alloc().initWithSuiteName("swiftjsx.kvo.test");
+          defaults.setIntegerForKey(0, "count");
+          const stop = observeKeyPath(defaults, "count", (value) => setKvo((list) => [...list, Number(value)]));
+          defaults.setIntegerForKey(3, "count");
+          defaults.setIntegerForKey(7, "count");
+          setTimeout(() => {
+            stop();
+            defaults.setIntegerForKey(9, "count"); // not observed
+          }, 300);
+        }}
+      />
+      <Text>kvo {kvo.join(",")}</Text>
       <Button
         title="exception"
         onPress={() => {

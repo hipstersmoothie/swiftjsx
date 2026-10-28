@@ -42,6 +42,13 @@ function App() {
         }}
       />
       <Text>measured {measured}</Text>
+      <Button
+        title="measure relative"
+        onPress={async () => {
+          const f = await box.current!.measure(scroller.current!);
+          setMeasured(`at ${f.x},${f.y}`);
+        }}
+      />
     </VStack>
   );
 }
