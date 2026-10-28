@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// `<ScrollView>` with `ref.current.scrollTo(…)` support.
+/// `<ScrollView>` with `ref.current.scrollTo(…)` support. Its children are
+/// scroll targets: `paging="view"` snaps to them, and `onScrollIndexChange`
+/// reports which one is at the leading (top) edge.
 struct ScrollViewHost: View {
     let node: Node
-
     var body: some View {
         let horizontal = node.string("axis") == "horizontal"
         ScrollViewReader { proxy in
@@ -12,6 +13,7 @@ struct ScrollViewHost: View {
                     let spacing = node.cgFloat("spacing")
                     if horizontal { HStack(spacing: spacing) { Children(node: node) } } else { VStack(spacing: spacing) { Children(node: node) } }
                 }
+                .scrollTargetLayout()
                 .background(alignment: horizontal ? .leading : .top) {
                     Color.clear.frame(width: 1, height: 1).id(ScrollEdge.top)
                 }
@@ -20,16 +22,44 @@ struct ScrollViewHost: View {
                 }
             }
             .modifier(ScrollOptions(node: node))
+            .modifier(Position(node: node, horizontal: horizontal))
             .onChange(of: node.scrollRequest) { _, request in scroll(proxy, request) }
             // A scrollTo from before the scroll view appeared (a mount effect).
             .onAppear { scroll(proxy, node.scrollRequest) }
         }
     }
+
+    /// `onScrollIndexChange(index)`: the child at the leading (top) edge, when
+    /// it changes (a carousel's page), instead of working it out from
+    /// `onScroll` every frame. Assumes children of equal size, as in pagers
+    /// and carousels.
+    private struct Position: ViewModifier {
+        let node: Node
+        let horizontal: Bool
+        @Environment(\.jsxRuntime) private var runtime
+
+        func body(content: Content) -> some View {
+            if node.has("onScrollIndexChange") {
+                let count = node.children.filter { !$0.isAttachment }.count
+                content.onScrollGeometryChange(for: Int.self) { geo in
+                    let offset = horizontal ? geo.contentOffset.x + geo.contentInsets.leading : geo.contentOffset.y + geo.contentInsets.top
+                    let length = horizontal ? geo.contentSize.width : geo.contentSize.height
+                    guard count > 0, length > 0 else { return 0 }
+                    return min(count - 1, max(0, Int((offset / (length / CGFloat(count))).rounded())))
+                } action: { _, index in
+                    runtime?.dispatch(node.id, "onScrollIndexChange", index)
+                }
+            } else {
+                content
+            }
+        }
+    }
 }
 
 /// ScrollView and VirtualList options: `showsIndicators`, `paging`,
-/// `defaultScrollAnchor` ("bottom" for chats), `contentMargins`, and
-/// `onScroll({ x, y, contentWidth, contentHeight, width, height })`.
+/// `defaultScrollAnchor` ("bottom" for chats), `contentMargins`,
+/// `onScroll({ x, y, contentWidth, contentHeight, width, height })` and
+/// `onScrollPhaseChange(phase)`.
 struct ScrollOptions: ViewModifier {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
@@ -39,14 +69,51 @@ struct ScrollOptions: ViewModifier {
             .scrollIndicators(node.has("showsIndicators") && !node.bool("showsIndicators") ? .hidden : .automatic)
             .defaultScrollAnchor(unitPoint(node.string("defaultScrollAnchor")))
             .contentMargins(.all, insets(node.prop("contentMargins")) ?? EdgeInsets(), for: .scrollContent)
-            .modifier(Paging(enabled: node.bool("paging")))
+            .modifier(Paging(mode: node.prop("paging")))
             .modifier(Events(node: node, runtime: runtime))
+            .modifier(Phase(node: node, runtime: runtime))
     }
 
+    /// `paging`: true snaps to pages the size of the scroll view; "view" snaps
+    /// to children (cards that peek at the edges).
     private struct Paging: ViewModifier {
-        let enabled: Bool
+        let mode: Any?
         func body(content: Content) -> some View {
-            if enabled { content.scrollTargetBehavior(.paging) } else { content }
+            if mode as? String == "view" {
+                content.scrollTargetBehavior(.viewAligned)
+            } else if (mode as? NSNumber)?.boolValue == true {
+                content.scrollTargetBehavior(.paging)
+            } else {
+                content
+            }
+        }
+    }
+
+    /// `onScrollPhaseChange("idle" | "tracking" | "interacting" |
+    /// "decelerating" | "animating")`: pause an auto-advancing carousel while
+    /// the user drags it.
+    private struct Phase: ViewModifier {
+        let node: Node
+        let runtime: JSXRuntime?
+        func body(content: Content) -> some View {
+            if node.has("onScrollPhaseChange") {
+                content.onScrollPhaseChange { _, phase in
+                    runtime?.dispatch(node.id, "onScrollPhaseChange", name(phase))
+                }
+            } else {
+                content
+            }
+        }
+
+        private func name(_ phase: ScrollPhase) -> String {
+            switch phase {
+            case .idle: "idle"
+            case .tracking: "tracking"
+            case .interacting: "interacting"
+            case .decelerating: "decelerating"
+            case .animating: "animating"
+            @unknown default: "idle"
+            }
         }
     }
 

@@ -266,18 +266,33 @@ export const ZStack = host<Modifiers & WithChildren & { alignment?: Alignment }>
 /** Options shared by ScrollView and VirtualList. */
 export type ScrollProps = {
   showsIndicators?: boolean;
-  /** Snap to pages the size of the scroll view (carousels). */
-  paging?: boolean;
-  /** Where content starts (and stays as it grows): "bottom" for chats. */
-  defaultScrollAnchor?: "top" | "center" | "bottom";
+  /**
+   * true: snap to pages the size of the scroll view (carousels). "view"
+   * (ScrollView): snap to children, for cards that peek at the edges.
+   */
+  paging?: boolean | "view";
+  /**
+   * Where content starts (and stays as it grows): "bottom" for chats,
+   * "trailing" for a horizontal pager that opens on its last page.
+   */
+  defaultScrollAnchor?: "top" | "center" | "bottom" | "leading" | "trailing";
   /** Space around the scrollable content, inside the scroll view. */
   contentMargins?: number | { top?: number; leading?: number; bottom?: number; trailing?: number; horizontal?: number; vertical?: number };
   /** While scrolling: offset from the top/leading edge, and sizes. */
   onScroll?: (event: { x: number; y: number; contentWidth: number; contentHeight: number; width: number; height: number }) => void;
+  /** The user started or stopped dragging, a fling is decelerating, or a `scrollTo` is animating. */
+  onScrollPhaseChange?: (phase: "idle" | "tracking" | "interacting" | "decelerating" | "animating") => void;
 };
 
 /** Children are stacked in a VStack (HStack when horizontal) with `spacing` between them (SwiftUI's default if unset). */
-export const ScrollView = host<Modifiers & WithChildren & ScrollProps & { axis?: "vertical" | "horizontal"; spacing?: number }>("ScrollView");
+export const ScrollView = host<
+  Modifiers & WithChildren & ScrollProps & {
+    axis?: "vertical" | "horizontal";
+    spacing?: number;
+    /** The index of the child at the leading (top) edge, when it changes: a carousel's current page (children of equal size). */
+    onScrollIndexChange?: (index: number) => void;
+  }
+>("ScrollView");
 
 type Editable = {
   /** Swipe-to-delete on the rows: called with the deleted children's indices. */

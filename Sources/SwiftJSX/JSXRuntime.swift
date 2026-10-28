@@ -26,13 +26,20 @@ public final class JSXRuntime {
     ///   access from JS via NativeScript). `nil` (the default) leaves it off.
     public init(threading: JSThreading = .background, native: NativeOptions? = nil) {
         engine = JSEngine(threading: threading, native: native, callbacks: EngineCallbacks(
-            commit: { [weak self] ops, animation in
+            commit: { [weak self] ops, animation, completion in
                 guard let self else { return }
                 if let animation = parseAnimation(animation) {
                     SwiftJSXDiagnostics.animatedCommits += 1
-                    withAnimation(animation) { tree.apply(ops) }
+                    if completion > 0 {
+                        withAnimation(animation, completionCriteria: .logicallyComplete) { tree.apply(ops) } completion: { [weak self] in
+                            self?.engine.resolve(callback: completion, value: NSNull())
+                        }
+                    } else {
+                        withAnimation(animation) { tree.apply(ops) }
+                    }
                 } else {
                     tree.apply(ops)
+                    if completion > 0 { engine.resolve(callback: completion, value: NSNull()) }
                 }
                 if let started = loadStarted {
                     loadStarted = nil

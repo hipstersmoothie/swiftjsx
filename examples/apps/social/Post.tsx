@@ -159,10 +159,7 @@ function Carousel({ post, page, onPage, onDoubleTap }: { post: Post; page: numbe
           spacing={0}
           showsIndicators={false}
           frame={{ width, height: width }}
-          onScroll={(e) => {
-            const next = Math.round(e.x / Math.max(e.width, 1));
-            if (next !== page) onPage(Math.min(Math.max(next, 0), post.photos.length - 1));
-          }}
+          onScrollIndexChange={onPage}
         >
           {post.photos.map((photo, i) => (
             <Image key={i} src={photoURL(photo)} contentMode="fill" frame={{ width, height: width }} />

@@ -97,19 +97,17 @@ function Featured() {
   const { data } = useQuery(featuredQuery);
   const nav = useNavigation();
   const scroller = useRef<HostInstance>(null);
-  const pages = useRef<(HostInstance | null)[]>([]);
   const [page, setPage] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const count = data?.length ?? 0;
 
-  // Auto-advance; a swipe changes `page`, which restarts the timer.
+  // Auto-advance, paused while the user drags; a swipe changes `page`, which
+  // restarts the timer.
   useEffect(() => {
-    if (count < 2) return;
-    const timer = setTimeout(() => {
-      const next = pages.current[(page + 1) % count];
-      if (next) scroller.current?.scrollTo(next, { anchor: "leading" });
-    }, AUTO_ADVANCE_MS);
+    if (count < 2 || dragging) return;
+    const timer = setTimeout(() => scroller.current?.scrollTo((page + 1) % count, { anchor: "leading" }), AUTO_ADVANCE_MS);
     return () => clearTimeout(timer);
-  }, [page, count]);
+  }, [page, count, dragging]);
 
   if (!data) {
     return (
@@ -128,18 +126,13 @@ function Featured() {
         showsIndicators={false}
         spacing={0}
         frame={{ height: CAROUSEL_HEIGHT }}
-        onScroll={({ x, width }) => {
-          const current = width > 0 ? Math.round(x / width) : 0;
-          if (current !== page) setPage(current);
-        }}
+        onScrollIndexChange={setPage}
+        onScrollPhaseChange={(phase) => setDragging(phase === "tracking" || phase === "interacting")}
         accessibilityIdentifier="featured-carousel"
       >
-        {data.map((product, i) => (
+        {data.map((product) => (
           <VStack
             key={product.id}
-            ref={(instance) => {
-              pages.current[i] = instance;
-            }}
             relativeWidth={1}
             frame={{ height: CAROUSEL_HEIGHT }}
             padding={{ horizontal: 16 }}

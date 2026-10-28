@@ -30,7 +30,8 @@ export type Op =
 
 // Provided by Swift (see JSEngine.swift).
 declare const __native: {
-  commit(ops: Op[], animation?: AnimationSpec): void;
+  /** `completion` > 0: call `__resolveCommand(completion)` when the animation finishes. */
+  commit(ops: Op[], animation?: AnimationSpec, completion?: number): void;
   /** Imperative call on a native view; `callback` > 0 expects `__resolveCommand`. */
   command(id: number, name: string, args: unknown, callback: number): void;
   log(level: string, message: string): void;
@@ -252,7 +253,9 @@ const hostConfig: any = {
   resetAfterCommit() {
     const ops = pending;
     pending = [];
-    if (ops.length) __native.commit(ops, commitAnimation);
+    if (!ops.length) return;
+    __native.commit(ops, commitAnimation, commitCompletion);
+    commitCompletion = 0;
   },
   preparePortalMount() {},
   hideInstance(inst: HostInstance) {
@@ -302,6 +305,8 @@ const hostConfig: any = {
 const reconciler = Reconciler(hostConfig);
 
 let commitAnimation: AnimationSpec | undefined;
+/** Callback id for the next animated commit's completion (0: none). */
+let commitCompletion = 0;
 
 /**
  * Like SwiftUI's `withAnimation`: state updates made in `fn` render right
@@ -310,14 +315,34 @@ let commitAnimation: AnimationSpec | undefined;
  *
  *   withAnimation("spring", () => setExpanded(true));
  *   withAnimation({ type: "easeInOut", duration: 0.6 }, () => setStep(2));
+ *
+ * `completion` runs once the animation has finished (SwiftUI's "logically
+ * complete": a spring counts once it's close to rest), or right away if `fn`
+ * changed nothing:
+ *
+ *   withAnimation("spring", () => setGhosts(merged), () => setGhosts([]));
+ *   await new Promise((done) => withAnimation("bouncy", () => setOpen(false), done));
  */
-export function withAnimation<T>(animation: AnimationSpec, fn: () => T): T {
+export function withAnimation<T>(animation: AnimationSpec, fn: () => T, completion?: () => void): T {
   const previous = commitAnimation;
+  const previousCompletion = commitCompletion;
   commitAnimation = animation;
+  commitCompletion = 0;
+  if (completion) {
+    commitCompletion = nextCallback++;
+    callbacks.set(commitCompletion, () => completion());
+  }
+  const pendingCompletion = commitCompletion;
   try {
     return (reconciler as any).flushSyncFromReconciler(fn);
   } finally {
+    // Nothing committed: nothing to wait for.
+    if (pendingCompletion && commitCompletion === pendingCompletion) {
+      callbacks.delete(pendingCompletion);
+      queueMicrotask(completion!);
+    }
     commitAnimation = previous;
+    commitCompletion = previousCompletion;
   }
 }
 // Registers with the React Refresh hook (installed by refresh-setup.ts).

@@ -122,10 +122,7 @@ export function CookingMode({ recipe, open, onClose, checked, onToggleIngredient
         spacing={0}
         showsIndicators={false}
         frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-        onScroll={(e) => {
-          // There's no "page changed" event: derive it from the offset.
-          if (e.width > 0) changePage(Math.round(e.x / e.width));
-        }}
+        onScrollIndexChange={changePage}
       >
         {steps.map((step, i) => (
           <StepPage

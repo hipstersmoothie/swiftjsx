@@ -332,6 +332,13 @@ final class GalleryTests: XCTestCase {
         XCTAssert(card.waitForExistence(timeout: 20), "no products")
         sleep(2)
         snapshot("shop-home")
+        // onScrollIndexChange drives the page dots' label.
+        let carousel = element("featured-carousel")
+        XCTAssert(carousel.waitForExistence(timeout: 10))
+        carousel.swipeLeft()
+        let first = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Deal 1 of'")).firstMatch
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: first)], timeout: 3) == .completed,
+                  "carousel page didn't change")
         card.tap()
         XCTAssert(element("add-to-cart").waitForExistence(timeout: 10))
         sleep(2)

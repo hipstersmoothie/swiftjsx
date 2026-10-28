@@ -242,6 +242,14 @@ struct CompilerTests {
         #expect(SwiftJSXDiagnostics.animatedCommits == before + 1)
     }
 
+    @Test func withAnimationCompletionRuns() async throws {
+        let runtime = try fixture("Animation")
+        runtime.press("Nothing changes")
+        #expect(await eventually { runtime.texts().contains("finished no-op") })
+        runtime.press("With completion")
+        #expect(await eventually { runtime.texts().contains("finished animated") })
+    }
+
     @Test func parsesAnimationSpecs() {
         #expect(parseAnimation("spring") != nil)
         #expect(parseAnimation(["type": "easeInOut", "duration": 0.6, "delay": 0.1]) != nil)

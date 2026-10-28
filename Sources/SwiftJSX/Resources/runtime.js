@@ -18521,7 +18521,9 @@ ${error.stack}` : String(error));
     resetAfterCommit() {
       const ops = pending2;
       pending2 = [];
-      if (ops.length) __native.commit(ops, commitAnimation);
+      if (!ops.length) return;
+      __native.commit(ops, commitAnimation, commitCompletion);
+      commitCompletion = 0;
     },
     preparePortalMount() {
     },
@@ -18588,13 +18590,26 @@ ${error.stack}` : String(error));
   };
   var reconciler = (0, import_react_reconciler.default)(hostConfig);
   var commitAnimation;
-  function withAnimation(animation, fn) {
+  var commitCompletion = 0;
+  function withAnimation(animation, fn, completion) {
     const previous = commitAnimation;
+    const previousCompletion = commitCompletion;
     commitAnimation = animation;
+    commitCompletion = 0;
+    if (completion) {
+      commitCompletion = nextCallback++;
+      callbacks.set(commitCompletion, () => completion());
+    }
+    const pendingCompletion = commitCompletion;
     try {
       return reconciler.flushSyncFromReconciler(fn);
     } finally {
+      if (pendingCompletion && commitCompletion === pendingCompletion) {
+        callbacks.delete(pendingCompletion);
+        queueMicrotask(completion);
+      }
       commitAnimation = previous;
+      commitCompletion = previousCompletion;
     }
   }
   reconciler.injectIntoDevTools();
