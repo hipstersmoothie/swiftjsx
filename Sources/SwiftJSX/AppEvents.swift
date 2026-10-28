@@ -25,6 +25,10 @@ final class AppEvents: @unchecked Sendable {
         observers = [
             center.addObserver(forName: active, object: nil, queue: nil) { _ in send("focus"); send("visibilitychange") },
             center.addObserver(forName: inactive, object: nil, queue: nil) { _ in send("blur"); send("visibilitychange") },
+            // "timechange": midnight, a time zone or clock change (refresh "today").
+            center.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: nil) { _ in send("timechange") },
+            center.addObserver(forName: .NSSystemTimeZoneDidChange, object: nil, queue: nil) { _ in send("timechange") },
+            center.addObserver(forName: .NSSystemClockDidChange, object: nil, queue: nil) { _ in send("timechange") },
         ]
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }

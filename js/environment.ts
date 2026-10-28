@@ -15,6 +15,22 @@ export type Environment = {
   window: { width: number; height: number };
   /** Space taken by the status bar, home indicator and notch (keyboard not included). */
   safeAreaInsets: { top: number; bottom: number; leading: number; trailing: number };
+  /**
+   * The user's locale settings, which can differ from `navigator.language`
+   * (English with a German region) and from the region's defaults (a 24-hour
+   * clock in the US). Pass `weekStartsOn` to date-fns.
+   */
+  locale: {
+    /** BCP 47, e.g. "en-US". */
+    identifier: string;
+    language: string;
+    region: string;
+    /** 0 = Sunday … 6 = Saturday. */
+    weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    hourCycle: "h12" | "h23";
+    timeZone: string;
+    calendar: string;
+  };
 };
 
 let current: Environment = {
@@ -25,6 +41,7 @@ let current: Environment = {
   isAccessibilitySize: false,
   window: { width: 393, height: 852 },
   safeAreaInsets: { top: 59, bottom: 34, leading: 0, trailing: 0 },
+  locale: { identifier: "en-US", language: "en", region: "US", weekStartsOn: 0, hourCycle: "h12", timeZone: "UTC", calendar: "gregorian" },
 };
 const listeners = new Set<() => void>();
 
@@ -42,6 +59,17 @@ const listeners = new Set<() => void>();
       leading: Number(values.safeLeading) || 0,
       trailing: Number(values.safeTrailing) || 0,
     },
+    locale: values.locale
+      ? {
+          identifier: values.locale,
+          language: values.language ?? "",
+          region: values.region ?? "",
+          weekStartsOn: (Number(values.weekStartsOn) || 0) as Environment["locale"]["weekStartsOn"],
+          hourCycle: values.hourCycle === "h23" ? "h23" : "h12",
+          timeZone: values.timeZone ?? "UTC",
+          calendar: values.calendar ?? "gregorian",
+        }
+      : current.locale,
   };
   listeners.forEach((listener) => listener());
 };

@@ -11,6 +11,9 @@ public struct ReactView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.locale) private var locale
+    @Environment(\.calendar) private var calendar
+    @Environment(\.timeZone) private var timeZone
     @State private var screen = Screen()
 
     /// The root's size and safe-area insets, rounded to whole points.
@@ -33,7 +36,20 @@ public struct ReactView: View {
             "width": "\(screen.width)", "height": "\(screen.height)",
             "safeTop": "\(screen.top)", "safeBottom": "\(screen.bottom)",
             "safeLeading": "\(screen.leading)", "safeTrailing": "\(screen.trailing)",
+            "locale": locale.identifier(.bcp47),
+            "language": locale.language.languageCode?.identifier ?? "",
+            "region": locale.region?.identifier ?? "",
+            // 0 = Sunday, like Date.getDay() and date-fns' weekStartsOn.
+            "weekStartsOn": "\(calendar.firstWeekday - 1)",
+            "hourCycle": uses24HourClock ? "h23" : "h12",
+            "timeZone": timeZone.identifier,
+            "calendar": "\(calendar.identifier)",
         ]
+    }
+
+    /// The user's 12/24-hour setting (it can differ from the region's default).
+    private var uses24HourClock: Bool {
+        !(DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: locale) ?? "").contains("a")
     }
 
     public var body: some View {

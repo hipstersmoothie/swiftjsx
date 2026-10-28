@@ -57,10 +57,11 @@ import Testing
 @Suite struct EnvironmentTests {
     @Test func useEnvironmentFollowsSwiftUI() async throws {
         let runtime = try fixture("Environment")
-        #expect(runtime.texts() == ["compact light large 393x852 59"])
+        #expect(runtime.texts() == ["compact light large 393x852 59 US 0 h12"])
         runtime.setEnvironment(["horizontalSizeClass": "regular", "colorScheme": "dark", "dynamicTypeSize": "xLarge",
-                                "width": "1024", "height": "768", "safeTop": "24"])
-        #expect(await eventually { runtime.texts() == ["regular dark xLarge 1024x768 24"] })
+                                "width": "1024", "height": "768", "safeTop": "24",
+                                "locale": "de-DE", "region": "DE", "weekStartsOn": "1", "hourCycle": "h23"])
+        #expect(await eventually { runtime.texts() == ["regular dark xLarge 1024x768 24 DE 1 h23"] })
     }
 }
 

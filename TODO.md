@@ -147,8 +147,8 @@ for the record.
       without its slide (after a custom swipe-down).
 - [x] Sheet content mounts with the presentation and unmounts once the sheet has gone
       (`onDismissed`), so its effects (keep-awake, speech) stop; `keepState` keeps it.
-- [ ] Adding or removing a `<SafeAreaInset>` rebuilds the view it's attached to (resets a
-      NavigationStack or scroll position); keep it mounted.
+- [x] Showing, hiding or moving a `<SafeAreaInset>` keeps the view it's on (all edges are
+      applied once it's in use); one inset per edge.
 - [x] Search: `searchActive` / `onSearchActiveChange` (dismiss from code, know about
       Cancel), `onSearchSubmit`, `searchScopes`, `searchSuggestions`.
 - [ ] iOS 26 `tabViewBottomAccessory` (mini players); zoom transitions / matched geometry.
@@ -217,9 +217,8 @@ for the record.
       (percent-encodes spaces instead of failing).
 - [ ] App lifecycle: no `pagehide` / background-task time for last-chance saves; no
       `document.visibilityState`.
-- [ ] Locale: only `navigator.language` is exposed. `locale`, `firstWeekday`,
-      `hourCycle` and `timeZone` in `useEnvironment()`, and a significant-time-change event
-      (midnight, time zone, DST) instead of every app's own midnight timer.
+- [x] `useEnvironment().locale` (identifier, language, region, `weekStartsOn`, `hourCycle`,
+      time zone, calendar) and a window "timechange" event (midnight, time zone, clock).
 - [x] First-party `notifications` (SwiftJSX owns the delegate: banners in the foreground,
       taps as events, a launch tap held until someone listens), badge, `speech` (with word
       ranges, ducking other audio) and `useKeepAwake`. Recipes uses them instead of its

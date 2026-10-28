@@ -190,20 +190,34 @@ struct ViewAttachments: ViewModifier {
     /// `<SafeAreaInset edge="bottom">`: content docked to an edge of this
     /// view; the rest (scroll content) is inset so nothing hides behind it.
     /// For mini players and input bars.
+    /// Once in use, all four edges are applied, each with its `<SafeAreaInset>`
+    /// (or nothing): showing, hiding or moving an inset keeps the view's
+    /// structure, so the NavigationStack or scroll view it's on keeps its state.
     private struct Inset: ViewModifier {
         let node: Node
         func body(content: Content) -> some View {
-            if node.features.contains(.safeAreaInset), let inset = node.children.first(where: { $0.type == "SafeAreaInset" }) {
-                let spacing = inset.cgFloat("spacing")
-                switch inset.string("edge") {
-                case "top": content.safeAreaInset(edge: .top, spacing: spacing) { LayerContent(node: inset) }
-                case "leading": content.safeAreaInset(edge: .leading, spacing: spacing) { LayerContent(node: inset) }
-                case "trailing": content.safeAreaInset(edge: .trailing, spacing: spacing) { LayerContent(node: inset) }
-                default: content.safeAreaInset(edge: .bottom, spacing: spacing) { LayerContent(node: inset) }
-                }
+            if node.features.contains(.safeAreaInset) {
+                content
+                    .safeAreaInset(edge: .bottom, spacing: spacing("bottom")) { inset("bottom") }
+                    .safeAreaInset(edge: .top, spacing: spacing("top")) { inset("top") }
+                    .safeAreaInset(edge: .leading, spacing: spacing("leading")) { inset("leading") }
+                    .safeAreaInset(edge: .trailing, spacing: spacing("trailing")) { inset("trailing") }
             } else {
                 content
             }
+        }
+
+        private func node(for edge: String) -> Node? {
+            node.children.first { $0.type == "SafeAreaInset" && ($0.string("edge") ?? "bottom") == edge }
+        }
+
+        private func spacing(_ edge: String) -> CGFloat? {
+            guard let inset = node(for: edge) else { return 0 }
+            return inset.cgFloat("spacing")
+        }
+
+        @ViewBuilder private func inset(_ edge: String) -> some View {
+            if let inset = node(for: edge) { LayerContent(node: inset) }
         }
     }
 

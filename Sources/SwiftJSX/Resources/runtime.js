@@ -36149,6 +36149,15 @@ ${e.stack}` : String(e);
       bottom: 34,
       leading: 0,
       trailing: 0
+    },
+    locale: {
+      identifier: "en-US",
+      language: "en",
+      region: "US",
+      weekStartsOn: 0,
+      hourCycle: "h12",
+      timeZone: "UTC",
+      calendar: "gregorian"
     }
   };
   var listeners3 = /* @__PURE__ */ new Set();
@@ -36168,7 +36177,16 @@ ${e.stack}` : String(e);
         bottom: Number(values.safeBottom) || 0,
         leading: Number(values.safeLeading) || 0,
         trailing: Number(values.safeTrailing) || 0
-      }
+      },
+      locale: values.locale ? {
+        identifier: values.locale,
+        language: values.language ?? "",
+        region: values.region ?? "",
+        weekStartsOn: Number(values.weekStartsOn) || 0,
+        hourCycle: values.hourCycle === "h23" ? "h23" : "h12",
+        timeZone: values.timeZone ?? "UTC",
+        calendar: values.calendar ?? "gregorian"
+      } : current.locale
     };
     listeners3.forEach((listener) => listener());
   };
@@ -36178,11 +36196,11 @@ ${e.stack}` : String(e);
   }
   function useEnvironment() {
     const $ = (0, import_compiler_runtime8.c)(1);
-    if ($[0] !== "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697") {
+    if ($[0] !== "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697";
+      $[0] = "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b";
     }
     return (0, import_react9.useSyncExternalStore)(subscribe, _temp4);
   }
@@ -36191,11 +36209,11 @@ ${e.stack}` : String(e);
   }
   function useColorScheme() {
     const $ = (0, import_compiler_runtime8.c)(1);
-    if ($[0] !== "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697") {
+    if ($[0] !== "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697";
+      $[0] = "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b";
     }
     return useEnvironment().colorScheme;
   }
