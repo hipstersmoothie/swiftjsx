@@ -141,10 +141,9 @@ wanted and couldn't do. Checked items are done and kept for the record.
 
 ## Native backend (NativeScript)
 
-- [ ] Types declare SDK classes as globals, so `AVPlayer.new()` typechecks without
-      `native.` and fails at runtime.
-- [ ] No helper to hop from a native callback (on main) back to the JS thread
-      (`onJS(fn)`); every callback hand-rolls `setTimeout`.
+- [x] Using an SDK class as a bare global (`AVPlayer.new()`, which typechecks because the
+      type files declare globals) fails the build with "use native.AVPlayer".
+- [x] `onJS(fn)` / `toJS(fn)`: from a native callback (on main) back to the JS thread.
 - [ ] No KVO observing (AVPlayer status, outputVolume…); apps poll.
 - [ ] Generated types: inconsistent enum member names, nullable values typed non-null,
       no inline helpers (`CGRectMake`), no instance type aliases, clumsy NSError

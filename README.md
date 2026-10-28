@@ -171,6 +171,9 @@ function Battery() {
   ("UILabel.new() must be called on the main thread … Wrap it in onMain(() => ...)")
   instead of crashing in UIKit; isolation comes from the SDK headers' Swift annotations.
   Background on the design: [`spikes/nativescript/THREADING.md`](spikes/nativescript/THREADING.md).
+- **Native callbacks run on main.** Notification observers, completion blocks and
+  delegate methods run on the main thread; hop back with `onJS(fn)` (or wrap the callback
+  with `toJS(fn)`) before touching React or store state.
 - **Namespace.** NativeScript's ~39k globals live in a sibling context; the app sees one
   `native` object.
 - **Patched.** It runs on NativeScript built from upstream plus the fixes in

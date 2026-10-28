@@ -25,6 +25,7 @@
 import * as esbuild from "esbuild";
 import { transformAsync } from "@babel/core";
 import workletsPlugin from "./worklets-plugin.mjs";
+import nativeGlobalsPlugin from "./native-globals-plugin.mjs";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -104,7 +105,11 @@ function babel({ refresh, dev = true, worklets = false }) {
         const skipped = [];
         const compiled = await transformAsync(input, {
           ...options,
-          plugins: [["babel-plugin-react-compiler", reactCompilerOptions(file, stats, dev, skipped)]],
+          plugins: [
+            ["babel-plugin-react-compiler", reactCompilerOptions(file, stats, dev, skipped)],
+            // App code only (the runtime's own code never touches SDK globals).
+            ...(worklets ? [nativeGlobalsPlugin] : []),
+          ],
         });
         // React Refresh runs as a second pass over the compiler's *printed*
         // output. In a shared pass it reads hook arguments from source text the

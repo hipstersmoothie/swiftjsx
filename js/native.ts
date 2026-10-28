@@ -64,6 +64,32 @@ export function onMain<T>(fn: () => T): Promise<T> {
   });
 }
 
+/**
+ * The other direction: run `fn` on the JS thread, from a native callback
+ * that runs on main (a notification observer, an AVPlayer time observer, a
+ * remote command handler, a completion block…). State updates (React,
+ * zustand) belong on the JS thread. Resolves with `fn`'s result.
+ *
+ *   center.addObserverForNameObjectQueueUsingBlock(name, null, null,
+ *     (note) => { const id = note.object.id; onJS(() => setItem(id)); });
+ */
+export function onJS<T>(fn: () => T): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    setTimeout(() => {
+      try {
+        resolve(fn());
+      } catch (error) {
+        reject(error);
+      }
+    }, 0);
+  });
+}
+
+/** `fn` wrapped to always run on the JS thread (for native callbacks). Arguments are passed through. */
+export function toJS<A extends unknown[]>(fn: (...args: A) => unknown): (...args: A) => void {
+  return (...args: A) => void onJS(() => fn(...args));
+}
+
 export type NativeValueOptions = {
   /** Re-read when any of these NSNotifications is posted. */
   notifications?: string | string[];

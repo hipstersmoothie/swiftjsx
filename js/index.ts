@@ -3,7 +3,7 @@ export type { Frame, ScrollTarget, ScrollOptions } from "./renderer";
 export * from "./components";
 export { Navigator, useNavigation, NavigationSplitView, type Navigation } from "./navigation";
 export { VirtualList, type VirtualListProps } from "./virtual-list";
-export { native, onMain, isNativeAvailable, useNativeValue, type Native, type NativeValueOptions } from "./native";
+export { native, onMain, onJS, toJS, isNativeAvailable, useNativeValue, type Native, type NativeValueOptions } from "./native";
 export {
   useSharedValue, makeMutable, useAnimatedStyle, withSpring, withTiming, runOnJS,
   type SharedValue, type AnimatedStyle, type AnimatableProps,

@@ -18051,10 +18051,12 @@ ${error.stack}` : String(error));
     isNativeAvailable: () => isNativeAvailable,
     makeMutable: () => makeMutable,
     native: () => native,
+    onJS: () => onJS,
     onMain: () => onMain,
     openURL: () => openURL,
     render: () => render,
     runOnJS: () => runOnJS,
+    toJS: () => toJS,
     useAnimatedStyle: () => useAnimatedStyle,
     useColorScheme: () => useColorScheme,
     useEnvironment: () => useEnvironment,
@@ -19160,13 +19162,27 @@ ${e.stack}` : String(e);
       }, (result) => result.ok ? resolve(result.value) : reject(result.error));
     });
   }
+  function onJS(fn) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          resolve(fn());
+        } catch (error) {
+          reject(error);
+        }
+      }, 0);
+    });
+  }
+  function toJS(fn) {
+    return (...args) => void onJS(() => fn(...args));
+  }
   function useNativeValue(read, t0) {
     const $ = (0, import_compiler_runtime4.c)(18);
-    if ($[0] !== "fcb0f4a58da0d33f9f8e7799a34358983f1d8341f1e6562b16f6363200fcacb2") {
+    if ($[0] !== "1a627744145e31b03f6986d5ffd2d349578ae2ad40bfb037d772a5572142a63c") {
       for (let $i = 0; $i < 18; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "fcb0f4a58da0d33f9f8e7799a34358983f1d8341f1e6562b16f6363200fcacb2";
+      $[0] = "1a627744145e31b03f6986d5ffd2d349578ae2ad40bfb037d772a5572142a63c";
     }
     let t1;
     if ($[1] !== t0) {
