@@ -359,26 +359,64 @@ struct ShapeView: View {
         case "Ellipse": draw(Ellipse())
         case "Capsule": draw(Capsule(style: .continuous))
         case "RoundedRectangle": draw(BoxShape(corners: Corners(node.prop("cornerRadius"))))
+        case "Path", "Polyline": drawPath(PathShape(node: node))
         default: draw(Rectangle())
+        }
+    }
+
+    private var strokeStyle: StrokeStyle {
+        let width = node.cgFloat("lineWidth") ?? 1
+        let dash = (node.prop("dash") as? [Any])?.compactMap { ($0 as? NSNumber).map { CGFloat($0.doubleValue) } } ?? []
+        return StrokeStyle(lineWidth: width, lineCap: lineCap ?? (dash.isEmpty ? .round : .butt), lineJoin: lineJoin, dash: dash)
+    }
+
+    private var lineCap: CGLineCap? {
+        switch node.string("lineCap") {
+        case "butt": .butt
+        case "round": .round
+        case "square": .square
+        default: nil
+        }
+    }
+
+    private var lineJoin: CGLineJoin {
+        switch node.string("lineJoin") {
+        case "miter": .miter
+        case "bevel": .bevel
+        default: .round
+        }
+    }
+
+    /// Paths stroke on the line (not inside the frame like closed shapes).
+    private func drawPath(_ shape: PathShape) -> some View {
+        let fillStyle = fill(node.prop("fill"))
+        let strokeFill = fill(node.prop("stroke"))
+        let trim = (node.prop("trim") as? [Any])?.compactMap { ($0 as? NSNumber).map { CGFloat($0.doubleValue) } }
+        return ZStack {
+            if let fillStyle { shape.fill(fillStyle) }
+            if let strokeFill {
+                shape.trim(from: trim?.first ?? 0, to: trim?.last ?? 1).stroke(strokeFill, style: strokeStyle)
+            } else if fillStyle == nil {
+                shape.stroke(AnyShapeStyle(.foreground), style: strokeStyle)
+            }
         }
     }
 
     private func draw<S: InsettableShape>(_ shape: S) -> some View {
         let fillStyle = fill(node.prop("fill"))
-        let strokeStyle = fill(node.prop("stroke"))
+        let strokeFill = fill(node.prop("stroke"))
         let width = node.cgFloat("lineWidth") ?? 1
-        let dash = (node.prop("dash") as? [Any])?.compactMap { ($0 as? NSNumber).map { CGFloat($0.doubleValue) } } ?? []
-        let style = StrokeStyle(lineWidth: width, lineCap: dash.isEmpty ? .round : .butt, dash: dash)
+        let style = strokeStyle
         let trim = (node.prop("trim") as? [Any])?.compactMap { ($0 as? NSNumber).map { CGFloat($0.doubleValue) } }
         return ZStack {
-            if fillStyle != nil || strokeStyle == nil {
+            if fillStyle != nil || strokeFill == nil {
                 shape.fill(fillStyle ?? AnyShapeStyle(.foreground))
             }
-            if let strokeStyle {
+            if let strokeFill {
                 if let trim, trim.count == 2 {
-                    shape.inset(by: width / 2).trim(from: trim[0], to: trim[1]).stroke(strokeStyle, style: style)
+                    shape.inset(by: width / 2).trim(from: trim[0], to: trim[1]).stroke(strokeFill, style: style)
                 } else {
-                    shape.strokeBorder(strokeStyle, style: style)
+                    shape.strokeBorder(strokeFill, style: style)
                 }
             }
         }

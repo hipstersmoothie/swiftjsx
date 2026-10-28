@@ -62,3 +62,25 @@ import Testing
         #expect(await eventually { runtime.texts() == ["regular dark xLarge"] })
     }
 }
+
+@Suite struct PathTests {
+    @Test func parsesSVGPathData() {
+        #expect(SVGPath.parse("M10 10 L90 10 L90 90 Z").boundingRect == CGRect(x: 10, y: 10, width: 80, height: 80))
+        // Relative commands, implicit lines after M, H/V, compact numbers.
+        #expect(SVGPath.parse("m10,10 80,0v80h-80z").boundingRect == CGRect(x: 10, y: 10, width: 80, height: 80))
+        #expect(SVGPath.parse("M0 0L-5-5").boundingRect == CGRect(x: -5, y: -5, width: 5, height: 5))
+        #expect(SVGPath.parse("M0 0 L1e1 0").boundingRect.width == 10)
+        // A half-circle arc from (0,50) to (100,50) bulges to y = 0 or 100.
+        let arc = SVGPath.parse("M0 50 A50 50 0 0 1 100 50").boundingRect
+        #expect(abs(arc.height - 50) < 1 && abs(arc.width - 100) < 1)
+        // Smooth curves don't crash without a previous control point.
+        #expect(!SVGPath.parse("M0 0 S10 10 20 0 T40 0").isEmpty)
+    }
+
+    @Test func viewBoxScalesToTheFrame() {
+        let shape = PathShape(path: SVGPath.parse("M0 0 L100 50"), viewBox: CGRect(x: 0, y: 0, width: 100, height: 50), fit: false)
+        #expect(shape.path(in: CGRect(x: 0, y: 0, width: 200, height: 200)).boundingRect == CGRect(x: 0, y: 0, width: 200, height: 200))
+        let fitted = PathShape(path: SVGPath.parse("M0 0 L100 50"), viewBox: CGRect(x: 0, y: 0, width: 100, height: 50), fit: true)
+        #expect(fitted.path(in: CGRect(x: 0, y: 0, width: 200, height: 200)).boundingRect == CGRect(x: 0, y: 50, width: 200, height: 100))
+    }
+}

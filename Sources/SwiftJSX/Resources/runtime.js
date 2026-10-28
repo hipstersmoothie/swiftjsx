@@ -18016,8 +18016,10 @@ ${error.stack}` : String(error));
     NavigationStack: () => NavigationStack,
     Navigator: () => Navigator,
     Overlay: () => Overlay,
+    Path: () => Path,
     Picker: () => Picker,
     PointMark: () => PointMark,
+    Polyline: () => Polyline,
     ProgressView: () => ProgressView,
     Rectangle: () => Rectangle,
     RectangleMark: () => RectangleMark,
@@ -18712,6 +18714,8 @@ ${e.stack}` : String(e);
   var Text = host("Text");
   var Image = host("Image");
   var Label = host("Label");
+  var Path = host("Path");
+  var Polyline = host("Polyline");
   var Rectangle = host("Rectangle");
   var RoundedRectangle = host("RoundedRectangle");
   var Circle = host("Circle");

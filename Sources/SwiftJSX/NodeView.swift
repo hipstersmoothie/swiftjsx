@@ -215,7 +215,7 @@ struct NodeView: View {
         case "Label":
             Label(node.string("title") ?? "", systemImage: node.string("systemImage") ?? "")
 
-        case "Rectangle", "RoundedRectangle", "Circle", "Ellipse", "Capsule":
+        case "Rectangle", "RoundedRectangle", "Circle", "Ellipse", "Capsule", "Path", "Polyline":
             ShapeView(node: node)
 
         case "Spacer":

@@ -14,8 +14,9 @@ wanted and couldn't do. Checked items are done and kept for the record.
       series, stacking, domains, axes, scrub selection).
 - [ ] Charts: axis value labels/formatting, y selection, range selection, scrolling
       charts. The Fitness app still draws its charts by hand.
-- [ ] Custom shapes: `<Path d="…">` / polylines (lines, areas), `lineCap` / `lineJoin`,
-      angular gradient start/end angles, a line/rule shape.
+- [x] `<Path d>` (SVG path data) and `<Polyline points>` in a `viewBox`; `lineCap` /
+      `lineJoin`.
+- [ ] Angular gradient start/end angles; animating between paths (morphing).
 - [ ] `Canvas`, maps (MapKit), video (AVKit), web views.
 
 ## Layout

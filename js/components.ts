@@ -385,7 +385,21 @@ type ShapeProps = Modifiers & {
   dash?: number[];
   /** Draw only part of the stroke, from 0 to 1 (progress rings). */
   trim?: [number, number];
+  lineCap?: "butt" | "round" | "square";
+  lineJoin?: "miter" | "round" | "bevel";
 };
+
+type PathBox = {
+  /** The coordinate box the path is drawn in: [x, y, width, height] (default [0, 0, 100, 100]). */
+  viewBox?: [number, number, number, number];
+  /** "stretch" (default) fills the frame; "fit" keeps the box's proportions. */
+  preserveAspectRatio?: "stretch" | "fit";
+};
+
+/** An SVG path (`d="M0 50 L50 0 …"`: M L H V C S Q T A Z, absolute and relative). Strokes with the foreground by default. */
+export const Path = host<ShapeProps & PathBox & { d: string }>("Path");
+/** Straight lines through `points` ([x, y] in the view box): sparklines; `closed` + `fill` for areas. */
+export const Polyline = host<ShapeProps & PathBox & { points: [number, number][]; closed?: boolean }>("Polyline");
 
 // Shapes fill the space they're offered: give them a `frame`.
 export const Rectangle = host<ShapeProps>("Rectangle");

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import {
   Screen, ScrollView, VStack, HStack, ZStack, Text, Image, Button, Spacer,
-  Rectangle, RoundedRectangle, Circle, Capsule, Ellipse, withAnimation, type Color,
+  Rectangle, RoundedRectangle, Circle, Capsule, Ellipse, Path, Polyline, withAnimation, type Color,
 } from "swiftjsx";
 
 const swatches: Color[] = ["systemBackground", "secondarySystemBackground", "systemGray4", "separator", "label", "secondaryLabel"];
@@ -39,6 +39,19 @@ export function StylesDemo() {
                 Bubble corners
               </Text>
               <Rectangle fill={{ gradient: ["yellow", "red"], type: "radial", endRadius: 30 }} frame={{ width: 44, height: 44 }} cornerRadius={10} />
+            </HStack>
+          </Section>
+
+          <Section title="Paths">
+            <HStack spacing={16}>
+              {/* A heart from SVG path data. */}
+              <Path d="M50 88 C20 66 4 50 4 30 A22 22 0 0 1 50 18 A22 22 0 0 1 96 30 C96 50 80 66 50 88 Z" fill={{ gradient: ["pink", "red"] }} frame={{ width: 56, height: 56 }} />
+              <Path d="M10 80 Q50 0 90 80" stroke="indigo" lineWidth={4} frame={{ width: 70, height: 56 }} />
+              {/* A sparkline and its area. */}
+              <ZStack frame={{ width: 140, height: 56 }}>
+                <Polyline points={[[0, 40], [15, 30], [30, 34], [45, 18], [60, 24], [75, 10], [90, 16], [100, 4], [100, 50], [0, 50]]} closed viewBox={[0, 0, 100, 50]} fill="green/20" />
+                <Polyline points={[[0, 40], [15, 30], [30, 34], [45, 18], [60, 24], [75, 10], [90, 16], [100, 4]]} viewBox={[0, 0, 100, 50]} stroke="green" lineWidth={2.5} />
+              </ZStack>
             </HStack>
           </Section>
 
