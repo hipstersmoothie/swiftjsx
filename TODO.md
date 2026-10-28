@@ -259,8 +259,8 @@ for the record.
 - [ ] React DevTools support. CI for `swift test` and the XCUITest suite.
 - [ ] `xcodebuild test` hangs after the UI tests finish (an Xcode quirk while writing
       the results); it has to be stopped once it prints "Executed N tests".
-- [ ] Hot reload only works in the simulator (it reads `build/app.js` from the host).
-      Serve the bundle over the network for devices.
+- [x] Hot reload on devices: `npm run dev` serves the bundle (long polling, port 8081);
+      Debug builds connect over the local network and fall back to the bundled app.js.
 - [ ] Packaging: an npm package and a project template, so apps can live outside this repo.
 
 ## Docs
@@ -282,4 +282,4 @@ for the record.
 
 ## Project
 
-- [ ] Add a license. The vendored NativeScript code is MIT and keeps its own license files.
+- [x] MIT license. The vendored NativeScript code is MIT and keeps its own license files.
