@@ -4,6 +4,8 @@ extension EnvironmentValues {
     @Entry var jsxRuntime: JSXRuntime? = nil
     /// Inside a List or Form row (SwiftUI's swipe actions work there).
     @Entry var inList = false
+    /// The enclosing NavigationStack's namespace, for zoom transitions.
+    @Entry var zoomNamespace: Namespace.ID? = nil
 }
 
 /// Mounts a `JSXRuntime`'s React tree as SwiftUI.

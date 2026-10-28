@@ -46,6 +46,8 @@ function PokemonCard({ entry, onAppear }: { entry: Entry; onAppear?(): void }) {
     <Button
       buttonStyle="plain"
       onPress={() => nav.push(<DetailScreen entry={entry} />)}
+      // The detail screen zooms out of this card (and back into it).
+      transitionSource={`pokemon-${entry.id}`}
       accessibilityIdentifier="pokemon-card"
       accessibilityLabel={`${name}, ${formatNumber(entry.id)}${favorite ? ", favorite" : ""}`}
     >

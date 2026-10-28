@@ -11,6 +11,8 @@ struct NavigationStackHost: View {
     /// Keeps popped pages alive through the pop animation, after React has
     /// already removed them.
     @State private var pages = PageCache()
+    /// Zoom transitions: `transitionSource` views and `<Screen zoomFrom>`.
+    @Namespace private var zoom
 
     var body: some View {
         let children = node.children.filter { !$0.isAttachment }
@@ -33,6 +35,7 @@ struct NavigationStackHost: View {
             }
         }
         .onChange(of: pushed) { poppedPath = nil }
+        .environment(\.zoomNamespace, zoom)
     }
 }
 
@@ -61,6 +64,7 @@ struct ScreenHost: View {
         .modifier(ToolbarStyle(node: node))
         .navigationTitle(node.string("title") ?? "")
         .modifier(Subtitle(text: node.string("subtitle")))
+        .modifier(ZoomDestination(id: node.string("zoomFrom")))
         #if os(iOS)
         .navigationBarTitleDisplayMode(titleDisplayMode(node.string("titleDisplayMode")))
         #endif
@@ -447,3 +451,40 @@ private struct DismissAttemptProbe: UIViewControllerRepresentable {
     }
 }
 #endif
+
+/// `<Screen zoomFrom="id">`: the pushed screen zooms out of the view marked
+/// `transitionSource="id"` (and back into it on pop). iOS.
+private struct ZoomDestination: ViewModifier {
+    let id: String?
+    @Environment(\.zoomNamespace) private var namespace
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if let id, let namespace {
+            content.navigationTransition(.zoom(sourceID: id, in: namespace))
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
+/// `transitionSource="id"`: where a `<Screen zoomFrom="id">` zooms from.
+struct ZoomSource: ViewModifier {
+    let id: String?
+    @Environment(\.zoomNamespace) private var namespace
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if let id, let namespace {
+            content.matchedTransitionSource(id: id, in: namespace)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}

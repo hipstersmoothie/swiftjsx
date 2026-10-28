@@ -111,6 +111,7 @@ struct Modifiers: ViewModifier {
                 if let wanted = controlSize(node.string("controlSize")) { size = wanted }
             }
             .modifier(LabelStyleModifier(style: node.string("labelStyle")))
+            .modifier(ZoomSource(id: node.string("transitionSource")))
             .modifier(SystemOverlays(node: node))
             // Last, so the view's own background and border use it too.
             .transformEnvironment(\.colorScheme) { scheme in

@@ -150,7 +150,7 @@ for the record.
       applied once it's in use); one inset per edge.
 - [x] Search: `searchActive` / `onSearchActiveChange` (dismiss from code, know about
       Cancel), `onSearchSubmit`, `searchScopes`, `searchSuggestions`.
-- [ ] iOS 26 `tabViewBottomAccessory` (mini players); zoom transitions / matched geometry.
+- [x] `<TabAccessory>` (iOS 26 mini players; Music uses it) and zoom transitions (`transitionSource` + `<Screen zoomFrom>`; Pokédex). [ ] Matched geometry between arbitrary views.
 
 ## Gestures and animation
 

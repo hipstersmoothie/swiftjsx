@@ -5,7 +5,7 @@
 // Without the native backend everything still works, silently.
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { TabView, Tab, Navigator, VStack, Sheet, type Navigation } from "swiftjsx";
+import { TabView, Tab, TabAccessory, Navigator, VStack, Sheet, type Navigation } from "swiftjsx";
 import { shutdownPlayer, usePlayer } from "./player";
 import { RouterContext, type Router, type TabId } from "./router";
 import { SearchScreen } from "./SearchScreen";
@@ -13,7 +13,7 @@ import { LibraryScreen } from "./LibraryScreen";
 import { QueueScreen } from "./QueueScreen";
 import { AlbumScreen } from "./AlbumScreen";
 import { ArtistScreen } from "./ArtistScreen";
-import { MiniPlayer } from "./MiniPlayer";
+import { MiniPlayerAccessory } from "./MiniPlayer";
 import { NowPlaying } from "./NowPlaying";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
@@ -52,17 +52,18 @@ function Shell() {
   };
 
   const open = () => setNowPlayingOpen(true);
-  const withMiniPlayer = (children: ReactNode) => (
-    <VStack spacing={0}>
-      {children}
-      <MiniPlayer onOpen={open} />
-    </VStack>
-  );
+  // The mini player is the tab bar's accessory (iOS 26).
+  const withMiniPlayer = (children: ReactNode) => children;
 
   return (
     <RouterContext.Provider value={router}>
       <VStack spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
         <TabView selection={tab} onSelectionChange={(value) => setTab(value as TabId)}>
+          {hasTrack ? (
+            <TabAccessory>
+              <MiniPlayerAccessory onOpen={open} />
+            </TabAccessory>
+          ) : null}
           <Tab value="search" title="Search" systemImage="magnifyingglass" role="search">
             {withMiniPlayer(
               <Navigator>

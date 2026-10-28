@@ -34393,6 +34393,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     Stepper: () => Stepper,
     SwipeActions: () => SwipeActions,
     Tab: () => Tab,
+    TabAccessory: () => TabAccessory,
     TabView: () => TabView,
     Text: () => Text,
     TextEditor: () => TextEditor,
@@ -35142,6 +35143,7 @@ ${e.stack}` : String(e);
   var LazyVGrid = host("LazyVGrid");
   var NavigationStack = host("NavigationStack");
   var TabView = host("TabView");
+  var TabAccessory = host("TabAccessory");
   var Tab = host("Tab");
   var NavigationPage = host("NavigationPage");
   var SplitColumn = host("SplitColumn");

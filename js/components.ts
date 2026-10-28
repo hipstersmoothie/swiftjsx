@@ -257,6 +257,8 @@ export interface Modifiers {
     height?: number | `${number}%`;
     anchor?: "topLeading" | "top" | "topTrailing" | "leading" | "center" | "trailing" | "bottomLeading" | "bottom" | "bottomTrailing";
   };
+  /** Marks this view as where a `<Screen zoomFrom="…">` zooms from (and back into). iOS. */
+  transitionSource?: string;
   /** The size of controls inside (buttons, pickers, steppers, toggles). */
   controlSize?: "mini" | "small" | "regular" | "large" | "extraLarge";
   /** How Labels inside show: icon only (toolbars), title only, or both. */
@@ -776,6 +778,8 @@ export const TabView = host<
   }
 >("TabView");
 
+/** In a `<TabView>`: a bar above the tab bar, like a mini player (iOS 26). */
+export const TabAccessory = host<WithChildren>("TabAccessory");
 /** One tab of a TabView. Put a `<Navigator>` inside for a stack per tab. */
 export const Tab = host<
   WithChildren & {
@@ -811,6 +815,8 @@ export const Screen = host<
     title?: string;
     /** Under the title (iOS 26 and later). */
     subtitle?: string;
+    /** Pushed: zoom out of the view with this `transitionSource` (iOS). */
+    zoomFrom?: string;
     titleDisplayMode?: "automatic" | "inline" | "large";
     /** A search field in the navigation bar (controlled with `onSearchTextChange`). */
     searchText?: string;

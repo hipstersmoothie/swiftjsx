@@ -32,6 +32,7 @@ struct TabViewHost: View {
             }
         }
         .modifier(TabViewStyleModifier(node: node))
+        .modifier(BottomAccessory(node: node.children.first { $0.type == "TabAccessory" }))
         .onChange(of: node.string("selection")) { picked = nil }
     }
 
@@ -193,5 +194,23 @@ private func columnName(_ column: NavigationSplitViewColumn) -> String {
     case .content: "content"
     case .detail: "detail"
     default: "sidebar"
+    }
+}
+
+/// `<TabAccessory>` in a `<TabView>`: a bar above the tab bar (iOS 26), like
+/// Music's mini player. It shrinks into the tab bar as you scroll.
+private struct BottomAccessory: ViewModifier {
+    let node: Node?
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if let node, #available(iOS 26, *) {
+            content.tabViewBottomAccessory { Children(node: node) }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }

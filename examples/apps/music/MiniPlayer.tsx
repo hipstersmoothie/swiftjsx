@@ -52,3 +52,23 @@ export function MiniPlayer({ onOpen }: { onOpen(): void }) {
     </VStack>
   );
 }
+
+/** The mini player as the tab bar's accessory (iOS 26): the system draws the bar. */
+export function MiniPlayerAccessory({ onOpen }: { onOpen(): void }) {
+  const track = useCurrentTrack();
+  const playing = usePlayer((s) => s.playing);
+  if (!track) return null;
+  return (
+    <HStack spacing={10} padding={{ horizontal: 12 }} onTapGesture={onOpen} accessibilityElement="contain" accessibilityIdentifier="mini-player">
+      <Artwork url={track.artwork} size={30} radius={5} />
+      <Text font="subheadline" fontWeight="semibold" lineLimit={1} accessibilityIdentifier="mini-player-title">{track.title}</Text>
+      <Spacer minLength={4} />
+      <Button buttonStyle="plain" onPress={togglePlay} accessibilityLabel={playing ? "Pause" : "Play"} accessibilityIdentifier="mini-player-play-pause">
+        <Image systemName={playing ? "pause.fill" : "play.fill"} font="title3" frame={{ width: 32, height: 32 }} />
+      </Button>
+      <Button buttonStyle="plain" onPress={() => advance()} accessibilityLabel="Next" accessibilityIdentifier="mini-player-next">
+        <Image systemName="forward.fill" font="body" frame={{ width: 28, height: 32 }} />
+      </Button>
+    </HStack>
+  );
+}

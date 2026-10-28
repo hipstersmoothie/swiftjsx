@@ -19,7 +19,7 @@ export function DetailScreen({ entry }: { entry: Entry }) {
   const name = displayName(entry.name);
 
   return (
-    <Screen title={name} titleDisplayMode="inline">
+    <Screen title={name} titleDisplayMode="inline" zoomFrom={`pokemon-${entry.id}`}>
       <ToolbarItem placement="primaryAction">
         <Button
           onPress={() => toggleFavorite(entry)}
