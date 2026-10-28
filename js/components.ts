@@ -173,7 +173,11 @@ export interface Modifiers {
   onDragEnd?: (event: DragEvent & { cancelled?: boolean }) => void;
   /** "longPress": hold (`longPressDuration`) before dragging; `onDragStart` fires when picked up. */
   dragActivation?: "immediate" | "longPress";
-  onDragStart?: () => void;
+  /**
+   * A drag began: with the first movement (and its event), or with
+   * `dragActivation="longPress"` when the hold completes (no event).
+   */
+  onDragStart?: (event?: DragEvent) => void;
   /**
    * How this view's gestures combine with others: "simultaneous" (e.g. a drag
    * inside a ScrollView that still lets it scroll), "high" (wins over
@@ -344,7 +348,8 @@ export const SafeAreaInset = host<Modifiers & WithChildren & { edge?: "top" | "b
 export const Text = host<
   Modifiers & WithChildren & {
     bold?: boolean;
-    strikethrough?: boolean;
+    /** `true`, or the line's color. */
+    strikethrough?: boolean | ColorValue;
     italic?: boolean;
     /** `true`, or the underline's color. */
     underline?: boolean | ColorValue;
@@ -484,7 +489,9 @@ type TextInputProps = {
   /** What the field holds, for AutoFill and the keyboard's suggestions. */
   textContentType?:
     | "name" | "givenName" | "familyName" | "nickname" | "email" | "phone" | "username" | "password" | "newPassword"
-    | "oneTimeCode" | "url" | "streetAddress" | "postalCode" | "city" | "country" | "organization" | "jobTitle" | "creditCardNumber";
+    | "oneTimeCode" | "url" | "streetAddress" | "streetAddressLine1" | "streetAddressLine2" | "postalCode" | "city" | "state"
+    | "cityAndState" | "country" | "organization" | "jobTitle" | "birthdate"
+    | "creditCardNumber" | "creditCardExpiration" | "creditCardSecurityCode" | "creditCardName";
   autocapitalize?: "none" | "sentences" | "words" | "characters";
   autocorrect?: boolean;
   tint?: ColorValue;
@@ -504,6 +511,7 @@ export const TextField = host<
     submitLabel?: "return" | "done" | "go" | "send" | "join" | "route" | "search" | "next" | "continue";
     /** false: keep the keyboard up after submitting (rapid entry). */
     blurOnSubmit?: boolean;
+    textAlignment?: "leading" | "center" | "trailing";
   }
 >("TextField");
 /** A multi-line, scrolling text editor (notes, descriptions). Give it a frame. */
@@ -531,6 +539,7 @@ export const Slider = host<
     tint?: ColorValue;
   }
 >("Slider");
+/** The label is `label`, or the children; with neither, just the −/+ control. */
 export const Stepper = host<Modifiers & WithChildren & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; label?: string; tint?: ColorValue }>("Stepper");
 export const Picker = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string; systemImage?: string }[]; label?: string; pickerStyle?: "menu" | "segmented" | "inline"; tint?: ColorValue }>("Picker");
 
@@ -562,6 +571,8 @@ export const TabView = host<
     selection?: string;
     onSelectionChange?: (value: string) => void;
     tabViewStyle?: "automatic" | "sidebarAdaptable" | "page";
+    /** Page dots (`tabViewStyle="page"`): "backed" puts them on a dimmed capsule, readable over light content. */
+    pageIndicator?: "automatic" | "always" | "never" | "backed";
   }
 >("TabView");
 

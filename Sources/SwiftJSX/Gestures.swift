@@ -32,12 +32,15 @@ struct GestureModifiers: ViewModifier {
     @State private var frame: CGRect = .zero
     /// Whether a drag is in progress (reset by SwiftUI on cancel, too)…
     @GestureState private var dragging = false
-    /// …whether it ended normally, to tell a cancel apart, and the last event
-    /// (a reference, so updating it doesn't re-render).
-    @State private var dragEnded = false
-    @State private var lastDrag = Box()
+    /// …and the current drag: started, ended normally (to tell a cancel
+    /// apart), its last event. A reference, so updating it doesn't re-render.
+    @State private var drag = Box()
 
-    final class Box { var event: [String: Any] = [:] }
+    final class Box {
+        var started = false
+        var ended = false
+        var event: [String: Any] = [:]
+    }
 
     func body(content: Content) -> some View {
         content
@@ -50,9 +53,18 @@ struct GestureModifiers: ViewModifier {
             .modifier(dragAttachment)
             // A drag the system cancelled (another gesture won, a sheet appeared…)
             // never ends normally; report it so drag state doesn't get stuck.
+            // Checked a turn later: SwiftUI doesn't promise whether the reset
+            // comes before or after onEnded.
             .onChange(of: dragging) { _, isDragging in
                 guard !isDragging else { return }
-                if dragEnded { dragEnded = false } else { fire("onDragEnd", lastDrag.event.merging(["cancelled": true]) { $1 }) }
+                let current = drag
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        guard current.started, !current.ended else { return }
+                        current.started = false
+                        fire("onDragEnd", current.event.merging(["cancelled": true]) { $1 })
+                    }
+                }
             }
             .modifier(Attach(node: node, feature: .magnify, enabled: node.has("onMagnify") || node.has("onMagnifyEnd"), simultaneous: true,
                              gesture: MagnifyGesture()
@@ -68,20 +80,27 @@ struct GestureModifiers: ViewModifier {
         DragGesture(minimumDistance: node.cgFloat("dragMinimumDistance") ?? 10, coordinateSpace: .global)
             .updating($dragging) { _, state, _ in state = true }
             .onChanged { value in
-                let event = drag(value)
-                lastDrag.event = event
+                let event = dragEvent(value)
+                if !drag.started {
+                    drag.started = true
+                    drag.ended = false
+                    // With dragActivation="longPress", onDragStart fired when the hold did.
+                    if node.string("dragActivation") != "longPress" { fire("onDragStart", event) }
+                }
+                drag.event = event
                 fire("onDrag", event)
             }
             .onEnded { value in
-                dragEnded = true
-                fire("onDragEnd", drag(value))
+                drag.ended = true
+                drag.started = false
+                fire("onDragEnd", dragEvent(value))
             }
     }
 
     /// `dragActivation="longPress"`: hold first (`longPressDuration`), then
     /// drag. Inside a ScrollView, scrolling still works until the hold.
     private var dragAttachment: some ViewModifier {
-        let enabled = node.has("onDrag") || node.has("onDragEnd")
+        let enabled = node.has("onDrag") || node.has("onDragEnd") || node.has("onDragStart")
         let priority = node.string("gesturePriority")
         if node.string("dragActivation") == "longPress" {
             let hold = LongPressGesture(minimumDuration: node.double("longPressDuration") ?? 0.4)
@@ -96,7 +115,7 @@ struct GestureModifiers: ViewModifier {
         if node.has(event) { runtime?.fire(node, event, payload) }
     }
 
-    private func drag(_ value: DragGesture.Value) -> [String: Any] {
+    private func dragEvent(_ value: DragGesture.Value) -> [String: Any] {
         func point(_ p: CGPoint) -> [String: Double] { ["x": p.x, "y": p.y] }
         func size(_ s: CGSize) -> [String: Double] { ["x": s.width, "y": s.height] }
         func local(_ p: CGPoint) -> [String: Double] { ["x": p.x - frame.minX, "y": p.y - frame.minY] }

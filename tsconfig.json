@@ -8,7 +8,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "lib": [
-      "ES2020"
+      "ES2023",
+      "ES2023.Intl"
     ],
     "types": [],
     "paths": {

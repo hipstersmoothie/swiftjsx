@@ -559,7 +559,7 @@ private func run(_ node: Node, inheritedCase: String?) -> Text {
     if node.bool("bold") { text = text.bold() }
     if node.bool("italic") { text = text.italic() }
     if let underline = node.prop("underline"), (underline as? Bool) != false { text = text.underline(true, color: color(underline)) }
-    if node.bool("strikethrough") { text = text.strikethrough() }
+    if let strike = node.prop("strikethrough"), (strike as? Bool) != false { text = text.strikethrough(true, color: color(strike)) }
     if let k = node.cgFloat("kerning") { text = text.kerning(k) }
     if let b = node.cgFloat("baselineOffset") { text = text.baselineOffset(b) }
     if node.bool("monospacedDigit") { text = text.monospacedDigit() }

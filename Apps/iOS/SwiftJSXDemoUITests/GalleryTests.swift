@@ -14,7 +14,13 @@ final class GalleryTests: XCTestCase {
     /// Taps a gallery row, scrolling to it first (the list is lazy).
     private func open(_ demo: String) {
         let row = app.buttons.containing(.staticText, identifier: demo).firstMatch
-        for _ in 0..<6 where !row.isHittable { app.swipeUp() }
+        var swiped = false
+        for _ in 0..<6 where !row.isHittable {
+            app.swipeUp()
+            swiped = true
+        }
+        // Let the list stop decelerating before tapping.
+        if swiped { sleep(1) }
         row.tap()
     }
 
@@ -40,6 +46,7 @@ final class GalleryTests: XCTestCase {
     func testRejectedInputKeepsValueAndFocus() {
         open("Hooks")
         let zip = app.textFields["zip"]
+        XCTAssert(zip.waitForExistence(timeout: 5))
         zip.tap()
         zip.typeText("12a34")
         XCTAssertEqual(zip.value as? String, "1234")

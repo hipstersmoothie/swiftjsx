@@ -31,7 +31,7 @@ struct TabViewHost: View {
                 .badge(badge(tab))
             }
         }
-        .modifier(TabViewStyleModifier(style: node.string("tabViewStyle")))
+        .modifier(TabViewStyleModifier(node: node))
         .onChange(of: node.string("selection")) { picked = nil }
     }
 
@@ -60,12 +60,19 @@ private struct TabContentView: View {
     }
 }
 
+/// `tabViewStyle="page"`: `pageIndicator` "automatic" (dots for 2+ pages),
+/// "always", "never", or "backed" (dots on a dimmed capsule, readable on
+/// light content).
 private struct TabViewStyleModifier: ViewModifier {
-    let style: String?
+    let node: Node
     func body(content: Content) -> some View {
-        switch style {
+        switch node.string("tabViewStyle") {
         #if os(iOS)
-        case "page": content.tabViewStyle(.page(indexDisplayMode: .automatic))
+        case "page":
+            let indicator = node.string("pageIndicator")
+            content
+                .tabViewStyle(.page(indexDisplayMode: indicator == "never" ? .never : indicator == "always" || indicator == "backed" ? .always : .automatic))
+                .indexViewStyle(.page(backgroundDisplayMode: indicator == "backed" ? .always : .automatic))
         #endif
         case "sidebarAdaptable": content.tabViewStyle(.sidebarAdaptable)
         default: content

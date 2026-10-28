@@ -88,10 +88,11 @@ struct NodeView: View {
             // Font and color come from the modifiers (environment); the rest
             // are Text's own.
             let underline = node.prop("underline")
+            let strikethrough = node.prop("strikethrough")
             // `markdown`: inline Markdown (bold, italic, code, links that open).
             let base = node.string("markdown").map { markdownText($0) } ?? styledText(node)
             let text = base
-                .strikethrough(node.bool("strikethrough"))
+                .strikethrough(strikethrough != nil && (strikethrough as? Bool) != false, color: color(strikethrough))
                 .italic(node.bool("italic"))
                 .bold(node.bool("bold"))
                 .underline(underline != nil && (underline as? Bool) != false, color: color(underline))
@@ -290,6 +291,8 @@ struct NodeView: View {
                 Stepper(value: value, in: (node.double("min") ?? -.infinity)...(node.double("max") ?? .infinity), step: node.double("step") ?? 1) {
                     if let label = node.string("label") { Text(label) } else { Children(node: node) }
                 }
+                // No label at all: just the −/+ control, compact in a row.
+                .labelsHidden(node.string("label") == nil && !node.children.contains { !$0.isAttachment })
             }
 
         case "Picker":

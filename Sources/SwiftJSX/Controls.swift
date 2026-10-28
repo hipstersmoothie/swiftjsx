@@ -35,6 +35,7 @@ struct TextFieldHost: View {
             .focused($focused)
         }
         .modifier(FieldStyle(node: node))
+        .multilineTextAlignment(textAlignment(node.string("textAlignment")))
         .submitLabel(parseSubmitLabel(node.string("submitLabel")))
         .autocorrectionDisabled(node.has("autocorrect") && !node.bool("autocorrect"))
         #if os(iOS)
@@ -137,6 +138,14 @@ private func parseContentType(_ name: String?) -> UITextContentType? {
     case "organization": .organizationName
     case "jobTitle": .jobTitle
     case "creditCardNumber": .creditCardNumber
+    case "creditCardExpiration": .creditCardExpiration
+    case "creditCardSecurityCode": .creditCardSecurityCode
+    case "creditCardName": .creditCardName
+    case "streetAddressLine1": .streetAddressLine1
+    case "streetAddressLine2": .streetAddressLine2
+    case "state": .addressState
+    case "cityAndState": .addressCityAndState
+    case "birthdate": .birthdate
     default: nil
     }
 }
