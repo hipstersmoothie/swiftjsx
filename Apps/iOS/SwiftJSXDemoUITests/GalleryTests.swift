@@ -732,6 +732,8 @@ final class GalleryTests: XCTestCase {
         app.webViews.buttons["Send a message"].tap()
         XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'clicked'"), evaluatedWith: message)], timeout: 5) == .completed, message.label)
         snapshot("media")
+        // A UIKit view made in JS (AVRoutePickerView), hosted in SwiftUI.
+        XCTAssert(element("route-picker").exists, "the native route picker")
         // A tap on the map moves it, and onRegionChange reports where.
         let map = element("map")
         for _ in 0..<3 where !map.isHittable { app.swipeUp() }
@@ -800,5 +802,14 @@ final class GalleryTests: XCTestCase {
         XCTAssert(value.waitForExistence(timeout: 5))
         XCTAssert(app.staticTexts["Wake up"].exists, "the LabeledContent's view label")
         snapshot("time-picker")
+    }
+    func testMaterialCard() {
+        open("Shapes, colors & fonts")
+        let card = element("material-card")
+        for _ in 0..<6 where !(card.exists && card.isHittable) { app.swipeUp() }
+        XCTAssert(card.waitForExistence(timeout: 5))
+        sleep(1)
+        snapshot("material-card")
+        XCTAssert(app.staticTexts["secondary stays vibrant"].exists)
     }
 }

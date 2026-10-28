@@ -207,6 +207,10 @@ function Battery() {
   Compare native objects with `a.isEqual(b)`: wrappers and `interop.handleof` aren't stable
   identities across calls. An Objective-C exception inside a native call throws in JS with its
   reason, and native objects that call back after their runtime is gone are ignored.
+- **Native views.** `<NativeView create={() => native.AVRoutePickerView.new()} frame={…} />`
+  hosts a UIView (NSView on macOS) made in JS, laid out and modified like any other view
+  (`sizing="fit"` uses its own fitting size). `create` runs on main; keep the view from
+  `onCreate` to change it later inside `onMain`.
 - **Threads.** JS runs on the JS thread; most of UIKit is main-thread-only. `onMain(fn)` runs
   `fn` on main and resumes on the JS thread. Native callbacks fired on main (delegates,
   target-action, UIKit blocks) run on main, so UIKit inside them just works and they can

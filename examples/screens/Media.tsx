@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Screen, ScrollView, VStack, HStack, Text, Button, Video, WebView, MapView, Marker, MapAnnotation, MapPolyline, MapCircle, Image, Toggle,
-  useGeolocation, type MapRegion,
+  useGeolocation, NativeView, native, isNativeAvailable, type MapRegion,
 } from "swiftjsx";
 
 const VIDEO = "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8";
@@ -42,6 +42,18 @@ export function MediaDemo() {
           />
           <HStack>
             <Button title={paused ? "Play" : "Pause"} buttonStyle="bordered" onPress={() => setPaused((p) => !p)} />
+            {/* A UIKit view from the native backend: the AirPlay picker. */}
+            {isNativeAvailable() && (
+              <NativeView
+                create={() => {
+                  const picker = native.AVRoutePickerView.new();
+                  picker.activeTintColor = native.UIColor.systemBlueColor;
+                  return picker;
+                }}
+                frame={{ width: 36, height: 36 }}
+                accessibilityIdentifier="route-picker"
+              />
+            )}
             <Text font="footnote" monospacedDigit foregroundStyle="secondary" accessibilityIdentifier="video-status">{video}</Text>
           </HStack>
 

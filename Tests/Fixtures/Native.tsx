@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  render, VStack, Text, Button, native, onMain, isNativeAvailable, useNativeValue, defineNativeClass, keepAlive, nativePromise,
-  observeKeyPath,
+  render, VStack, Text, Button, native, onMain, onJS, isNativeAvailable, useNativeValue, defineNativeClass, keepAlive, nativePromise,
+  observeKeyPath, NativeView,
 } from "swiftjsx";
 
 // Module level: nothing registers until first use.
@@ -39,6 +39,7 @@ function App() {
   const [note, setNote] = useState("none");
   const [rejected, setRejected] = useState("none");
   const [sorted, setSorted] = useState("none");
+  const [made, setMade] = useState(false);
   const process = useNativeValue(() => native.NSProcessInfo.processInfo.processName, { mainThread: false });
   const refreshes = useNativeValue(countRead, { notifications: "SwiftJSXTestRefresh" });
 
@@ -159,6 +160,16 @@ function App() {
         }
       />
       <Text>sorted {sorted}</Text>
+      <NativeView
+        create={() => {
+          // macOS (the tests): AppKit. The generated types are UIKit's.
+          const view = (native as any).NSView.new();
+          view.toolTip = "made in JS";
+          return view;
+        }}
+        onCreate={() => onJS(() => setMade(true))}
+      />
+      <Text>native view {String(made)}</Text>
     </VStack>
   );
 }

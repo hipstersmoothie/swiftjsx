@@ -62,9 +62,11 @@ struct Modifiers: ViewModifier {
             .modifier(FrameModifier(frame: node.dict("frame")))
             // Sizing next to the frame, so backgrounds and corners follow it.
             .modifier(Sizing(node: node))
-            // The background is drawn in the corner shape. A material's content
-            // isn't clipped: a rounded clip over a material turns off vibrancy,
-            // and hierarchical text ("secondary") and dividers on it vanish.
+            // The background is drawn in the corner shape. Over a material,
+            // only the content is clipped (before the background): a rounded
+            // clip over a material turns off vibrancy, and hierarchical text
+            // ("secondary") and dividers on it vanish.
+            .clipShape(BoxShape(corners: hasMaterialBackground ? corners : Corners(nil), unbounded: true))
             .background {
                 // Square backgrounds extend under the bars at screen edges
                 // (full-bleed gradients), like SwiftUI's .background(style).

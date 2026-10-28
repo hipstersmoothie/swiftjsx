@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import {
-  Screen, ScrollView, VStack, HStack, ZStack, Text, Image, Button, Spacer,
+  Screen, ScrollView, VStack, HStack, ZStack, Text, Image, Button, Spacer, Divider,
   Rectangle, RoundedRectangle, Circle, Capsule, Ellipse, Path, Polyline, withAnimation, type Color,
 } from "swiftjsx";
 
@@ -84,6 +84,19 @@ export function StylesDemo() {
               <Text foregroundStyle="secondary">secondary is dimmed white here</Text>
               <Text foregroundStyle="tertiary">tertiary, dimmer still</Text>
             </VStack>
+            {/* A material card: its content is clipped to the corners, and
+                hierarchical text and dividers stay vibrant. */}
+            <ZStack padding={14} background={{ gradient: ["pink", "orange", "yellow"], start: "topLeading", end: "bottomTrailing" }} cornerRadius={14}>
+              <VStack alignment="leading" spacing={0} background="regularMaterial" cornerRadius={16} accessibilityIdentifier="material-card">
+                <Rectangle fill="indigo" frame={{ maxWidth: Infinity, height: 22 }} />
+                <VStack alignment="leading" spacing={6} padding={12}>
+                  <Text font="headline">On a material</Text>
+                  <Text foregroundStyle="secondary">secondary stays vibrant</Text>
+                  <Divider />
+                  <Text foregroundStyle="tertiary">the strip above is clipped to the corners</Text>
+                </VStack>
+              </VStack>
+            </ZStack>
             <HStack spacing={12} padding={14} background="secondarySystemBackground" cornerRadius={14} colorScheme={dark ? "dark" : "light"}>
               <Image systemName={dark ? "moon.fill" : "sun.max.fill"} foregroundStyle={{ light: "orange", dark: "yellow" }} />
               <Text>colorScheme="{dark ? "dark" : "light"}"</Text>

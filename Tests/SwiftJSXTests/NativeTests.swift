@@ -27,6 +27,15 @@ struct NativeTests {
         #expect(runtime.error == nil)
     }
 
+    @Test func nativeViewsAreHandedToSwift() async throws {
+        let runtime = try await makeRuntime()
+        #expect(await eventually { runtime.texts().contains("native view true") })
+        let node = try #require(runtime.all().first { $0.type == "NativeView" })
+        #expect(await eventually { node.string("viewKey") != nil })
+        let view = NativeViewHost.view(for: node.string("viewKey"))
+        #expect(view?.toolTip == "made in JS")
+    }
+
     @Test func onMainRunsOnMainAndResumesOnTheJSThread() async throws {
         let runtime = try await makeRuntime()
         runtime.press("hop")

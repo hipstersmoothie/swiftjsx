@@ -7,6 +7,8 @@ struct ScrollViewHost: View {
     let node: Node
     /// For `scrollTo({ x, y })` (ScrollViewReader only scrolls to views).
     @State private var position = ScrollPosition()
+    /// Children's leading edges in the content, for `onScrollIndexChange`.
+    @State private var edges = ChildEdges()
 
     var body: some View {
         let horizontal = node.string("axis") == "horizontal"
@@ -14,9 +16,15 @@ struct ScrollViewHost: View {
             ScrollView(horizontal ? .horizontal : .vertical) {
                 Group {
                     let spacing = node.cgFloat("spacing")
-                    if horizontal { HStack(spacing: spacing) { Children(node: node) } } else { VStack(spacing: spacing) { Children(node: node) } }
+                    let tracked = node.has("onScrollIndexChange") ? edges : nil
+                    if horizontal {
+                        HStack(spacing: spacing) { ScrollTargets(node: node, edges: tracked, horizontal: true) }
+                    } else {
+                        VStack(spacing: spacing) { ScrollTargets(node: node, edges: tracked, horizontal: false) }
+                    }
                 }
                 .scrollTargetLayout()
+                .coordinateSpace(.named(ChildEdges.space))
                 .background(alignment: horizontal ? .leading : .top) {
                     Color.clear.frame(width: 1, height: 1).id(ScrollEdge.top)
                 }
@@ -27,7 +35,7 @@ struct ScrollViewHost: View {
             // Rows in here aren't List rows, even inside one (a carousel in a row).
             .environment(\.inList, false)
             .modifier(ScrollOptions(node: node))
-            .modifier(Position(node: node, horizontal: horizontal))
+            .modifier(Position(node: node, horizontal: horizontal, edges: edges))
             .scrollPosition($position)
             .onChange(of: node.scrollRequest) { _, request in
                 if let request, let offset = request.target.base as? ScrollOffset {
@@ -42,28 +50,64 @@ struct ScrollViewHost: View {
         }
     }
 
-    /// `onScrollIndexChange(index)`: the child at the leading (top) edge, when
-    /// it changes (a carousel's page), instead of working it out from
-    /// `onScroll` every frame. Assumes children of equal size, as in pagers
-    /// and carousels.
+    /// `onScrollIndexChange(index)`: the child whose leading edge is nearest
+    /// the scroll position, when it changes (a carousel's page), instead of
+    /// working it out from `onScroll` every frame. Children of any size.
     private struct Position: ViewModifier {
         let node: Node
         let horizontal: Bool
+        let edges: ChildEdges
         @Environment(\.jsxRuntime) private var runtime
 
         func body(content: Content) -> some View {
             if node.has("onScrollIndexChange") {
-                let count = node.children.filter { !$0.isAttachment }.count
                 content.onScrollGeometryChange(for: Int.self) { geo in
                     let offset = horizontal ? geo.contentOffset.x + geo.contentInsets.leading : geo.contentOffset.y + geo.contentInsets.top
-                    let length = horizontal ? geo.contentSize.width : geo.contentSize.height
-                    guard count > 0, length > 0 else { return 0 }
-                    return min(count - 1, max(0, Int((offset / (length / CGFloat(count))).rounded())))
+                    let children = node.children.filter { !$0.isAttachment }
+                    var best = 0
+                    var distance = CGFloat.infinity
+                    for (index, child) in children.enumerated() {
+                        guard let edge = edges.leading[child.id], abs(edge - offset) < distance else { continue }
+                        best = index
+                        distance = abs(edge - offset)
+                    }
+                    return best
                 } action: { _, index in
                     runtime?.dispatch(node.id, "onScrollIndexChange", index)
                 }
             } else {
                 content
+            }
+        }
+    }
+}
+
+/// Where each child of a ScrollView starts, in the content's coordinates.
+/// A reference: updating it doesn't re-render anything.
+final class ChildEdges {
+    static let space = "SwiftJSX.scrollContent"
+    var leading: [Int: CGFloat] = [:]
+}
+
+/// A ScrollView's children, with explicit ids (the same as their ForEach
+/// identity, so nothing resets): ScrollViewReader doesn't find views by
+/// ForEach identity in here.
+private struct ScrollTargets: View {
+    let node: Node
+    /// Set with `onScrollIndexChange`: each child records its leading edge.
+    let edges: ChildEdges?
+    let horizontal: Bool
+
+    var body: some View {
+        ForEach(node.children.filter { !$0.isAttachment }) { child in
+            if let edges {
+                NodeView(node: child).id(child.id)
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        let frame = proxy.frame(in: .named(ChildEdges.space))
+                        return horizontal ? frame.minX : frame.minY
+                    } action: { edges.leading[child.id] = $0 }
+            } else {
+                NodeView(node: child).id(child.id)
             }
         }
     }

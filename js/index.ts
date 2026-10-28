@@ -6,6 +6,7 @@
 export { render, withAnimation, openURL, canOpenURL, HostInstance } from "./renderer";
 export type { Frame, ScrollTarget, ScrollOptions } from "./renderer";
 export * from "./components";
+export { NativeView, type NativeViewProps } from "./native-view";
 export { Navigator, useNavigation, NavigationSplitView, createNavigationRef, type Navigation, type NavigationRef } from "./navigation";
 export { VirtualList, type VirtualListProps } from "./virtual-list";
 export {

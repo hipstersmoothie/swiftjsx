@@ -242,7 +242,7 @@
                       });
                       return value;
                     },
-                    useEffect: function useEffect4(create) {
+                    useEffect: function useEffect5(create) {
                       nextHook();
                       hookLog.push({
                         displayName: null,
@@ -315,7 +315,7 @@
                       return [initialArg, function() {
                       }];
                     },
-                    useRef: function useRef5(initialValue) {
+                    useRef: function useRef6(initialValue) {
                       var hook = nextHook();
                       initialValue = null !== hook ? hook.memoizedState : {
                         current: initialValue
@@ -330,7 +330,7 @@
                       });
                       return initialValue;
                     },
-                    useState: function useState8(initialState) {
+                    useState: function useState9(initialState) {
                       var hook = nextHook();
                       initialState = null !== hook ? hook.memoizedState : "function" === typeof initialState ? initialState() : initialState;
                       hookLog.push({
@@ -34995,6 +34995,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     Marker: () => Marker,
     Menu: () => Menu,
     MenuLabel: () => MenuLabel,
+    NativeView: () => NativeView,
     NavigationPage: () => NavigationPage,
     NavigationRow: () => NavigationRow,
     NavigationSplitView: () => NavigationSplitView,
@@ -35821,361 +35822,12 @@ ${e.stack}` : String(e);
   var RuleMark = host("RuleMark");
   var RectangleMark = host("RectangleMark");
 
-  // js/navigation.tsx
-  var import_compiler_runtime2 = __toESM(require_compiler_runtime(), 1);
-  var import_react3 = __toESM(require_react(), 1);
-  var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
-  function createNavigationRef() {
-    let current2 = null;
-    const queued = [];
-    const run = (fn) => current2 ? fn(current2) : queued.push(fn);
-    return {
-      get current() {
-        return current2;
-      },
-      set current(nav) {
-        current2 = nav;
-        if (nav) queued.splice(0).forEach((fn) => fn(nav));
-      },
-      isReady: () => current2 !== null,
-      push: (screen) => run((nav) => nav.push(screen)),
-      pop: () => run((nav) => nav.pop()),
-      popToRoot: () => run((nav) => nav.popToRoot()),
-      replace: (screen) => run((nav) => nav.replace(screen)),
-      get depth() {
-        return current2?.depth ?? 0;
-      }
-    };
-  }
-  var NavigationContext = (0, import_react3.createContext)(null);
-  function Navigator({
-    children,
-    navigationRef,
-    ...modifiers
-  }) {
-    const [stack, setStack] = (0, import_react3.useState)([]);
-    const lastKey = (0, import_react3.useRef)(0);
-    const nav = {
-      push: (screen) => {
-        const key = ++lastKey.current;
-        setStack((s) => [...s, {
-          key,
-          screen
-        }]);
-      },
-      pop: () => setStack((s_0) => s_0.slice(0, -1)),
-      popToRoot: () => setStack([]),
-      replace: (screen_0) => {
-        const key_0 = ++lastKey.current;
-        setStack((s_1) => s_1.length ? [...s_1.slice(0, -1), {
-          key: key_0,
-          screen: screen_0
-        }] : s_1);
-      },
-      depth: stack.length
-    };
-    (0, import_react3.useLayoutEffect)(() => {
-      if (!navigationRef) return;
-      navigationRef.current = nav;
-      return () => {
-        navigationRef.current = null;
-      };
-    });
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationContext.Provider, { value: nav, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(NavigationStack, { ...modifiers, onPathChange: (depth) => setStack((s_2) => s_2.slice(0, depth)), children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationPage, { children }),
-      stack.map((entry) => (
-        // Each pushed screen gets its own key, so pushing the same component
-        // twice gives two independent instances (own state, own effects).
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationPage, { children: entry.screen }, entry.key)
-      ))
-    ] }) });
-  }
-  function useNavigation() {
-    const $ = (0, import_compiler_runtime2.c)(1);
-    if ($[0] !== "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793") {
-      for (let $i = 0; $i < 1; $i += 1) {
-        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
-      }
-      $[0] = "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793";
-    }
-    const nav = (0, import_react3.useContext)(NavigationContext);
-    if (!nav) {
-      throw new Error("useNavigation() must be used inside <Navigator>");
-    }
-    return nav;
-  }
-  function NavigationSplitView(t0) {
-    const $ = (0, import_compiler_runtime2.c)(22);
-    if ($[0] !== "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793") {
-      for (let $i = 0; $i < 22; $i += 1) {
-        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
-      }
-      $[0] = "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793";
-    }
-    let content;
-    let detail;
-    let props;
-    let sidebar;
-    if ($[1] !== t0) {
-      ({
-        sidebar,
-        content,
-        detail,
-        ...props
-      } = t0);
-      $[1] = t0;
-      $[2] = content;
-      $[3] = detail;
-      $[4] = props;
-      $[5] = sidebar;
-    } else {
-      content = $[2];
-      detail = $[3];
-      props = $[4];
-      sidebar = $[5];
-    }
-    let t1;
-    if ($[6] !== sidebar) {
-      t1 = ["sidebar", sidebar];
-      $[6] = sidebar;
-      $[7] = t1;
-    } else {
-      t1 = $[7];
-    }
-    let t2;
-    if ($[8] !== content) {
-      t2 = ["content", content];
-      $[8] = content;
-      $[9] = t2;
-    } else {
-      t2 = $[9];
-    }
-    let t3;
-    if ($[10] !== detail) {
-      t3 = ["detail", detail];
-      $[10] = detail;
-      $[11] = t3;
-    } else {
-      t3 = $[11];
-    }
-    let t4;
-    if ($[12] !== t1 || $[13] !== t2 || $[14] !== t3) {
-      t4 = [t1, t2, t3];
-      $[12] = t1;
-      $[13] = t2;
-      $[14] = t3;
-      $[15] = t4;
-    } else {
-      t4 = $[15];
-    }
-    const columns = t4;
-    let t5;
-    if ($[16] !== columns || $[17] !== content) {
-      t5 = columns.map((t62) => {
-        const [column, children] = t62;
-        return column === "content" && content === void 0 ? null : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SplitColumn, { column, children }, column);
-      });
-      $[16] = columns;
-      $[17] = content;
-      $[18] = t5;
-    } else {
-      t5 = $[18];
-    }
-    let t6;
-    if ($[19] !== props || $[20] !== t5) {
-      t6 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NavigationSplitViewHost, { ...props, children: t5 });
-      $[19] = props;
-      $[20] = t5;
-      $[21] = t6;
-    } else {
-      t6 = $[21];
-    }
-    return t6;
-  }
-
-  // js/virtual-list.tsx
-  var import_compiler_runtime3 = __toESM(require_compiler_runtime(), 1);
+  // js/native-view.tsx
   var import_react4 = __toESM(require_react(), 1);
-  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
-  var VirtualListHost = "VirtualList";
-  var VirtualListHeader = "VirtualListHeader";
-  var VirtualListFooter = "VirtualListFooter";
-  var VirtualRow = "VirtualRow";
-  function VirtualList(t0) {
-    const $ = (0, import_compiler_runtime3.c)(39);
-    if ($[0] !== "c236ce2747c335bfb8b8870a752804857adce740120af85bdf94582ea93b75f0") {
-      for (let $i = 0; $i < 39; $i += 1) {
-        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
-      }
-      $[0] = "c236ce2747c335bfb8b8870a752804857adce740120af85bdf94582ea93b75f0";
-    }
-    let children;
-    let data;
-    let footer;
-    let header;
-    let keyExtractor;
-    let onEndReached;
-    let renderItem;
-    let rest;
-    let t1;
-    let t2;
-    let t3;
-    if ($[1] !== t0) {
-      ({
-        data,
-        renderItem,
-        keyExtractor,
-        estimatedItemHeight: t1,
-        overscan: t2,
-        onEndReached,
-        onEndReachedThreshold: t3,
-        header,
-        footer,
-        children,
-        ...rest
-      } = t0);
-      $[1] = t0;
-      $[2] = children;
-      $[3] = data;
-      $[4] = footer;
-      $[5] = header;
-      $[6] = keyExtractor;
-      $[7] = onEndReached;
-      $[8] = renderItem;
-      $[9] = rest;
-      $[10] = t1;
-      $[11] = t2;
-      $[12] = t3;
-    } else {
-      children = $[2];
-      data = $[3];
-      footer = $[4];
-      header = $[5];
-      keyExtractor = $[6];
-      onEndReached = $[7];
-      renderItem = $[8];
-      rest = $[9];
-      t1 = $[10];
-      t2 = $[11];
-      t3 = $[12];
-    }
-    const estimatedItemHeight = t1 === void 0 ? 44 : t1;
-    const overscan = t2 === void 0 ? 10 : t2;
-    const onEndReachedThreshold = t3 === void 0 ? 10 : t3;
-    const t4 = Math.min(data.length, overscan * 4);
-    let t5;
-    if ($[13] !== t4) {
-      t5 = {
-        start: 0,
-        end: t4
-      };
-      $[13] = t4;
-      $[14] = t5;
-    } else {
-      t5 = $[14];
-    }
-    const [range, setRange] = (0, import_react4.useState)(t5);
-    const previousFirst = (0, import_react4.useRef)(0);
-    const endReachedAt = (0, import_react4.useRef)(-1);
-    let t6;
-    if ($[15] !== data.length || $[16] !== onEndReached || $[17] !== onEndReachedThreshold || $[18] !== overscan) {
-      t6 = (t72) => {
-        const {
-          first,
-          last
-        } = t72;
-        if (onEndReached && last >= data.length - 1 - onEndReachedThreshold && endReachedAt.current !== data.length) {
-          endReachedAt.current = data.length;
-          onEndReached();
-        }
-        const down = first >= previousFirst.current;
-        previousFirst.current = first;
-        setRange((r) => {
-          const ahead = Math.max(overscan, 2 * (last - first + 1));
-          const behind = overscan;
-          const leadBelow = r.end - 1 - last;
-          const leadAbove = first - r.start;
-          const visibleOutside = first < r.start || last >= r.end;
-          const runningOut = down ? r.end < data.length && leadBelow < ahead / 2 : r.start > 0 && leadAbove < ahead / 2;
-          if (!visibleOutside && !runningOut) {
-            return r;
-          }
-          return down ? {
-            start: Math.max(0, first - behind),
-            end: Math.min(data.length, last + ahead + 1)
-          } : {
-            start: Math.max(0, first - ahead),
-            end: Math.min(data.length, last + behind + 1)
-          };
-        });
-      };
-      $[15] = data.length;
-      $[16] = onEndReached;
-      $[17] = onEndReachedThreshold;
-      $[18] = overscan;
-      $[19] = t6;
-    } else {
-      t6 = $[19];
-    }
-    const onRangeChange = t6;
-    let rows;
-    if ($[20] !== data || $[21] !== keyExtractor || $[22] !== range.end || $[23] !== range.start || $[24] !== renderItem) {
-      rows = [];
-      const end = Math.min(range.end, data.length);
-      for (let i = range.start; i < end; i++) {
-        rows.push(/* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VirtualRow, { index: i, children: renderItem(data[i], i) }, keyExtractor ? keyExtractor(data[i], i) : i));
-      }
-      $[20] = data;
-      $[21] = keyExtractor;
-      $[22] = range.end;
-      $[23] = range.start;
-      $[24] = renderItem;
-      $[25] = rows;
-    } else {
-      rows = $[25];
-    }
-    let t7;
-    if ($[26] !== header) {
-      t7 = header != null ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VirtualListHeader, { children: header }) : null;
-      $[26] = header;
-      $[27] = t7;
-    } else {
-      t7 = $[27];
-    }
-    let t8;
-    if ($[28] !== footer) {
-      t8 = footer != null ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VirtualListFooter, { children: footer }) : null;
-      $[28] = footer;
-      $[29] = t8;
-    } else {
-      t8 = $[29];
-    }
-    let t9;
-    if ($[30] !== children || $[31] !== data.length || $[32] !== estimatedItemHeight || $[33] !== onRangeChange || $[34] !== rest || $[35] !== rows || $[36] !== t7 || $[37] !== t8) {
-      t9 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, children: [
-        children,
-        t7,
-        t8,
-        rows
-      ] });
-      $[30] = children;
-      $[31] = data.length;
-      $[32] = estimatedItemHeight;
-      $[33] = onRangeChange;
-      $[34] = rest;
-      $[35] = rows;
-      $[36] = t7;
-      $[37] = t8;
-      $[38] = t9;
-    } else {
-      t9 = $[38];
-    }
-    return t9;
-  }
 
   // js/native.ts
-  var import_compiler_runtime4 = __toESM(require_compiler_runtime(), 1);
-  var import_react5 = __toESM(require_react(), 1);
+  var import_compiler_runtime2 = __toESM(require_compiler_runtime(), 1);
+  var import_react3 = __toESM(require_react(), 1);
   var host2 = globalThis;
   function isNativeAvailable() {
     return host2.native != null;
@@ -36228,7 +35880,7 @@ ${e.stack}` : String(e);
     return (...args) => void onJS(() => fn(...args));
   }
   function useNativeValue(read, t0) {
-    const $ = (0, import_compiler_runtime4.c)(18);
+    const $ = (0, import_compiler_runtime2.c)(18);
     if ($[0] !== "01044f7b19a7d200b4ede2040d495e951247117197376ea9cf4680edcfbfea03") {
       for (let $i = 0; $i < 18; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36250,7 +35902,7 @@ ${e.stack}` : String(e);
       mainThread: t2
     } = options;
     const mainThread = t2 === void 0 ? true : t2;
-    const [value, setValue] = (0, import_react5.useState)(void 0);
+    const [value, setValue] = (0, import_react3.useState)(void 0);
     let t3;
     if ($[3] !== notifications2) {
       t3 = notifications2 == null ? [] : Array.isArray(notifications2) ? notifications2 : [notifications2];
@@ -36277,7 +35929,7 @@ ${e.stack}` : String(e);
     } else {
       t5 = $[8];
     }
-    const readNow = (0, import_react5.useEffectEvent)(t5);
+    const readNow = (0, import_react3.useEffectEvent)(t5);
     let t6;
     if ($[9] !== mainThread || $[10] !== names || $[11] !== poll || $[12] !== readNow) {
       t6 = () => {
@@ -36316,7 +35968,7 @@ ${e.stack}` : String(e);
     } else {
       t7 = $[17];
     }
-    (0, import_react5.useEffect)(t6, t7);
+    (0, import_react3.useEffect)(t6, t7);
     return value;
   }
   function _temp(e) {
@@ -36441,10 +36093,399 @@ ${e.stack}` : String(e);
     };
   }
 
-  // js/presentations.tsx
-  var import_compiler_runtime5 = __toESM(require_compiler_runtime(), 1);
+  // js/native-view.tsx
+  var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
+  var NativeViewHost = "NativeView";
+  var nextView = 1;
+  function NativeView({
+    create,
+    onCreate,
+    ...props
+  }) {
+    const [key, setKey] = (0, import_react4.useState)(null);
+    const latest = (0, import_react4.useRef)({
+      create,
+      onCreate
+    });
+    (0, import_react4.useEffect)(() => {
+      latest.current = {
+        create,
+        onCreate
+      };
+    });
+    (0, import_react4.useEffect)(() => {
+      const id = `swiftjsx.nativeView.${nextView++}`;
+      let live2 = true;
+      onMain(() => {
+        const view = latest.current.create();
+        native.NSThread.mainThread.threadDictionary.setObjectForKey(view, id);
+        latest.current.onCreate?.(view);
+      }).then(() => live2 && setKey(id), (error) => console.error("NativeView create() failed:", error));
+      return () => {
+        live2 = false;
+        void onMain(() => native.NSThread.mainThread.threadDictionary.removeObjectForKey(id)).catch(() => {
+        });
+      };
+    }, []);
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NativeViewHost, { ...props, viewKey: key });
+  }
+
+  // js/navigation.tsx
+  var import_compiler_runtime3 = __toESM(require_compiler_runtime(), 1);
+  var import_react5 = __toESM(require_react(), 1);
+  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+  function createNavigationRef() {
+    let current2 = null;
+    const queued = [];
+    const run = (fn) => current2 ? fn(current2) : queued.push(fn);
+    return {
+      get current() {
+        return current2;
+      },
+      set current(nav) {
+        current2 = nav;
+        if (nav) queued.splice(0).forEach((fn) => fn(nav));
+      },
+      isReady: () => current2 !== null,
+      push: (screen) => run((nav) => nav.push(screen)),
+      pop: () => run((nav) => nav.pop()),
+      popToRoot: () => run((nav) => nav.popToRoot()),
+      replace: (screen) => run((nav) => nav.replace(screen)),
+      get depth() {
+        return current2?.depth ?? 0;
+      }
+    };
+  }
+  var NavigationContext = (0, import_react5.createContext)(null);
+  function Navigator({
+    children,
+    navigationRef,
+    ...modifiers
+  }) {
+    const [stack, setStack] = (0, import_react5.useState)([]);
+    const lastKey = (0, import_react5.useRef)(0);
+    const nav = {
+      push: (screen) => {
+        const key = ++lastKey.current;
+        setStack((s) => [...s, {
+          key,
+          screen
+        }]);
+      },
+      pop: () => setStack((s_0) => s_0.slice(0, -1)),
+      popToRoot: () => setStack([]),
+      replace: (screen_0) => {
+        const key_0 = ++lastKey.current;
+        setStack((s_1) => s_1.length ? [...s_1.slice(0, -1), {
+          key: key_0,
+          screen: screen_0
+        }] : s_1);
+      },
+      depth: stack.length
+    };
+    (0, import_react5.useLayoutEffect)(() => {
+      if (!navigationRef) return;
+      navigationRef.current = nav;
+      return () => {
+        navigationRef.current = null;
+      };
+    });
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationContext.Provider, { value: nav, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(NavigationStack, { ...modifiers, onPathChange: (depth) => setStack((s_2) => s_2.slice(0, depth)), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationPage, { children }),
+      stack.map((entry) => (
+        // Each pushed screen gets its own key, so pushing the same component
+        // twice gives two independent instances (own state, own effects).
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationPage, { children: entry.screen }, entry.key)
+      ))
+    ] }) });
+  }
+  function useNavigation() {
+    const $ = (0, import_compiler_runtime3.c)(1);
+    if ($[0] !== "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793") {
+      for (let $i = 0; $i < 1; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793";
+    }
+    const nav = (0, import_react5.useContext)(NavigationContext);
+    if (!nav) {
+      throw new Error("useNavigation() must be used inside <Navigator>");
+    }
+    return nav;
+  }
+  function NavigationSplitView(t0) {
+    const $ = (0, import_compiler_runtime3.c)(22);
+    if ($[0] !== "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793") {
+      for (let $i = 0; $i < 22; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793";
+    }
+    let content;
+    let detail;
+    let props;
+    let sidebar;
+    if ($[1] !== t0) {
+      ({
+        sidebar,
+        content,
+        detail,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = content;
+      $[3] = detail;
+      $[4] = props;
+      $[5] = sidebar;
+    } else {
+      content = $[2];
+      detail = $[3];
+      props = $[4];
+      sidebar = $[5];
+    }
+    let t1;
+    if ($[6] !== sidebar) {
+      t1 = ["sidebar", sidebar];
+      $[6] = sidebar;
+      $[7] = t1;
+    } else {
+      t1 = $[7];
+    }
+    let t2;
+    if ($[8] !== content) {
+      t2 = ["content", content];
+      $[8] = content;
+      $[9] = t2;
+    } else {
+      t2 = $[9];
+    }
+    let t3;
+    if ($[10] !== detail) {
+      t3 = ["detail", detail];
+      $[10] = detail;
+      $[11] = t3;
+    } else {
+      t3 = $[11];
+    }
+    let t4;
+    if ($[12] !== t1 || $[13] !== t2 || $[14] !== t3) {
+      t4 = [t1, t2, t3];
+      $[12] = t1;
+      $[13] = t2;
+      $[14] = t3;
+      $[15] = t4;
+    } else {
+      t4 = $[15];
+    }
+    const columns = t4;
+    let t5;
+    if ($[16] !== columns || $[17] !== content) {
+      t5 = columns.map((t62) => {
+        const [column, children] = t62;
+        return column === "content" && content === void 0 ? null : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(SplitColumn, { column, children }, column);
+      });
+      $[16] = columns;
+      $[17] = content;
+      $[18] = t5;
+    } else {
+      t5 = $[18];
+    }
+    let t6;
+    if ($[19] !== props || $[20] !== t5) {
+      t6 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationSplitViewHost, { ...props, children: t5 });
+      $[19] = props;
+      $[20] = t5;
+      $[21] = t6;
+    } else {
+      t6 = $[21];
+    }
+    return t6;
+  }
+
+  // js/virtual-list.tsx
+  var import_compiler_runtime4 = __toESM(require_compiler_runtime(), 1);
   var import_react6 = __toESM(require_react(), 1);
   var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
+  var VirtualListHost = "VirtualList";
+  var VirtualListHeader = "VirtualListHeader";
+  var VirtualListFooter = "VirtualListFooter";
+  var VirtualRow = "VirtualRow";
+  function VirtualList(t0) {
+    const $ = (0, import_compiler_runtime4.c)(39);
+    if ($[0] !== "c236ce2747c335bfb8b8870a752804857adce740120af85bdf94582ea93b75f0") {
+      for (let $i = 0; $i < 39; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "c236ce2747c335bfb8b8870a752804857adce740120af85bdf94582ea93b75f0";
+    }
+    let children;
+    let data;
+    let footer;
+    let header;
+    let keyExtractor;
+    let onEndReached;
+    let renderItem;
+    let rest;
+    let t1;
+    let t2;
+    let t3;
+    if ($[1] !== t0) {
+      ({
+        data,
+        renderItem,
+        keyExtractor,
+        estimatedItemHeight: t1,
+        overscan: t2,
+        onEndReached,
+        onEndReachedThreshold: t3,
+        header,
+        footer,
+        children,
+        ...rest
+      } = t0);
+      $[1] = t0;
+      $[2] = children;
+      $[3] = data;
+      $[4] = footer;
+      $[5] = header;
+      $[6] = keyExtractor;
+      $[7] = onEndReached;
+      $[8] = renderItem;
+      $[9] = rest;
+      $[10] = t1;
+      $[11] = t2;
+      $[12] = t3;
+    } else {
+      children = $[2];
+      data = $[3];
+      footer = $[4];
+      header = $[5];
+      keyExtractor = $[6];
+      onEndReached = $[7];
+      renderItem = $[8];
+      rest = $[9];
+      t1 = $[10];
+      t2 = $[11];
+      t3 = $[12];
+    }
+    const estimatedItemHeight = t1 === void 0 ? 44 : t1;
+    const overscan = t2 === void 0 ? 10 : t2;
+    const onEndReachedThreshold = t3 === void 0 ? 10 : t3;
+    const t4 = Math.min(data.length, overscan * 4);
+    let t5;
+    if ($[13] !== t4) {
+      t5 = {
+        start: 0,
+        end: t4
+      };
+      $[13] = t4;
+      $[14] = t5;
+    } else {
+      t5 = $[14];
+    }
+    const [range, setRange] = (0, import_react6.useState)(t5);
+    const previousFirst = (0, import_react6.useRef)(0);
+    const endReachedAt = (0, import_react6.useRef)(-1);
+    let t6;
+    if ($[15] !== data.length || $[16] !== onEndReached || $[17] !== onEndReachedThreshold || $[18] !== overscan) {
+      t6 = (t72) => {
+        const {
+          first,
+          last
+        } = t72;
+        if (onEndReached && last >= data.length - 1 - onEndReachedThreshold && endReachedAt.current !== data.length) {
+          endReachedAt.current = data.length;
+          onEndReached();
+        }
+        const down = first >= previousFirst.current;
+        previousFirst.current = first;
+        setRange((r) => {
+          const ahead = Math.max(overscan, 2 * (last - first + 1));
+          const behind = overscan;
+          const leadBelow = r.end - 1 - last;
+          const leadAbove = first - r.start;
+          const visibleOutside = first < r.start || last >= r.end;
+          const runningOut = down ? r.end < data.length && leadBelow < ahead / 2 : r.start > 0 && leadAbove < ahead / 2;
+          if (!visibleOutside && !runningOut) {
+            return r;
+          }
+          return down ? {
+            start: Math.max(0, first - behind),
+            end: Math.min(data.length, last + ahead + 1)
+          } : {
+            start: Math.max(0, first - ahead),
+            end: Math.min(data.length, last + behind + 1)
+          };
+        });
+      };
+      $[15] = data.length;
+      $[16] = onEndReached;
+      $[17] = onEndReachedThreshold;
+      $[18] = overscan;
+      $[19] = t6;
+    } else {
+      t6 = $[19];
+    }
+    const onRangeChange = t6;
+    let rows;
+    if ($[20] !== data || $[21] !== keyExtractor || $[22] !== range.end || $[23] !== range.start || $[24] !== renderItem) {
+      rows = [];
+      const end = Math.min(range.end, data.length);
+      for (let i = range.start; i < end; i++) {
+        rows.push(/* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualRow, { index: i, children: renderItem(data[i], i) }, keyExtractor ? keyExtractor(data[i], i) : i));
+      }
+      $[20] = data;
+      $[21] = keyExtractor;
+      $[22] = range.end;
+      $[23] = range.start;
+      $[24] = renderItem;
+      $[25] = rows;
+    } else {
+      rows = $[25];
+    }
+    let t7;
+    if ($[26] !== header) {
+      t7 = header != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListHeader, { children: header }) : null;
+      $[26] = header;
+      $[27] = t7;
+    } else {
+      t7 = $[27];
+    }
+    let t8;
+    if ($[28] !== footer) {
+      t8 = footer != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListFooter, { children: footer }) : null;
+      $[28] = footer;
+      $[29] = t8;
+    } else {
+      t8 = $[29];
+    }
+    let t9;
+    if ($[30] !== children || $[31] !== data.length || $[32] !== estimatedItemHeight || $[33] !== onRangeChange || $[34] !== rest || $[35] !== rows || $[36] !== t7 || $[37] !== t8) {
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, children: [
+        children,
+        t7,
+        t8,
+        rows
+      ] });
+      $[30] = children;
+      $[31] = data.length;
+      $[32] = estimatedItemHeight;
+      $[33] = onRangeChange;
+      $[34] = rest;
+      $[35] = rows;
+      $[36] = t7;
+      $[37] = t8;
+      $[38] = t9;
+    } else {
+      t9 = $[38];
+    }
+    return t9;
+  }
+
+  // js/presentations.tsx
+  var import_compiler_runtime5 = __toESM(require_compiler_runtime(), 1);
+  var import_react7 = __toESM(require_react(), 1);
+  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
   function usePresentation(props) {
     const $ = (0, import_compiler_runtime5.c)(9);
     if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
@@ -36454,9 +36495,9 @@ ${e.stack}` : String(e);
       $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
     }
     const presented = props.item !== void 0 ? props.item !== null : !!props.isPresented;
-    const [shown, setShown] = (0, import_react6.useState)(props.item);
-    const [wasPresented, setWasPresented] = (0, import_react6.useState)(presented);
-    const [generation, setGeneration] = (0, import_react6.useState)(0);
+    const [shown, setShown] = (0, import_react7.useState)(props.item);
+    const [wasPresented, setWasPresented] = (0, import_react7.useState)(presented);
+    const [generation, setGeneration] = (0, import_react7.useState)(0);
     if (props.item != null && props.item !== shown) {
       setShown(props.item);
     }
@@ -36510,7 +36551,7 @@ ${e.stack}` : String(e);
       generation,
       content
     } = usePresentation(props);
-    const [mounted, setMounted] = (0, import_react6.useState)(presented);
+    const [mounted, setMounted] = (0, import_react7.useState)(presented);
     if (presented && !mounted) {
       setMounted(true);
     }
@@ -36530,7 +36571,7 @@ ${e.stack}` : String(e);
     }
     let t1;
     if ($[4] !== content || $[5] !== generation || $[6] !== mounted || $[7] !== props.keepState) {
-      t1 = mounted || props.keepState ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Fresh, { children: content }, props.keepState ? 0 : generation) : null;
+      t1 = mounted || props.keepState ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Fresh, { children: content }, props.keepState ? 0 : generation) : null;
       $[4] = content;
       $[5] = generation;
       $[6] = mounted;
@@ -36541,7 +36582,7 @@ ${e.stack}` : String(e);
     }
     let t2;
     if ($[9] !== presented || $[10] !== props.background || $[11] !== props.cornerRadius || $[12] !== props.detents || $[13] !== props.dragIndicator || $[14] !== props.fullScreen || $[15] !== props.interactiveDismissDisabled || $[16] !== props.onDismiss || $[17] !== props.onDismissAttempt || $[18] !== t0 || $[19] !== t1) {
-      t2 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, onDismissAttempt: props.onDismissAttempt, onDismissed: t0, detents: props.detents, fullScreen: props.fullScreen, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
+      t2 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, onDismissAttempt: props.onDismissAttempt, onDismissed: t0, detents: props.detents, fullScreen: props.fullScreen, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
       $[9] = presented;
       $[10] = props.background;
       $[11] = props.cornerRadius;
@@ -36627,7 +36668,7 @@ ${e.stack}` : String(e);
     } = useDialog(props);
     let t0;
     if ($[1] !== content || $[2] !== message || $[3] !== presented || $[4] !== props.onDismiss || $[5] !== title) {
-      t0 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AlertHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
+      t0 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(AlertHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
       $[1] = content;
       $[2] = message;
       $[3] = presented;
@@ -36655,7 +36696,7 @@ ${e.stack}` : String(e);
     } = useDialog(props);
     let t0;
     if ($[1] !== content || $[2] !== message || $[3] !== presented || $[4] !== props.onDismiss || $[5] !== title) {
-      t0 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ConfirmationDialogHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
+      t0 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ConfirmationDialogHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
       $[1] = content;
       $[2] = message;
       $[3] = presented;
@@ -36680,7 +36721,7 @@ ${e.stack}` : String(e);
     } = t0;
     let t1;
     if ($[1] !== children) {
-      t1 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children });
+      t1 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_jsx_runtime4.Fragment, { children });
       $[1] = children;
       $[2] = t1;
     } else {
@@ -36690,8 +36731,8 @@ ${e.stack}` : String(e);
   }
 
   // js/presence.tsx
-  var import_react7 = __toESM(require_react(), 1);
-  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+  var import_react8 = __toESM(require_react(), 1);
+  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
   function AnimatePresence({
     children,
     exit,
@@ -36699,10 +36740,10 @@ ${e.stack}` : String(e);
     onExitComplete
   }) {
     "use no memo";
-    const current2 = import_react7.Children.toArray(children).filter(import_react7.isValidElement);
-    const [leaving, setLeaving] = (0, import_react7.useState)(() => /* @__PURE__ */ new Map());
-    const previous = (0, import_react7.useRef)([]);
-    (0, import_react7.useLayoutEffect)(() => {
+    const current2 = import_react8.Children.toArray(children).filter(import_react8.isValidElement);
+    const [leaving, setLeaving] = (0, import_react8.useState)(() => /* @__PURE__ */ new Map());
+    const previous = (0, import_react8.useRef)([]);
+    (0, import_react8.useLayoutEffect)(() => {
       previous.current = current2;
     });
     const keys = new Set(current2.map((c) => c.key));
@@ -36722,8 +36763,8 @@ ${e.stack}` : String(e);
       next.delete(key);
     }
     if (next !== leaving) setLeaving(next);
-    const started = (0, import_react7.useRef)(/* @__PURE__ */ new Set());
-    (0, import_react7.useLayoutEffect)(() => {
+    const started = (0, import_react8.useRef)(/* @__PURE__ */ new Set());
+    (0, import_react8.useLayoutEffect)(() => {
       for (const [key_0, entry] of leaving) {
         if (entry.exiting || started.current.has(key_0)) continue;
         started.current.add(key_0);
@@ -36748,18 +36789,18 @@ ${e.stack}` : String(e);
       index: index_0,
       exiting
     }) => {
-      const shown = exiting ? (0, import_react7.cloneElement)(element_0, {
+      const shown = exiting ? (0, import_react8.cloneElement)(element_0, {
         ...typeof exit === "function" ? exit(element_0) : exit,
         allowsHitTesting: false
       }) : element_0;
       rendered.splice(Math.min(index_0, rendered.length), 0, shown);
     });
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_jsx_runtime4.Fragment, { children: rendered });
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_jsx_runtime5.Fragment, { children: rendered });
   }
 
   // js/controls.tsx
   var import_compiler_runtime6 = __toESM(require_compiler_runtime(), 1);
-  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
   var DatePickerHost = "DatePicker";
   function DatePicker(t0) {
     const $ = (0, import_compiler_runtime6.c)(21);
@@ -36830,7 +36871,7 @@ ${e.stack}` : String(e);
     }
     let t5;
     if ($[15] !== props || $[16] !== t1 || $[17] !== t2 || $[18] !== t3 || $[19] !== t4) {
-      t5 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(DatePickerHost, { ...props, value: t1, min: t2, max: t3, onChange: t4 });
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(DatePickerHost, { ...props, value: t1, min: t2, max: t3, onChange: t4 });
       $[15] = props;
       $[16] = t1;
       $[17] = t2;
@@ -36930,7 +36971,7 @@ ${e.stack}` : String(e);
     }
     let t5;
     if ($[17] !== change || $[18] !== props || $[19] !== t2 || $[20] !== t3 || $[21] !== t4) {
-      t5 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(DatePickerHost, { ...props, components: "hourAndMinute", value: t2, min: t3, max: t4, onChange: change });
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(DatePickerHost, { ...props, components: "hourAndMinute", value: t2, min: t3, max: t4, onChange: change });
       $[17] = change;
       $[18] = props;
       $[19] = t2;
@@ -36998,7 +37039,7 @@ ${e.stack}` : String(e);
     const iconColor = t1 === void 0 ? "gray" : t1;
     let t2;
     if ($[11] !== iconColor || $[12] !== systemImage) {
-      t2 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Image, { systemName: systemImage, font: "callout", foregroundStyle: "white", frame: {
+      t2 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Image, { systemName: systemImage, font: "callout", foregroundStyle: "white", frame: {
         width: 29,
         height: 29
       }, background: iconColor, cornerRadius: 7 }) : null;
@@ -37010,9 +37051,9 @@ ${e.stack}` : String(e);
     }
     let t3;
     if ($[14] !== children || $[15] !== subtitle || $[16] !== title) {
-      t3 = children ?? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(VStack, { alignment: "leading", spacing: 2, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { children: title }),
-        subtitle ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { font: "caption", foregroundStyle: "secondary", children: subtitle }) : null
+      t3 = children ?? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(VStack, { alignment: "leading", spacing: 2, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { children: title }),
+        subtitle ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { font: "caption", foregroundStyle: "secondary", children: subtitle }) : null
       ] });
       $[14] = children;
       $[15] = subtitle;
@@ -37023,14 +37064,14 @@ ${e.stack}` : String(e);
     }
     let t4;
     if ($[18] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t4 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Spacer, {});
+      t4 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Spacer, {});
       $[18] = t4;
     } else {
       t4 = $[18];
     }
     let t5;
     if ($[19] !== value) {
-      t5 = value != null ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { foregroundStyle: "secondary", lineLimit: 1, children: value }) : null;
+      t5 = value != null ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { foregroundStyle: "secondary", lineLimit: 1, children: value }) : null;
       $[19] = value;
       $[20] = t5;
     } else {
@@ -37038,7 +37079,7 @@ ${e.stack}` : String(e);
     }
     let t6;
     if ($[21] !== badge) {
-      t6 = badge ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { font: "footnote", fontWeight: "semibold", foregroundStyle: "white", padding: {
+      t6 = badge ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { font: "footnote", fontWeight: "semibold", foregroundStyle: "white", padding: {
         horizontal: 7,
         vertical: 2
       }, background: "red", cornerRadius: "capsule", children: String(badge) }) : null;
@@ -37049,14 +37090,14 @@ ${e.stack}` : String(e);
     }
     let t7;
     if ($[23] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t7 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Image, { systemName: "chevron.right", font: "footnote", fontWeight: "semibold", foregroundStyle: "tertiary" });
+      t7 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Image, { systemName: "chevron.right", font: "footnote", fontWeight: "semibold", foregroundStyle: "tertiary" });
       $[23] = t7;
     } else {
       t7 = $[23];
     }
     let t8;
     if ($[24] !== t2 || $[25] !== t3 || $[26] !== t5 || $[27] !== t6) {
-      t8 = /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(HStack, { spacing: 12, children: [
+      t8 = /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(HStack, { spacing: 12, children: [
         t2,
         t3,
         t4,
@@ -37074,7 +37115,7 @@ ${e.stack}` : String(e);
     }
     let t9;
     if ($[29] !== modifiers || $[30] !== onPress || $[31] !== t8) {
-      t9 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Button, { onPress, tint: "primary", ...modifiers, children: t8 });
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Button, { onPress, tint: "primary", ...modifiers, children: t8 });
       $[29] = modifiers;
       $[30] = onPress;
       $[31] = t8;
@@ -37139,7 +37180,7 @@ ${e.stack}` : String(e);
     }
     let t4;
     if ($[11] !== props || $[12] !== t1 || $[13] !== t2 || $[14] !== t3) {
-      t4 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PickerHost, { ...props, value: t1, onChange: t2, options: t3 });
+      t4 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(PickerHost, { ...props, value: t1, onChange: t2, options: t3 });
       $[11] = props;
       $[12] = t1;
       $[13] = t2;
@@ -37243,7 +37284,7 @@ ${e.stack}` : String(e);
 
   // js/services.ts
   var import_compiler_runtime7 = __toESM(require_compiler_runtime(), 1);
-  var import_react8 = __toESM(require_react(), 1);
+  var import_react9 = __toESM(require_react(), 1);
   var listeners2 = /* @__PURE__ */ new Map();
   var heldResponses = [];
   globalThis.__swiftjsx_emit = (name, payload) => {
@@ -37331,7 +37372,7 @@ ${e.stack}` : String(e);
       }
       $[0] = "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753";
     }
-    const latest = (0, import_react8.useRef)(listener);
+    const latest = (0, import_react9.useRef)(listener);
     let t0;
     if ($[1] !== listener) {
       t0 = () => {
@@ -37342,7 +37383,7 @@ ${e.stack}` : String(e);
     } else {
       t0 = $[2];
     }
-    (0, import_react8.useEffect)(t0);
+    (0, import_react9.useEffect)(t0);
     let t1;
     let t2;
     if ($[3] !== type) {
@@ -37355,7 +37396,7 @@ ${e.stack}` : String(e);
       t1 = $[4];
       t2 = $[5];
     }
-    (0, import_react8.useEffect)(t1, t2);
+    (0, import_react9.useEffect)(t1, t2);
   }
   var nextUtterance = 1;
   var speech = {
@@ -37434,7 +37475,7 @@ ${e.stack}` : String(e);
       t1 = $[2];
       t2 = $[3];
     }
-    (0, import_react8.useEffect)(t1, t2);
+    (0, import_react9.useEffect)(t1, t2);
   }
   function positionError(code, message) {
     return {
@@ -37518,7 +37559,7 @@ ${e.stack}` : String(e);
     } else {
       t2 = $[3];
     }
-    const [state2, setState] = (0, import_react8.useState)(t2);
+    const [state2, setState] = (0, import_react9.useState)(t2);
     const {
       enabled: t3,
       enableHighAccuracy
@@ -37551,13 +37592,13 @@ ${e.stack}` : String(e);
       t4 = $[6];
       t5 = $[7];
     }
-    (0, import_react8.useEffect)(t4, t5);
+    (0, import_react9.useEffect)(t4, t5);
     return state2;
   }
 
   // js/environment.ts
   var import_compiler_runtime8 = __toESM(require_compiler_runtime(), 1);
-  var import_react9 = __toESM(require_react(), 1);
+  var import_react10 = __toESM(require_react(), 1);
   var current = {
     horizontalSizeClass: "compact",
     verticalSizeClass: "regular",
@@ -37626,7 +37667,7 @@ ${e.stack}` : String(e);
       }
       $[0] = "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b";
     }
-    return (0, import_react9.useSyncExternalStore)(subscribe, _temp4);
+    return (0, import_react10.useSyncExternalStore)(subscribe, _temp4);
   }
   function _temp4() {
     return current;

@@ -59,9 +59,8 @@ for the record.
       moves animate; no measuring for fractional boards.
 - [x] Window size and safe-area insets in `useEnvironment()`; an `ignoresSafeArea` prop.
 - [x] `statusBarHidden`, `persistentSystemOverlays`.
-- [ ] On a material background, `cornerRadius` rounds the background but doesn't clip
-      the content: a rounded clip over a material turns off vibrancy, and hierarchical
-      text and dividers on it vanish.
+- [x] On a material background, `cornerRadius` clips the content (before the background,
+      so hierarchical text and dividers stay vibrant).
 - [x] `<Portal alignment interactive>`: a window above everything (sheets, bars) for toasts
       and flying thumbnails; touches pass through unless `interactive`.
 - [x] `measure(relativeTo)`: a view's frame within another (drag events already carry local positions).
@@ -139,8 +138,9 @@ for the record.
 - [x] Carousels: `onScrollIndexChange` (sent only when the page changes),
       `onScrollPhaseChange` (pause auto-advance while dragging), `paging="view"`
       (snap to children), `defaultScrollAnchor="trailing"`.
-- [ ] `onScrollIndexChange` assumes children of equal size (SwiftUI's
-      `scrollPosition(id:)` didn't report for our children; worth another look).
+- [x] `onScrollIndexChange` works for children of any size (each child's leading edge in
+      the content; SwiftUI's `scrollPosition(id:)` and `onScrollTargetVisibilityChange`
+      don't report for our children, even with explicit ids).
 - [x] `VirtualList` `header` / `footer` (stack style; full width above a `columns` grid).
       The Social feed's stories row and loading footer use them.
 - [ ] `VirtualList`: header/footer in the UIKit `listStyle="list"`; full-width items
@@ -268,8 +268,9 @@ for the record.
 - [ ] Generated types: inconsistent enum member names, nullable values typed non-null,
       no inline helpers (`CGRectMake`), no instance type aliases, clumsy NSError
       out-parameters. Which frameworks need main isn't documented beyond UIKit/AppKit.
-- [ ] Native UIViews can't be embedded (MPVolumeView, AVRoutePickerView); `<Image>`'s
-      cache isn't shared with native code.
+- [x] `<NativeView create>`: a UIView / NSView made with the native backend, hosted in
+      SwiftUI (the Media demo's AirPlay picker).
+- [ ] `<Image>`'s cache isn't shared with native code.
 - [x] Apps declare Info.plist keys and capabilities in their own `ios/project.yml` /
       `Info.plist` / entitlements (the template README shows how).
 - [x] `defineNativeClass(name, { protocols, methods, exposed })` (registered once, lazily;
