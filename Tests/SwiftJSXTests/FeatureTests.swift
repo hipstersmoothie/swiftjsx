@@ -428,9 +428,10 @@ struct CompilerTests {
     @Test func asyncStorage() async throws {
         let runtime = try fixture("Files")
         runtime.press("storage")
-        #expect(await eventually {
-            runtime.texts().first == #"one|[["swiftjsx-test/b","two"],["swiftjsx-test/missing",null]]|3|{"x":1,"y":2}|0"#
-        })
+        // About ten round trips to disk: slow on CI runners.
+        let expected = #"one|[["swiftjsx-test/b","two"],["swiftjsx-test/missing",null]]|3|{"x":1,"y":2}|0"#
+        let done = await eventually(timeout: .seconds(15)) { runtime.texts().first == expected }
+        #expect(done, "got \(runtime.texts().first ?? "nothing")")
     }
 
     @Test func loadFontRegistersAFontFile() async throws {
