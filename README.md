@@ -61,7 +61,10 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   state. Changing a component's hooks remounts just that component. Syntax/runtime errors
   show a red box and clear on the next good save. Module-level state re-runs on each
   update: keep it with `hot.data` (`export const useStore = (hot.data.store ??= create(…))`)
-  and stop timers, sockets or native objects with `hot.dispose(fn)`.
+  and stop timers, sockets or native objects with `hot.dispose(fn)`. On devices too:
+  `npm run dev` serves the app on port 8081, and Debug builds (`JSXRuntime.app()`) load it
+  from the Mac over the local network, falling back to the bundled app.js when it's not
+  running. A failed build shows its errors in the app.
 - **JS off the main thread.** React renders on a dedicated JS thread (with its own run
   loop); commits are applied on the main thread. Controlled inputs stay smooth: a field shows its own value while React
   catches up, and stale echoes are dropped by sequence number (like React Native's

@@ -4,6 +4,12 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Plain HTTP to the dev server on the local network. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>SwiftJSXDevBundlePath</key>
 	<string>$(SWIFTJSX_DEV_BUNDLE)</string>
 </dict>

@@ -1,6 +1,6 @@
 // Worklets: functions that run on the main thread instead of the JS thread
 // (see Sources/SwiftJSX/Worklets.swift). Mark one with a "worklet" directive;
-// the build (scripts/worklets-plugin.mjs) records its source and the variables
+// the build (cli/worklets-plugin.mjs) records its source and the variables
 // it captures, and the main thread compiles it in its own small JS context.
 //
 //   const offset = useSharedValue({ x: 0, y: 0 });

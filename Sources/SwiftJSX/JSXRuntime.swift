@@ -75,7 +75,20 @@ public final class JSXRuntime {
 
     isolated deinit {
         watcher?.invalidate()
+        devServer?.stop()
         engine.stop()
+    }
+
+    @ObservationIgnored private var devServer: DevServerClient?
+
+    func startDevServerClient(_ servers: [URL], fallback: URL?) {
+        devServer = DevServerClient(runtime: self, servers: servers, fallback: fallback)
+    }
+
+    /// A failed dev build: show its errors (the red box) until the next good one.
+    func showBuildError(_ message: String) {
+        print("[swiftjsx] build failed:\n\(message)")
+        error = message
     }
 
     /// Mount an app bundle from scratch (fresh JS context, empty tree).

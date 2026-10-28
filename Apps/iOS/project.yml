@@ -39,6 +39,8 @@ targets:
         INFOPLIST_FILE: SwiftJSXDemo/Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: SwiftJSX Demo
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # Debug builds on devices load the app from the dev server on this Mac.
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: Loads the app from the SwiftJSX dev server on your Mac while developing.
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
@@ -66,6 +68,23 @@ targets:
           mkdir -p "$DEST_DIR"
           cp -f "$SRC" "$DEST_DIR/app.js"
           echo "Copied $SRC -> $DEST_DIR/app.js"
+          # Debug: where `npm run dev` serves the app (JSXRuntime.app() connects,
+          # and falls back to the copied app.js). Devices reach this Mac by LAN
+          # address or Bonjour name; the simulator by loopback.
+          SERVERS="$DEST_DIR/SwiftJSXDevServer.txt"
+          rm -f "$SERVERS"
+          if [ "$CONFIGURATION" = "Debug" ]; then
+            PORT="${SWIFTJSX_PORT:-8081}"
+            if [ "$PLATFORM_NAME" = "iphonesimulator" ]; then
+              echo "http://127.0.0.1:$PORT" > "$SERVERS"
+            else
+              for IF in en0 en1 en2; do
+                IP=$(ipconfig getifaddr "$IF" 2>/dev/null || true)
+                [ -n "$IP" ] && echo "http://$IP:$PORT" >> "$SERVERS"
+              done
+              echo "http://$(scutil --get LocalHostName).local:$PORT" >> "$SERVERS"
+            fi
+          fi
 
     postBuildScripts:
       - name: Embed NativeScript add-on (optional)
