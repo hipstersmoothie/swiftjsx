@@ -33,7 +33,7 @@ type TimePickerProps = Modifiers & {
   onChange: (time: TimeOfDay) => void;
   label?: string;
   datePickerStyle?: "automatic" | "compact" | "wheel";
-  /** Picked times snap to multiples of this many minutes (the control still lists every minute). */
+  /** Only every this many minutes (5: :00, :05…; iOS lists just those, elsewhere picks snap). */
   minuteInterval?: number;
   min?: TimeOfDay;
   max?: TimeOfDay;
@@ -49,7 +49,17 @@ export function TimePicker({ value, onChange, min, max, minuteInterval, ...props
     if (minuteInterval && minuteInterval > 1) minutes = (Math.round(minutes / minuteInterval) * minuteInterval) % (24 * 60);
     onChange({ hour: Math.floor(minutes / 60), minute: minutes % 60 });
   };
-  return <DatePickerHost {...props} components="hourAndMinute" value={today(value)} min={today(min)} max={today(max)} onChange={change} />;
+  return (
+    <DatePickerHost
+      {...props}
+      components="hourAndMinute"
+      minuteInterval={minuteInterval}
+      value={today(value)}
+      min={today(min)}
+      max={today(max)}
+      onChange={change}
+    />
+  );
 }
 
 type NavigationRowProps = Modifiers & {

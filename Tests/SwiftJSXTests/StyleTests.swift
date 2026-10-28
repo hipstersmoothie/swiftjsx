@@ -107,3 +107,29 @@ import Testing
         #expect(fitted.path(in: CGRect(x: 0, y: 0, width: 200, height: 200)).boundingRect == CGRect(x: 0, y: 50, width: 200, height: 100))
     }
 }
+
+@Suite struct PathMorphTests {
+    func polyline(_ points: [CGPoint]) -> (AnimatablePoints, [PathKind]) {
+        var path = Path()
+        path.move(to: points[0])
+        points.dropFirst().forEach { path.addLine(to: $0) }
+        return AnimatablePoints.from(path)
+    }
+
+    @Test func pathsWithTheSameSegmentsInterpolate() {
+        let (a, kinds) = polyline([CGPoint(x: 0, y: 0), CGPoint(x: 10, y: 0)])
+        let (b, _) = polyline([CGPoint(x: 0, y: 20), CGPoint(x: 10, y: 40)])
+        var delta = b - a
+        delta.scale(by: 0.5)
+        let middle = (a + delta).path(kinds)
+        #expect(middle.currentPoint == CGPoint(x: 10, y: 20))
+    }
+
+    @Test func pathsWithDifferentSegmentsSwitch() {
+        let (a, _) = polyline([CGPoint(x: 0, y: 0), CGPoint(x: 10, y: 0)])
+        let (b, kinds) = polyline([CGPoint(x: 0, y: 0), CGPoint(x: 5, y: 5), CGPoint(x: 10, y: 10)])
+        var delta = b - a
+        delta.scale(by: 0.3)
+        #expect((a + delta).path(kinds).currentPoint == CGPoint(x: 10, y: 10))
+    }
+}

@@ -35,7 +35,8 @@ for the record.
       `lineJoin`.
 - [x] Angular gradient `startAngle` / `endAngle` (arcs, gauges); gradient points as unit
       points (`{ x, y }`) as well as alignments.
-- [ ] Animating between paths (morphing).
+- [x] Paths morph: `d` / `points` changes animate when the old and new paths have as
+      many segments (lines and quads become cubics); otherwise they switch.
 - [x] `<Video>` (AVKit; controls or just the picture, loop, time updates), `<WebView>`
       (URL or HTML, messages from the page, injected JS), `<MapView>` (region, markers,
       annotations with any views, taps, region changes).
@@ -104,8 +105,8 @@ for the record.
 - [x] Page TabView dots: `pageIndicator` ("always" / "never" / "backed").
 - [x] `<TimePicker>` with `{ hour, minute }` values (and `min` / `max`); `minuteInterval`
       snaps the value.
-- [ ] `TimePicker`'s wheel still lists every minute (SwiftUI has no minute interval);
-      `ColorPicker` returns a hex for the current scheme (no `{light, dark}`).
+- [x] `TimePicker` `minuteInterval` lists only those minutes on iOS (a UIDatePicker).
+- [ ] `ColorPicker` returns a hex for the current scheme (no `{light, dark}`).
 - [x] `<LabeledContentLabel>`: a `LabeledContent` label as any view (icon, font).
 - [x] `Picker`: wheel, navigationLink and palette styles; number values.
 - [x] `Menu` checkmark items: `<Toggle>` children. (Menus draw icons monochrome, as on iOS.)
@@ -237,8 +238,11 @@ for the record.
 - [x] `localStorage` saves to a JSON file in the background (coalesced, flushed when the
       app leaves the foreground), with a quota (`QuotaExceededError`).
 - [x] `AsyncStorage` (React Native's API): files per key, off the main and JS threads.
-- [ ] `URL` parsing goes through Foundation, which is more lenient than WHATWG
-      (percent-encodes spaces instead of failing).
+- [x] `URL`: hosts are checked like WHATWG's (forbidden code points fail instead of being
+      percent-encoded; percent-decoded and lowercased), tabs and newlines are dropped.
+- [ ] `URL` still differs from WHATWG at the edges (Foundation underneath): no IDNA /
+      punycode hosts, backslashes aren't slashes, `https:///host` fails instead of
+      skipping the extra slash, IPv4 shorthand (`http://0x7f.1`) isn't normalized.
 - [x] `pagehide` / `pageshow` window events, with background time for saves in pagehide
       handlers. (No `document`, by design.)
 - [x] `useEnvironment().locale` (identifier, language, region, `weekStartsOn`, `hourCycle`,

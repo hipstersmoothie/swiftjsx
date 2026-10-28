@@ -9,6 +9,9 @@ const swatches: Color[] = ["systemBackground", "secondarySystemBackground", "sys
 export function StylesDemo() {
   const [progress, setProgress] = useState(0.65);
   const [dark, setDark] = useState(false);
+  // Tap the sparkline: new values morph in (same number of points).
+  const [spark, setSpark] = useState([40, 30, 34, 18, 24, 10, 16, 4]);
+  const line = spark.map((y, i) => [Math.min(100, i * 15), y] as [number, number]);
 
   return (
     <Screen title="Shapes, colors & fonts">
@@ -59,9 +62,14 @@ export function StylesDemo() {
               <Path d="M50 88 C20 66 4 50 4 30 A22 22 0 0 1 50 18 A22 22 0 0 1 96 30 C96 50 80 66 50 88 Z" fill={{ gradient: ["pink", "red"] }} frame={{ width: 56, height: 56 }} />
               <Path d="M10 80 Q50 0 90 80" stroke="indigo" lineWidth={4} frame={{ width: 70, height: 56 }} />
               {/* A sparkline and its area. */}
-              <ZStack frame={{ width: 140, height: 56 }}>
-                <Polyline points={[[0, 40], [15, 30], [30, 34], [45, 18], [60, 24], [75, 10], [90, 16], [100, 4], [100, 50], [0, 50]]} closed viewBox={[0, 0, 100, 50]} fill="green/20" />
-                <Polyline points={[[0, 40], [15, 30], [30, 34], [45, 18], [60, 24], [75, 10], [90, 16], [100, 4]]} viewBox={[0, 0, 100, 50]} stroke="green" lineWidth={2.5} />
+              <ZStack
+                frame={{ width: 140, height: 56 }}
+                contentShape="rectangle"
+                onTapGesture={() => withAnimation("smooth", () => setSpark((s) => s.map(() => 4 + Math.round(Math.random() * 40))))}
+                accessibilityIdentifier="sparkline"
+              >
+                <Polyline points={[...line, [100, 50], [0, 50]]} closed viewBox={[0, 0, 100, 50]} fill="green/20" />
+                <Polyline points={line} viewBox={[0, 0, 100, 50]} stroke="green" lineWidth={2.5} />
               </ZStack>
             </HStack>
           </Section>

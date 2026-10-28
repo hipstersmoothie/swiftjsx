@@ -264,9 +264,26 @@ struct DatePickerHost: View {
             )
             let range = (node.double("min").map { Date(timeIntervalSince1970: $0 / 1000) } ?? .distantPast)
                 ... (node.double("max").map { Date(timeIntervalSince1970: $0 / 1000) } ?? .distantFuture)
+            #if os(iOS)
+            // SwiftUI's DatePicker has no minute interval; UIDatePicker does.
+            if let interval = node.double("minuteInterval").map(Int.init), interval > 1, components == .hourAndMinute {
+                LabeledContent {
+                    IntervalTimePicker(date: date, range: range, interval: interval, wheel: node.string("datePickerStyle") == "wheel")
+                        .fixedSize()
+                } label: {
+                    Text(node.string("label") ?? "")
+                }
+                .labelsHidden(node.string("label") == nil)
+            } else {
+                DatePicker(node.string("label") ?? "", selection: date, in: range, displayedComponents: components)
+                    .modifier(Style(style: node.string("datePickerStyle")))
+                    .labelsHidden(node.string("label") == nil)
+            }
+            #else
             DatePicker(node.string("label") ?? "", selection: date, in: range, displayedComponents: components)
                 .modifier(Style(style: node.string("datePickerStyle")))
                 .labelsHidden(node.string("label") == nil)
+            #endif
         }
     }
 
@@ -292,6 +309,40 @@ struct DatePickerHost: View {
         }
     }
 }
+
+#if os(iOS)
+/// A time picker with `minuteInterval` (5 → :00, :05, :10…), compact or wheel.
+private struct IntervalTimePicker: UIViewRepresentable {
+    @Binding var date: Date
+    let range: ClosedRange<Date>
+    let interval: Int
+    let wheel: Bool
+
+    func makeUIView(context: Context) -> UIDatePicker {
+        let picker = UIDatePicker()
+        picker.datePickerMode = .time
+        picker.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .valueChanged)
+        return picker
+    }
+
+    func updateUIView(_ picker: UIDatePicker, context: Context) {
+        context.coordinator.date = $date
+        picker.preferredDatePickerStyle = wheel ? .wheels : .compact
+        picker.minuteInterval = interval
+        picker.minimumDate = range.lowerBound == .distantPast ? nil : range.lowerBound
+        picker.maximumDate = range.upperBound == .distantFuture ? nil : range.upperBound
+        if picker.date != date { picker.date = date }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(date: $date) }
+
+    final class Coordinator: NSObject {
+        var date: Binding<Date>
+        init(date: Binding<Date>) { self.date = date }
+        @objc func changed(_ picker: UIDatePicker) { date.wrappedValue = picker.date }
+    }
+}
+#endif
 
 /// `<ColorPicker>`: the value is a hex string ("#rrggbb", or "#rrggbbaa"
 /// with `supportsOpacity`).

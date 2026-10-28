@@ -275,6 +275,15 @@ const checks: Checks = {
     eq(url.href, "https://example.com/a/b/c?x=1&q=a+b%26c");
     eq(new URL("http://localhost:8080/p").host, "localhost:8080");
     eq(URL.canParse("nope"), false);
+    // WHATWG, not Foundation: bad hosts fail; spaces in paths are encoded;
+    // tabs and newlines anywhere are dropped.
+    eq(URL.canParse("http://exa mple.com/"), false);
+    eq(URL.canParse("https://a<b.com/"), false);
+    eq(new URL("https://a.com/a b").pathname, "/a%20b");
+    eq(new URL("ht\ntps://a.\tcom/x").href, "https://a.com/x");
+    eq(new URL("http://EX%41MPLE.com/").hostname, "example.com");
+    eq(new URL("http://[::1]:8080/").host, "[::1]:8080");
+    eq(new URL("file:///tmp/a").pathname, "/tmp/a");
     eq(new URLSearchParams([["a", "1"], ["a", "2"]]).getAll("a").join(), "1,2");
   },
   "crypto"() {

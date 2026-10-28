@@ -376,7 +376,10 @@ final class WebStorage: @unchecked Sendable {
 /// relative resolution; the JS side keeps the WHATWG shape.
 enum WebURL {
     static func parse(_ input: String, base: URL?) -> [String: String]? {
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Like the WHATWG parser: leading and trailing spaces and controls go,
+        // and tabs and newlines anywhere.
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines.union(.controlCharacters))
+            .filter { $0 != "\t" && $0 != "\n" && $0 != "\r" }
         guard let url = URL(string: trimmed, relativeTo: base)?.absoluteURL,
               let scheme = url.scheme,
               var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
@@ -384,7 +387,15 @@ enum WebURL {
         let special = ["http", "https", "ws", "wss", "ftp", "file"].contains(scheme.lowercased())
         if special, components.path.isEmpty { components.path = "/" }
         if special { components.path = normalize(components.path) }
-        let host = components.percentEncodedHost ?? ""
+        var host = components.percentEncodedHost ?? ""
+        if special, scheme.lowercased() != "file", !host.hasPrefix("[") {
+            // Foundation percent-encodes what WHATWG rejects ("exa mple.com").
+            // (IPv6 hosts, in brackets, are Foundation's to check.)
+            guard let decoded = host.removingPercentEncoding, !decoded.isEmpty,
+                  !decoded.contains(where: { forbiddenHost.contains($0) || $0.asciiValue.map { $0 < 0x20 || $0 == 0x7F } == true })
+            else { return nil }
+            if decoded.allSatisfy(\.isASCII) { host = decoded }
+        }
         let defaultPorts = ["http": 80, "https": 443, "ws": 80, "wss": 443, "ftp": 21]
         let port = components.port.flatMap { defaultPorts[scheme.lowercased()] == $0 ? nil : String($0) } ?? ""
         let search = components.percentEncodedQuery.map { $0.isEmpty ? "" : "?" + $0 } ?? ""
@@ -401,6 +412,10 @@ enum WebURL {
             "special": special ? "1" : "",
         ]
     }
+
+    /// Code points a special URL's host can't have (WHATWG's forbidden
+    /// domain code points, beyond controls).
+    private static let forbiddenHost: Set<Character> = [" ", "#", "%", "/", ":", "<", ">", "?", "@", "[", "\\", "]", "^", "|"]
 
     /// Resolves "." and ".." segments, like the WHATWG parser.
     private static func normalize(_ path: String) -> String {

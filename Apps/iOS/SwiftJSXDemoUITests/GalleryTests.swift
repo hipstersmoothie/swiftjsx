@@ -801,6 +801,8 @@ final class GalleryTests: XCTestCase {
         for _ in 0..<6 where !(value.exists && value.isHittable) { app.swipeUp() }
         XCTAssert(value.waitForExistence(timeout: 5))
         XCTAssert(app.staticTexts["Wake up"].exists, "the LabeledContent's view label")
+        // minuteInterval: a UIDatePicker listing every 5 minutes.
+        XCTAssert(app.datePickers.firstMatch.exists, "the interval time picker")
         snapshot("time-picker")
     }
     func testMaterialCard() {
@@ -811,5 +813,13 @@ final class GalleryTests: XCTestCase {
         sleep(1)
         snapshot("material-card")
         XCTAssert(app.staticTexts["secondary stays vibrant"].exists)
+        // The sparkline morphs to new values.
+        app.swipeDown()
+        let spark = element("sparkline")
+        for _ in 0..<4 where !(spark.exists && spark.isHittable) { app.swipeDown() }
+        spark.tap()
+        snapshot("sparkline-morphing")
+        sleep(1)
+        snapshot("sparkline-morphed")
     }
 }
