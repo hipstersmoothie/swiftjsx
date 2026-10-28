@@ -43,6 +43,38 @@ const checks: Checks = {
     await rejects(request, "AbortError");
     await rejects(fetch("https://mock.test/json", { signal: AbortSignal.abort() }), "AbortError");
   },
+  async "fetch streams the body"() {
+    const response = await fetch("https://mock.test/stream");
+    const reader = response.body!.getReader();
+    const chunks: string[] = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(new TextDecoder().decode(value));
+    }
+    eq(chunks.join(""), "one two three");
+    eq(chunks.length > 1, true);
+    // text() on a streamed body, and clone().
+    const again = await fetch("https://mock.test/stream");
+    const copy = again.clone();
+    eq(await again.text(), "one two three");
+    eq(await copy.text(), "one two three");
+    // A body built locally streams too.
+    let local = "";
+    for await (const chunk of new Response("hi").body!) local += new TextDecoder().decode(chunk);
+    eq(local, "hi");
+  },
+  async "fetch FormData"() {
+    const form = new FormData();
+    form.append("note", "hello");
+    form.append("photo", new Blob(["PNGDATA"], { type: "image/png" }), "me.png");
+    eq(form.get("note"), "hello");
+    eq((form.get("photo") as File).name, "me.png");
+    const echo = await (await fetch("https://mock.test/echo", { method: "POST", body: form })).json();
+    eq(echo.contentType.startsWith("multipart/form-data; boundary="), true);
+    eq(echo.body.includes('name="note"\r\n\r\nhello'), true);
+    eq(echo.body.includes('filename="me.png"\r\nContent-Type: image/png\r\n\r\nPNGDATA'), true);
+  },
   async "fetch data: url"() {
     eq(await (await fetch("data:text/plain;base64,aGVsbG8=")).text(), "hello");
   },

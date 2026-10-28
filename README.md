@@ -61,7 +61,7 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
 
 - **Hooks are just React.** `useState`, `useReducer`, `useEffect`, context, custom hooks,
   transitions — anything that works in react-dom.
-- **Web APIs.** `fetch` (with `AbortController`), `WebSocket`, `URL`/`URLSearchParams`,
+- **Web APIs.** `fetch` (with `AbortController`; streaming `response.body`, `FormData` uploads), `WebSocket`, `URL`/`URLSearchParams`,
   `TextEncoder`/`TextDecoder`, `atob`/`btoa`, `structuredClone`, `crypto.getRandomValues`
   and `randomUUID`, `localStorage`/`sessionStorage`, `EventTarget`. Networking runs on
   `URLSession` off the JS thread; `window` fires `focus`, `visibilitychange`, `online` and

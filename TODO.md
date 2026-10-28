@@ -211,8 +211,11 @@ for the record.
 
 - [x] `fetch`, `WebSocket`, `URL`, encoding, crypto, storage, events, clipboard,
       `haptic()`, `openURL` / `canOpenURL`, `useEnvironment()`.
-- [ ] Streams: no `ReadableStream`; `fetch` bodies are buffered (no streaming responses
-      or upload progress). No `FormData` bodies, no `XMLHttpRequest`.
+- [x] Streaming responses: fetch resolves at the headers and `response.body` is a
+      `ReadableStream` of chunks as they arrive (readers, async iteration, tee). `FormData`
+      bodies (multipart, with `File`s). URLSession buffers the first 512 bytes of
+      `text/plain` and unlabeled responses to sniff them; `text/event-stream` and JSON stream.
+- [ ] Upload progress; `XMLHttpRequest`; `formData()` on multipart responses; byte streams.
 - [x] `localStorage` saves to a JSON file in the background (coalesced, flushed when the
       app leaves the foreground), with a quota (`QuotaExceededError`).
 - [ ] An async storage API for larger data (IndexedDB-like, or a key-value file store).

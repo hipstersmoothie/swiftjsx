@@ -33407,6 +33407,204 @@ ${error.stack}` : String(error));
     }
   };
 
+  // js/web/streams.ts
+  var ReadableStreamDefaultController = class {
+    /** @internal */
+    constructor(stream) {
+      this.stream = stream;
+    }
+    get desiredSize() {
+      return this.stream._state === "readable" ? Math.max(0, 1 - this.stream._queue.length) : null;
+    }
+    enqueue(chunk) {
+      this.stream._enqueue(chunk);
+    }
+    close() {
+      this.stream._close();
+    }
+    error(reason) {
+      this.stream._error(reason);
+    }
+  };
+  var ReadableStreamDefaultReader = class {
+    constructor(stream) {
+      if (stream.locked) throw new TypeError("ReadableStream is locked to a reader");
+      this._stream = stream;
+      stream._reader = this;
+      this.closed = new Promise((resolve, reject) => this._settleClosed = {
+        resolve,
+        reject
+      });
+      this.closed.catch(() => {
+      });
+      if (stream._state === "closed") this._settleClosed.resolve();
+      if (stream._state === "errored") this._settleClosed.reject(stream._storedError);
+    }
+    read() {
+      const stream = this._stream;
+      if (!stream) return Promise.reject(new TypeError("Reader was released"));
+      return stream._read();
+    }
+    releaseLock() {
+      if (!this._stream) return;
+      this._stream._reader = null;
+      this._stream = null;
+    }
+    cancel(reason) {
+      return this._stream ? this._stream.cancel(reason, true) : Promise.resolve();
+    }
+  };
+  var ReadableStream = class _ReadableStream {
+    constructor(source = {}) {
+      /** @internal */
+      this._state = "readable";
+      /** @internal */
+      this._queue = [];
+      /** @internal */
+      this._reads = [];
+      /** @internal */
+      this._reader = null;
+      this.pulling = false;
+      this.source = source;
+      this.controller = new ReadableStreamDefaultController(this);
+      Promise.resolve(source.start?.(this.controller)).then(() => this._pullIfNeeded(), (error) => this._error(error));
+    }
+    get locked() {
+      return this._reader !== null;
+    }
+    getReader() {
+      return new ReadableStreamDefaultReader(this);
+    }
+    cancel(reason, fromReader = false) {
+      if (this.locked && !fromReader) return Promise.reject(new TypeError("Cannot cancel a locked stream"));
+      if (this._state === "closed") return Promise.resolve();
+      if (this._state === "errored") return Promise.reject(this._storedError);
+      this._queue = [];
+      this._close();
+      return Promise.resolve(this.source.cancel?.(reason)).then(() => void 0);
+    }
+    /** Two streams with the same chunks (e.g. `response.clone()`). */
+    tee() {
+      const reader = this.getReader();
+      const branches = [];
+      const pump = async () => {
+        try {
+          for (; ; ) {
+            const {
+              done,
+              value
+            } = await reader.read();
+            if (done) return branches.forEach((c) => c.close());
+            branches.forEach((c) => c.enqueue(value));
+          }
+        } catch (error) {
+          branches.forEach((c) => c.error(error));
+        }
+      };
+      const a = new _ReadableStream({
+        start: (c) => void branches.push(c)
+      });
+      const b = new _ReadableStream({
+        start: (c) => void branches.push(c)
+      });
+      void Promise.resolve().then(pump);
+      return [a, b];
+    }
+    async *[Symbol.asyncIterator]() {
+      const reader = this.getReader();
+      try {
+        for (; ; ) {
+          const {
+            done,
+            value
+          } = await reader.read();
+          if (done) return;
+          yield value;
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+    values() {
+      return this[Symbol.asyncIterator]();
+    }
+    /** @internal */
+    _read() {
+      if (this._queue.length) {
+        const value = this._queue.shift();
+        this._pullIfNeeded();
+        return Promise.resolve({
+          done: false,
+          value
+        });
+      }
+      if (this._state === "closed") return Promise.resolve({
+        done: true,
+        value: void 0
+      });
+      if (this._state === "errored") return Promise.reject(this._storedError);
+      const read = new Promise((resolve, reject) => this._reads.push({
+        resolve,
+        reject
+      }));
+      this._pullIfNeeded();
+      return read;
+    }
+    /** @internal */
+    _enqueue(chunk) {
+      if (this._state !== "readable") throw new TypeError("Cannot enqueue into a closed stream");
+      const read = this._reads.shift();
+      if (read) read.resolve({
+        done: false,
+        value: chunk
+      });
+      else this._queue.push(chunk);
+    }
+    /** @internal */
+    _close() {
+      if (this._state !== "readable") return;
+      this._state = "closed";
+      this._reads.splice(0).forEach((r) => r.resolve({
+        done: true,
+        value: void 0
+      }));
+      this._reader?._settleClosed.resolve();
+    }
+    /** @internal */
+    _error(reason) {
+      if (this._state !== "readable") return;
+      this._state = "errored";
+      this._storedError = reason;
+      this._queue = [];
+      this._reads.splice(0).forEach((r) => r.reject(reason));
+      this._reader?._settleClosed.reject(reason);
+    }
+    _pullIfNeeded() {
+      if (!this.source.pull || this.pulling || this._state !== "readable") return;
+      if (!this._reads.length && this._queue.length) return;
+      this.pulling = true;
+      Promise.resolve(this.source.pull(this.controller)).then(() => {
+        this.pulling = false;
+        if (this._reads.length) this._pullIfNeeded();
+      }, (error) => this._error(error));
+    }
+  };
+  async function readAll(stream) {
+    const chunks = [];
+    let length = 0;
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+      length += chunk.byteLength;
+    }
+    const out = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) {
+      out.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return out;
+  }
+
   // js/web/fetch.ts
   var Headers = class _Headers {
     constructor(init) {
@@ -33481,6 +33679,89 @@ ${error.stack}` : String(error));
       });
     }
   };
+  var File = class extends Blob {
+    constructor(parts, name, options = {}) {
+      super(parts, options);
+      this.name = String(name);
+      this.lastModified = options.lastModified ?? Date.now();
+    }
+  };
+  var FormData = class {
+    constructor() {
+      this._entries = [];
+    }
+    append(name, value, filename) {
+      this._entries.push([String(name), normalize(value, filename)]);
+    }
+    set(name, value, filename) {
+      const key = String(name);
+      const index = this._entries.findIndex(([k]) => k === key);
+      this._entries = this._entries.filter(([k], i) => k !== key || i === index);
+      if (index === -1) this._entries.push([key, normalize(value, filename)]);
+      else this._entries[this._entries.findIndex(([k]) => k === key)] = [key, normalize(value, filename)];
+    }
+    get(name) {
+      return this._entries.find(([k]) => k === name)?.[1] ?? null;
+    }
+    getAll(name) {
+      return this._entries.filter(([k]) => k === name).map(([, v]) => v);
+    }
+    has(name) {
+      return this._entries.some(([k]) => k === name);
+    }
+    delete(name) {
+      this._entries = this._entries.filter(([k]) => k !== name);
+    }
+    forEach(callback) {
+      for (const [k, v] of this._entries) callback(v, k, this);
+    }
+    *entries() {
+      yield* this._entries;
+    }
+    *keys() {
+      for (const [k] of this._entries) yield k;
+    }
+    *values() {
+      for (const [, v] of this._entries) yield v;
+    }
+    [Symbol.iterator]() {
+      return this.entries();
+    }
+    /** @internal The multipart/form-data body and its boundary. */
+    _encode() {
+      const boundary = `----swiftjsx${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
+      const escape = (s) => s.replace(/"/g, "%22").replace(/\r?\n/g, "%0A");
+      const parts = [];
+      for (const [name, value] of this._entries) {
+        parts.push(`--${boundary}\r
+`);
+        if (typeof value === "string") {
+          parts.push(`Content-Disposition: form-data; name="${escape(name)}"\r
+\r
+${value}\r
+`);
+        } else {
+          parts.push(`Content-Disposition: form-data; name="${escape(name)}"; filename="${escape(value.name)}"\r
+Content-Type: ${value.type || "application/octet-stream"}\r
+\r
+`, value, "\r\n");
+        }
+      }
+      parts.push(`--${boundary}--\r
+`);
+      return {
+        bytes: new Blob(parts)._bytes,
+        boundary
+      };
+    }
+  };
+  function normalize(value, filename) {
+    if (value instanceof File && filename === void 0) return value;
+    if (value instanceof Blob) return new File([value], filename ?? (value instanceof File ? value.name : "blob"), {
+      type: value.type
+    });
+    return String(value);
+  }
   function toBytes(part) {
     if (typeof part === "string") return __web.encodeUTF8(part);
     if (part instanceof Blob) return part._bytes;
@@ -33508,9 +33789,15 @@ ${error.stack}` : String(error));
       data: toBytes(body),
       type: null
     };
-    const FormData = globalThis.FormData;
-    if (FormData && body instanceof FormData) {
-      throw new TypeError("fetch: FormData bodies aren't supported yet");
+    if (body instanceof FormData) {
+      const {
+        bytes,
+        boundary
+      } = body._encode();
+      return {
+        data: bytes,
+        type: `multipart/form-data; boundary=${boundary}`
+      };
     }
     return {
       data: String(body),
@@ -33521,25 +33808,38 @@ ${error.stack}` : String(error));
     constructor() {
       /** @internal */
       this._data = null;
+      /** @internal A streamed body (fetch responses), instead of `_data`. */
+      this._stream = null;
       this.bodyUsed = false;
     }
+    /** The body as a stream of byte chunks (null when there's no body). */
     get body() {
-      return null;
+      if (this._stream) return this._stream;
+      if (this._data === null) return null;
+      const data = this._data;
+      this._data = null;
+      this._stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(typeof data === "string" ? __web.encodeUTF8(data) : data);
+          controller.close();
+        }
+      });
+      return this._stream;
     }
-    _consume() {
-      if (this.bodyUsed) throw new TypeError("Body has already been consumed.");
+    async _consume() {
+      if (this.bodyUsed || this._stream?.locked) throw new TypeError("Body has already been consumed.");
       this.bodyUsed = true;
-      return this._data;
+      return this._stream ? readAll(this._stream) : this._data;
     }
     async text() {
-      const data = this._consume();
+      const data = await this._consume();
       return data === null ? "" : typeof data === "string" ? data : __web.decodeUTF8(data, false);
     }
     async json() {
       return JSON.parse(await this.text());
     }
     async bytes() {
-      const data = this._consume();
+      const data = await this._consume();
       return data === null ? new Uint8Array() : typeof data === "string" ? __web.encodeUTF8(data) : data.slice();
     }
     async arrayBuffer() {
@@ -33550,8 +33850,13 @@ ${error.stack}` : String(error));
         type: this.headers.get("content-type") ?? ""
       });
     }
+    /** URL-encoded bodies (multipart responses aren't parsed). */
     async formData() {
-      throw new TypeError("formData() isn't supported yet");
+      const type = this.headers.get("content-type") ?? "";
+      if (!type.includes("application/x-www-form-urlencoded")) throw new TypeError(`formData(): can't parse "${type}"`);
+      const form = new FormData();
+      new URLSearchParams(await this.text()).forEach((value, key) => form.append(key, value));
+      return form;
     }
   };
   var Request = class _Request extends Body {
@@ -33610,6 +33915,7 @@ ${error.stack}` : String(error));
         headers: this.headers
       });
       copy._data = this._data;
+      if (this._stream) [this._stream, copy._stream] = this._stream.tee();
       copy.url = this.url;
       copy.redirected = this.redirected;
       return copy;
@@ -33667,23 +33973,33 @@ ${error.stack}` : String(error));
       });
     });
   }
-  globalThis.__swiftjsx_fetchDone = (id, error, info, body) => {
+  globalThis.__swiftjsx_fetchHead = (id, info) => {
     const request = pending.get(id);
     if (!request) return;
-    pending.delete(id);
-    if (error) {
-      request.reject(error.name === "AbortError" ? request.signal.reason ?? new DOMException(error.message, "AbortError") : new TypeError(error.message));
-      return;
-    }
     const response = new Response(null, {
       status: info.status,
       statusText: info.statusText,
       headers: info.headers
     });
-    response._data = new Uint8Array(body);
+    response._stream = new ReadableStream({
+      start: (controller) => void (request.body = controller),
+      cancel: () => __web.abort(id)
+    });
     response.url = info.url;
     response.redirected = info.redirected;
     request.resolve(response);
+  };
+  globalThis.__swiftjsx_fetchChunk = (id, chunk) => {
+    pending.get(id)?.body?.enqueue(new Uint8Array(chunk));
+  };
+  globalThis.__swiftjsx_fetchDone = (id, error) => {
+    const request = pending.get(id);
+    if (!request) return;
+    pending.delete(id);
+    if (!error) return request.body?.close();
+    const reason = error.name === "AbortError" ? request.signal.reason ?? new DOMException(error.message, "AbortError") : new TypeError(error.message);
+    if (request.body) request.body.error(reason);
+    else request.reject(reason);
   };
 
   // js/web/websocket.ts
@@ -33897,6 +34213,10 @@ ${error.stack}` : String(error));
     Request,
     Response,
     Blob,
+    File,
+    FormData,
+    ReadableStream,
+    ReadableStreamDefaultReader,
     WebSocket,
     MessageEvent,
     CloseEvent,

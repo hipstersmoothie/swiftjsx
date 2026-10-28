@@ -113,30 +113,14 @@ extension JSEngine {
         if let body = request.objectForKeyedSubscript("body"), !body.isUndefined, !body.isNull {
             urlRequest.httpBody = body.isString ? Data(body.toString().utf8) : Self.bytes(of: body)
         }
-        let task = WebHost.session.dataTask(with: urlRequest) { [weak self] data, response, error in
-            guard let self else { return }
-            self.fetches.remove(id)
-            if let error = error as? URLError {
-                return error.code == .cancelled
-                    ? self.fetchFailed(id, "AbortError", "The operation was aborted.")
-                    : self.fetchFailed(id, "TypeError", "Network request failed: \(error.localizedDescription)")
-            }
-            guard let http = response as? HTTPURLResponse else {
-                // file: and data: URLs
-                return self.fetchSucceeded(id, url: response?.url ?? url, requested: url, status: 200,
-                                           headers: response?.mimeType.map { [["content-type", $0]] } ?? [], body: data ?? Data())
-            }
-            let headers = http.allHeaderFields.compactMap { key, value -> [String]? in
-                guard let key = key as? String else { return nil }
-                return [key.lowercased(), "\(value)"]
-            }
-            self.fetchSucceeded(id, url: http.url ?? url, requested: url, status: http.statusCode, headers: headers, body: data ?? Data())
-        }
+        // Streamed: the headers, then each chunk, then the end.
+        let task = WebHost.session.dataTask(with: urlRequest)
+        task.delegate = FetchStream(id: id, requested: url, host: self)
         fetches.add(id, task)
         task.resume()
     }
 
-    private func fetchSucceeded(_ id: Int, url: URL, requested: URL, status: Int, headers: [[String]], body: Data) {
+    fileprivate func fetchHead(_ id: Int, url: URL, requested: URL, status: Int, headers: [[String]]) {
         let response = UncheckedSendable([
             "status": status,
             "statusText": HTTPURLResponse.localizedString(forStatusCode: status).capitalized,
@@ -144,16 +128,74 @@ extension JSEngine {
             "redirected": url != requested,
             "headers": headers,
         ] as [String: Any])
-        let body = UncheckedSendable(body)
         perform { ctx in
-            let buffer = Self.arrayBuffer(body.value, in: ctx)
-            ctx.objectForKeyedSubscript("__swiftjsx_fetchDone")?.call(withArguments: [id, NSNull(), response.value, buffer])
+            ctx.objectForKeyedSubscript("__swiftjsx_fetchHead")?.call(withArguments: [id, response.value])
+        }
+    }
+
+    fileprivate func fetchChunk(_ id: Int, _ data: Data) {
+        let chunk = UncheckedSendable(data)
+        perform { ctx in
+            ctx.objectForKeyedSubscript("__swiftjsx_fetchChunk")?.call(withArguments: [id, Self.arrayBuffer(chunk.value, in: ctx)])
+        }
+    }
+
+    fileprivate func fetchFinished(_ id: Int) {
+        fetches.remove(id)
+        perform { ctx in
+            ctx.objectForKeyedSubscript("__swiftjsx_fetchDone")?.call(withArguments: [id, NSNull()])
         }
     }
 
     private func fetchFailed(_ id: Int, _ name: String, _ message: String) {
+        fetches.remove(id)
         perform { ctx in
             ctx.objectForKeyedSubscript("__swiftjsx_fetchDone")?.call(withArguments: [id, ["name": name, "message": message]])
+        }
+    }
+
+    /// One fetch's URLSession callbacks (a per-task delegate).
+    private final class FetchStream: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+        let id: Int
+        let requested: URL
+        weak var host: JSEngine?
+
+        init(id: Int, requested: URL, host: JSEngine) {
+            self.id = id
+            self.requested = requested
+            self.host = host
+        }
+
+        func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                        completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+            let url = response.url ?? requested
+            if let http = response as? HTTPURLResponse {
+                let headers = http.allHeaderFields.compactMap { key, value -> [String]? in
+                    guard let key = key as? String else { return nil }
+                    return [key.lowercased(), "\(value)"]
+                }
+                host?.fetchHead(id, url: url, requested: requested, status: http.statusCode, headers: headers)
+            } else {
+                // file: and data: URLs
+                host?.fetchHead(id, url: url, requested: requested, status: 200,
+                                headers: response.mimeType.map { [["content-type", $0]] } ?? [])
+            }
+            completionHandler(.allow)
+        }
+
+        func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+            host?.fetchChunk(id, data)
+        }
+
+        func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+            guard let host else { return }
+            guard let error = error as? URLError else {
+                if let error { return host.fetchFailed(id, "TypeError", "Network request failed: \(error.localizedDescription)") }
+                return host.fetchFinished(id)
+            }
+            error.code == .cancelled
+                ? host.fetchFailed(id, "AbortError", "The operation was aborted.")
+                : host.fetchFailed(id, "TypeError", "Network request failed: \(error.localizedDescription)")
         }
     }
 

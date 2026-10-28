@@ -6,6 +6,7 @@ import type * as Encoding from "./encoding";
 import type * as Urls from "./url";
 import type * as Fetch from "./fetch";
 import type * as Sockets from "./websocket";
+import type * as Streams from "./streams";
 
 type WebStorage = {
   getItem(key: string): string | null;
@@ -53,6 +54,14 @@ declare global {
   type Response = Fetch.Response;
   var Blob: typeof Fetch.Blob;
   interface Blob extends Fetch.Blob {}
+  var File: typeof Fetch.File;
+  interface File extends Fetch.File {}
+  var FormData: typeof Fetch.FormData;
+  interface FormData extends Fetch.FormData {}
+  var ReadableStream: typeof Streams.ReadableStream;
+  type ReadableStream<R = Uint8Array> = Streams.ReadableStream<R>;
+  var ReadableStreamDefaultReader: typeof Streams.ReadableStreamDefaultReader;
+  type ReadableStreamDefaultReader<R = Uint8Array> = Streams.ReadableStreamDefaultReader<R>;
 
   var WebSocket: typeof Sockets.WebSocket;
   type WebSocket = Sockets.WebSocket;

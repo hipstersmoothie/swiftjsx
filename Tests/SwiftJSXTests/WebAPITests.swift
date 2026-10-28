@@ -34,6 +34,17 @@ final class MockServer: URLProtocol {
                 guard let self, !self.stopped else { return }
                 respond(200, [:], Data())
             }
+        case "/stream":
+            // Three chunks, 50 ms apart (server-sent events, AI tokens).
+            let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/event-stream"])!
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            for (i, part) in ["one ", "two ", "three"].enumerated() {
+                DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(50 * (i + 1))) { [weak self] in
+                    guard let self, !self.stopped else { return }
+                    self.client?.urlProtocol(self, didLoad: Data(part.utf8))
+                    if i == 2 { self.client?.urlProtocolDidFinishLoading(self) }
+                }
+            }
         case "/wsport":
             respond(200, [:], Data(String(EchoServer.shared.port).utf8))
         case "/fail":

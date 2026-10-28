@@ -5,7 +5,8 @@
 import { AbortController, AbortSignal, CustomEvent, DOMException, Event, EventTarget } from "./events";
 import { TextDecoder, TextEncoder, atob, btoa } from "./encoding";
 import { URL, URLSearchParams } from "./url";
-import { Blob, Headers, Request, Response, fetch } from "./fetch";
+import { Blob, File, FormData, Headers, Request, Response, fetch } from "./fetch";
+import { ReadableStream, ReadableStreamDefaultReader } from "./streams";
 import { WebSocket, MessageEvent, CloseEvent } from "./websocket";
 
 const g = globalThis as any;
@@ -128,7 +129,7 @@ const globals: Record<string, unknown> = {
   Event, CustomEvent, EventTarget, DOMException, AbortController, AbortSignal,
   TextEncoder, TextDecoder, atob, btoa,
   URL, URLSearchParams,
-  fetch, Headers, Request, Response, Blob,
+  fetch, Headers, Request, Response, Blob, File, FormData, ReadableStream, ReadableStreamDefaultReader,
   WebSocket, MessageEvent, CloseEvent,
   crypto, localStorage, sessionStorage,
   structuredClone: (value: unknown) => structuredClone(value),
