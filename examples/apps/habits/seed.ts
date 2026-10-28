@@ -3,8 +3,8 @@
 // Streaky on purpose: a good day makes the next one likelier, weekends are
 // weaker, and there's a two-week slump about six weeks ago.
 import { getDay } from "date-fns";
+// weekStartKey follows the locale, so "this week" matches the week strip.
 import { addDayKeys, dayKey, dayRange, parseDay, weekStartKey, type DayKey } from "./dates";
-// (weekStartKey follows the locale, so "this week" matches the week strip.)
 import type { Habit, Logs, State } from "./store";
 
 /** A small seeded PRNG (mulberry32): the same history every time. */
@@ -59,14 +59,18 @@ export function seed(): State {
   // Reading: streaky (a Markov chain), with a current streak of about two weeks.
   let read = true;
   for (const day of dayRange(habits[1].createdAt, ago(1))) {
-    const p = slump(day) ? 0.3 : read ? 0.86 : 0.55;
+    const p: number = slump(day) ? 0.3 : read ? 0.86 : 0.55;
     read = rand() < p || day >= ago(13);
     if (read) logs.read[day] = 1;
   }
 
-  // Workouts: 2–4 sessions most weeks, on random days.
+  // Workouts: 2–4 sessions most weeks (never more than 5), on random days.
+  const perWeek: Record<DayKey, number> = {};
   for (const day of dayRange(habits[2].createdAt, ago(1))) {
-    if (rand() < (slump(day) ? 0.15 : 0.47)) logs.workout[day] = 1;
+    const week = weekStartKey(day);
+    if ((perWeek[week] ?? 0) >= 5 || rand() >= (slump(day) ? 0.15 : 0.47)) continue;
+    perWeek[week] = (perWeek[week] ?? 0) + 1;
+    logs.workout[day] = 1;
   }
   // One done already this week, unless the week started today.
   const thisWeek = weekStartKey(today);

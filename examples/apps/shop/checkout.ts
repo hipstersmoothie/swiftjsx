@@ -50,7 +50,11 @@ export function formatExpiry(input: string, previous: string): string {
 
 export const formatPostalCode = (input: string, country: string) =>
   country === "CA"
-    ? input.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6).replace(/^(.{3})(.+)$/, "$1 $2")
+    ? input
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 6)
+        .replace(/^(.{3})(.+)$/, "$1 $2")
     : input.replace(/[^\d-]/g, "").slice(0, 10);
 
 /** The Luhn checksum every card number carries in its last digit. */
@@ -79,8 +83,8 @@ export const regions: Record<string, { value: string; label: string }[]> = {
   CA: "AB BC MB NB NL NS NT NU ON PE QC SK YT".split(" ").map((s) => ({ value: s, label: s })),
 };
 
-/** Deliveries take at least two days and can be scheduled up to a month out. */
-export const earliestDelivery = (now = new Date()) => startOfDay(addDays(now, 2));
+/** Standard takes at least three days, express one; either can be scheduled up to a month out. */
+export const earliestDelivery = (speed: "standard" | "express", now = new Date()) => startOfDay(addDays(now, speed === "express" ? 1 : 3));
 export const latestDelivery = (now = new Date()) => startOfDay(addDays(now, 30));
 
 export type CheckoutForm = {
@@ -145,8 +149,15 @@ export const CheckoutSchema = z
       ctx.addIssue({ code: "custom", path: ["cvc"], message: `${brand.name} codes have ${brand.cvc} digits` });
     }
     const day = startOfDay(form.deliveryDate);
-    if (day < earliestDelivery() || day > latestDelivery()) {
-      ctx.addIssue({ code: "custom", path: ["deliveryDate"], message: "Pick a day between 2 and 30 days from now" });
+    if (day < earliestDelivery(form.speed)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["deliveryDate"],
+        message:
+          form.speed === "express" ? "Express arrives tomorrow at the earliest" : "Standard takes at least 3 days; pick a later day or Express",
+      });
+    } else if (day > latestDelivery()) {
+      ctx.addIssue({ code: "custom", path: ["deliveryDate"], message: "Deliveries can be scheduled up to 30 days out" });
     }
   });
 

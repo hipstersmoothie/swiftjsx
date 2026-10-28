@@ -50,20 +50,27 @@ async function get<T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal):
 
 const nextSkip = (page: ProductPage) => (page.skip + page.products.length < page.total ? page.skip + page.limit : undefined);
 
+export const fetchProducts = (category: string | null, skip: number, signal?: AbortSignal) =>
+  get(
+    category ? `/products/category/${encodeURIComponent(category)}?limit=${PAGE_SIZE}&skip=${skip}` : `/products?limit=${PAGE_SIZE}&skip=${skip}`,
+    ProductPage,
+    signal,
+  );
+
 /** Every product, or one category's, a page at a time. */
 export const productsQuery = (category: string | null) =>
   infiniteQueryOptions({
     queryKey: ["products", category ?? "all"],
-    queryFn: ({ pageParam, signal }) =>
-      get(
-        category
-          ? `/products/category/${encodeURIComponent(category)}?limit=${PAGE_SIZE}&skip=${pageParam}`
-          : `/products?limit=${PAGE_SIZE}&skip=${pageParam}`,
-        ProductPage,
-        signal,
-      ),
+    queryFn: ({ pageParam, signal }) => fetchProducts(category, pageParam, signal),
     initialPageParam: 0,
     getNextPageParam: nextSkip,
+  });
+
+/** The first page of a category (the "More in…" row). */
+export const relatedQuery = (category: string) =>
+  queryOptions({
+    queryKey: ["related", category],
+    queryFn: async ({ signal }) => (await fetchProducts(category, 0, signal)).products,
   });
 
 /** The carousel: the biggest discounts. */
@@ -98,8 +105,7 @@ export const productQuery = (id: number) =>
 // MARK: Prices
 
 /** What it costs after the discount, in cents. */
-export const salePrice = (p: { price: number; discountPercentage: number }): Cents =>
-  toCents(p.price * (1 - p.discountPercentage / 100));
+export const salePrice = (p: { price: number; discountPercentage: number }): Cents => toCents(p.price * (1 - p.discountPercentage / 100));
 
 /** Shown as "-12%" only when it's worth mentioning. */
 export const hasDiscount = (p: { discountPercentage: number }) => p.discountPercentage >= 1;

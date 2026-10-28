@@ -68,9 +68,7 @@ export function totals(lines: CartLine[], promoCode: string | null, speed: Shipp
 
   const check = promoCode ? checkPromo(promoCode, subtotal) : null;
   const promo = check?.ok ? promos[check.code] : null;
-  const promoDiscount = promo
-    ? Math.min(subtotal, promo.amountOff ?? Math.round((subtotal * (promo.percentOff ?? 0)) / 100))
-    : 0;
+  const promoDiscount = promo ? Math.min(subtotal, promo.amountOff ?? Math.round((subtotal * (promo.percentOff ?? 0)) / 100)) : 0;
 
   const freeStandard = subtotal >= FREE_SHIPPING_OVER || !!promo?.freeShipping;
   const shipping = count === 0 ? 0 : speed === "express" ? EXPRESS : freeStandard ? 0 : SHIPPING;

@@ -105,9 +105,7 @@ export const useShop = create<State & Actions>()(
 
       toggleWishlist: (product) =>
         set((s) => ({
-          wishlist: s.wishlist.some((p) => p.id === product.id)
-            ? s.wishlist.filter((p) => p.id !== product.id)
-            : [product, ...s.wishlist],
+          wishlist: s.wishlist.some((p) => p.id === product.id) ? s.wishlist.filter((p) => p.id !== product.id) : [product, ...s.wishlist],
         })),
 
       removeFromWishlist: (ids) => set((s) => ({ wishlist: s.wishlist.filter((p) => !ids.includes(p.id)) })),

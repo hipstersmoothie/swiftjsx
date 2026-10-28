@@ -46,7 +46,11 @@ export const formatPercent = (value: number) => (percent ? percent.format(value 
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** "home-decoration" → "Home Decoration". */
-export const titleCase = (slug: string) => slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+export const titleCase = (slug: string) =>
+  slug
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
 // MARK: Variants
 

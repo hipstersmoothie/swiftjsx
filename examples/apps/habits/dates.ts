@@ -6,14 +6,24 @@
 // 86,400,000 ms (a DST day is 23 or 25 hours long).
 import { useSyncExternalStore } from "react";
 import {
-  addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, endOfWeek, format, isValid, startOfMonth,
+  addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, endOfWeek, isValid, startOfMonth,
   startOfToday, startOfTomorrow, startOfWeek, type Day,
 } from "date-fns";
 
 /** A calendar day, "yyyy-MM-dd". */
 export type DayKey = string;
 
-export const dayKey = (date: Date | number): DayKey => format(date, "yyyy-MM-dd");
+const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+
+/**
+ * The local calendar day of a date. Built by hand rather than with
+ * date-fns' format(): the week strip and heatmap make thousands of keys per
+ * render, and JavaScriptCore runs without a JIT on iOS.
+ */
+export function dayKey(date: Date | number): DayKey {
+  const d = typeof date === "number" ? new Date(date) : date;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 /** Local midnight of a day key (or 1:00 where midnight doesn't exist that day). */
 export function parseDay(key: DayKey): Date {
@@ -93,7 +103,7 @@ export function monthGrid(month: Date): DayKey[][] {
   return Array.from({ length: 6 }, (_, row) => Array.from({ length: 7 }, (_, col) => dayKey(addDays(first, row * 7 + col))));
 }
 
-export const isInMonth = (key: DayKey, month: Date) => key.slice(0, 7) === format(month, "yyyy-MM");
+export const isInMonth = (key: DayKey, month: Date) => key.slice(0, 7) === dayKey(month).slice(0, 7);
 export const monthEnd = (month: Date) => dayKey(endOfMonth(month));
 
 // MARK: Formatting (Intl, so names follow the locale)
@@ -122,12 +132,13 @@ export const formatFullDay = (key: DayKey) => fullDay.format(parseDay(key));
 export const formatMediumDay = (key: DayKey) => mediumDay.format(parseDay(key));
 export const formatTime = (hour: number, minute: number) => time.format(new Date(2024, 0, 1, hour, minute));
 
-/** "Oct 6 – 12", or "Sep 29 – Oct 5". */
+/** "Oct 6 – 12", or "Sep 29 – Oct 5" (Intl's range format, so it reads right in every locale). */
 export function formatWeekRange(startKey: DayKey): string {
   const start = parseDay(startKey);
   const end = addDays(start, 6);
-  const sameMonth = start.getMonth() === end.getMonth();
-  return `${dayMonth.format(start)} – ${sameMonth ? end.getDate() : dayMonth.format(end)}`;
+  const ranged = dayMonth as Intl.DateTimeFormat & { formatRange?: (a: Date, b: Date) => string };
+  if (ranged.formatRange) return ranged.formatRange(start, end);
+  return `${dayMonth.format(start)} – ${dayMonth.format(end)}`;
 }
 
 /** "Today", "Yesterday", or a weekday and date. */

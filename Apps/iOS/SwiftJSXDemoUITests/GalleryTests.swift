@@ -326,6 +326,92 @@ final class GalleryTests: XCTestCase {
         snapshot("notes-editor")
     }
 
+    func testShop() {
+        openApp("Shop")
+        let card = element("product-card")
+        XCTAssert(card.waitForExistence(timeout: 20), "no products")
+        sleep(2)
+        snapshot("shop-home")
+        card.tap()
+        XCTAssert(element("add-to-cart").waitForExistence(timeout: 10))
+        sleep(2)
+        snapshot("shop-product")
+        element("add-to-cart").tap()
+        sleep(2)
+        snapshot("shop-added")
+        element("cart-button").tap()
+        sleep(2)
+        snapshot("shop-cart")
+    }
+
+    func test2048() {
+        openApp("2048")
+        let board = element("board")
+        XCTAssert(board.waitForExistence(timeout: 5))
+        sleep(1)
+        snapshot("2048-start")
+        let moves = element("moves")
+        for direction in ["left", "up", "right", "down", "left", "up"] {
+            element("move-\(direction)").tap()
+            usleep(300_000)
+        }
+        board.swipeLeft()
+        usleep(300_000)
+        board.swipeDown()
+        sleep(1)
+        XCTAssertFalse(moves.label.hasPrefix("0"), "moves: \(moves.label)")
+        snapshot("2048-played")
+    }
+
+    func testSocial() {
+        openApp("Social")
+        let post = element("post")
+        XCTAssert(post.waitForExistence(timeout: 10))
+        sleep(3)
+        snapshot("social-feed")
+        let like = element("like-button")
+        like.tap()
+        sleep(1)
+        snapshot("social-liked")
+        element("story").tap()
+        XCTAssert(element("story-viewer").waitForExistence(timeout: 5))
+        sleep(2)
+        snapshot("social-story")
+    }
+
+    func testHabits() {
+        openApp("Habits")
+        let row = element("habit-row")
+        XCTAssert(row.waitForExistence(timeout: 5))
+        sleep(1)
+        snapshot("habits-today")
+        let check = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'complete-'")).firstMatch
+        check.tap()
+        sleep(1)
+        snapshot("habits-checked")
+        row.tap()
+        XCTAssert(element("month-grid").waitForExistence(timeout: 5))
+        sleep(2)
+        snapshot("habits-detail")
+    }
+
+    func testRecipes() {
+        openApp("Recipes")
+        let card = element("recipe-card")
+        XCTAssert(card.waitForExistence(timeout: 20), "no recipes")
+        sleep(2)
+        snapshot("recipes-browse")
+        card.tap()
+        let start = element("start-cooking")
+        XCTAssert(start.waitForExistence(timeout: 20))
+        sleep(2)
+        snapshot("recipes-recipe")
+        start.tap()
+        XCTAssert(element("step-page").waitForExistence(timeout: 5))
+        sleep(1)
+        snapshot("recipes-cooking")
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]
