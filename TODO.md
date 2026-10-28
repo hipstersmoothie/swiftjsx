@@ -62,8 +62,7 @@ for the record.
       `colorScheme`, `preferredColorScheme`; any element's `tint`.
 - [x] SF Symbols: rendering modes, palette colors, variants, `variableValue`,
       `symbolEffect`, replace transitions.
-- [ ] Custom font files: fonts must be bundled and listed in the app's Info.plist;
-      there's no runtime registration.
+- [x] `loadFont(url)` registers a downloaded (or bundled) font at runtime; no Info.plist entry.
 - [x] Runs take `background` (search highlights) and `onPress` (tappable @mentions).
 - [x] `onTruncationChange` (an inline "more"); `onOpenURL` takes Markdown links in-app.
 - [x] `strikethrough` takes a color, like `underline`.
@@ -216,7 +215,7 @@ for the record.
 - [ ] Upload progress; `XMLHttpRequest`; `formData()` on multipart responses; byte streams.
 - [x] `localStorage` saves to a JSON file in the background (coalesced, flushed when the
       app leaves the foreground), with a quota (`QuotaExceededError`).
-- [ ] An async storage API for larger data (IndexedDB-like, or a key-value file store).
+- [x] `AsyncStorage` (React Native's API): files per key, off the main and JS threads.
 - [ ] `URL` parsing goes through Foundation, which is more lenient than WHATWG
       (percent-encodes spaces instead of failing).
 - [x] `pagehide` / `pageshow` window events, with background time for saves in pagehide

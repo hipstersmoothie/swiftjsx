@@ -30,3 +30,54 @@ export function prefetchImage(url: string): Promise<boolean> {
     return (await nativeCall("clipboardRead", {})) as string;
   },
 };
+
+/**
+ * Downloads and registers a font (a .ttf / .otf URL, or a file: URL) for
+ * this run of the app; use one of its `names` (PostScript names) as
+ * `font={{ name, size }}`. No Info.plist entry needed.
+ */
+export async function loadFont(url: string): Promise<{ family: string; names: string[] }> {
+  const result = (await nativeCall("loadFont", { url })) as { family: string; names: string[]; error?: string };
+  if (result.error) throw new Error(`loadFont(${url}): ${result.error}`);
+  return result;
+}
+
+const storage = (op: string, args: Record<string, unknown> = {}) => nativeCall("asyncStorage", { op, ...args });
+
+/**
+ * React Native's AsyncStorage: strings by key, saved as files off the main
+ * and JS threads; no size limit (unlike localStorage). Works with zustand's
+ * `createJSONStorage(() => AsyncStorage)`.
+ */
+export const AsyncStorage = {
+  async getItem(key: string): Promise<string | null> {
+    return ((await storage("get", { keys: [key] })) as (string | null)[])[0] ?? null;
+  },
+  async setItem(key: string, value: string): Promise<void> {
+    await storage("set", { pairs: [[key, String(value)]] });
+  },
+  async removeItem(key: string): Promise<void> {
+    await storage("remove", { keys: [key] });
+  },
+  async mergeItem(key: string, value: string): Promise<void> {
+    const existing = await AsyncStorage.getItem(key);
+    const merged = existing ? { ...JSON.parse(existing), ...JSON.parse(value) } : JSON.parse(value);
+    await AsyncStorage.setItem(key, JSON.stringify(merged));
+  },
+  async getAllKeys(): Promise<string[]> {
+    return (await storage("keys")) as string[];
+  },
+  async multiGet(keys: string[]): Promise<[string, string | null][]> {
+    const values = (await storage("get", { keys })) as (string | null)[];
+    return keys.map((key, i) => [key, values[i] ?? null]);
+  },
+  async multiSet(pairs: [string, string][]): Promise<void> {
+    await storage("set", { pairs: pairs.map(([k, v]) => [k, String(v)]) });
+  },
+  async multiRemove(keys: string[]): Promise<void> {
+    await storage("remove", { keys });
+  },
+  async clear(): Promise<void> {
+    await storage("clear");
+  },
+};

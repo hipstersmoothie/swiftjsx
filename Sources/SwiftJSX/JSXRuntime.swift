@@ -198,6 +198,21 @@ public final class JSXRuntime {
             worklets.handle(args)
         case "eventDone":
             if let callback = (args["callback"] as? NSNumber)?.intValue { waiting.removeValue(forKey: callback)?.resume() }
+        case "loadFont":
+            guard let url = (args["url"] as? String).flatMap(URL.init(string:)) else {
+                return engine.resolve(callback: callback, value: ["error": "Invalid URL"])
+            }
+            Task { [engine] in
+                let result: [String: Any]
+                do { result = try await FontLoader.load(url) } catch { result = ["error": error.localizedDescription] }
+                let sendable = UncheckedSendable(result)
+                await MainActor.run { engine?.resolve(callback: callback, value: sendable.value) }
+            }
+        case "asyncStorage":
+            KeyValueFiles.shared.perform(args["op"] as? String ?? "", args) { [weak engine] value in
+                let sendable = UncheckedSendable(value)
+                DispatchQueue.main.async { engine?.resolve(callback: callback, value: sendable.value) }
+            }
         case "share":
             let url = (args["url"] as? String).flatMap(URL.init(string:))
             shareItems(text: args["text"] as? String, url: url) { [engine] shared in

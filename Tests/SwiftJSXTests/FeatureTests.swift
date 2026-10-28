@@ -398,3 +398,20 @@ struct CompilerTests {
         #expect(await eventually { runtime.texts().first?.contains(#"tapped n1 {"recipe":7}"#) == true })
     }
 }
+
+@MainActor
+@Suite struct FileTests {
+    @Test func asyncStorage() async throws {
+        let runtime = try fixture("Files")
+        runtime.press("storage")
+        #expect(await eventually {
+            runtime.texts().first == #"one|[["swiftjsx-test/b","two"],["swiftjsx-test/missing",null]]|3|{"x":1,"y":2}|0"#
+        })
+    }
+
+    @Test func loadFontRegistersAFontFile() async throws {
+        let runtime = try fixture("Files")
+        runtime.press("font")
+        #expect(await eventually { runtime.texts().first == "font Arial Narrow ArialNarrow" })
+    }
+}

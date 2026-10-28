@@ -34326,6 +34326,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     AlertHost: () => AlertHost,
     AnimatePresence: () => AnimatePresence,
     AreaMark: () => AreaMark,
+    AsyncStorage: () => AsyncStorage,
     Background: () => Background,
     BarMark: () => BarMark,
     Button: () => Button,
@@ -34411,6 +34412,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     isNativeAvailable: () => isNativeAvailable,
     keepAlive: () => keepAlive,
     keepAwake: () => keepAwake,
+    loadFont: () => loadFont,
     makeMutable: () => makeMutable,
     native: () => native,
     nativePromise: () => nativePromise,
@@ -36386,6 +36388,64 @@ ${e.stack}` : String(e);
     },
     async readText() {
       return await nativeCall("clipboardRead", {});
+    }
+  };
+  async function loadFont(url) {
+    const result = await nativeCall("loadFont", {
+      url
+    });
+    if (result.error) throw new Error(`loadFont(${url}): ${result.error}`);
+    return result;
+  }
+  var storage = (op, args = {}) => nativeCall("asyncStorage", {
+    op,
+    ...args
+  });
+  var AsyncStorage = {
+    async getItem(key) {
+      return (await storage("get", {
+        keys: [key]
+      }))[0] ?? null;
+    },
+    async setItem(key, value) {
+      await storage("set", {
+        pairs: [[key, String(value)]]
+      });
+    },
+    async removeItem(key) {
+      await storage("remove", {
+        keys: [key]
+      });
+    },
+    async mergeItem(key, value) {
+      const existing = await AsyncStorage.getItem(key);
+      const merged = existing ? {
+        ...JSON.parse(existing),
+        ...JSON.parse(value)
+      } : JSON.parse(value);
+      await AsyncStorage.setItem(key, JSON.stringify(merged));
+    },
+    async getAllKeys() {
+      return await storage("keys");
+    },
+    async multiGet(keys) {
+      const values = await storage("get", {
+        keys
+      });
+      return keys.map((key, i) => [key, values[i] ?? null]);
+    },
+    async multiSet(pairs) {
+      await storage("set", {
+        pairs: pairs.map(([k, v]) => [k, String(v)])
+      });
+    },
+    async multiRemove(keys) {
+      await storage("remove", {
+        keys
+      });
+    },
+    async clear() {
+      await storage("clear");
     }
   };
 
