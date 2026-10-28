@@ -432,6 +432,109 @@ final class GalleryTests: XCTestCase {
         snapshot("social-story")
     }
 
+    func testBluesky() {
+        openApp("Bluesky")
+        // Discover (public AppView, signed out).
+        let post = element("feed-item")
+        XCTAssert(post.waitForExistence(timeout: 20), "no posts loaded")
+        sleep(4)  // images
+        snapshot("bsky-feed")
+
+        // A thread: tap the post's relative time (plain text in the cell, not a button).
+        post.staticTexts.matching(NSPredicate(format: "label BEGINSWITH '· '")).firstMatch.tap()
+        let focused = element("focused-post")
+        XCTAssert(focused.waitForExistence(timeout: 15), "thread didn't open")
+        sleep(3)
+        snapshot("bsky-thread")
+        app.swipeUp(velocity: .slow)
+        sleep(2)
+        snapshot("bsky-thread-replies")
+        app.swipeDown(velocity: .fast)
+        sleep(1)
+
+        // The author's profile, from the focused post.
+        focused.buttons.matching(NSPredicate(format: "label ENDSWITH \"'s profile\"")).firstMatch.tap()
+        XCTAssert(element("profile-header").waitForExistence(timeout: 15), "profile didn't open")
+        sleep(4)
+        snapshot("bsky-profile")
+        element("profile-tab-replies").tap()
+        sleep(4)
+        snapshot("bsky-profile-replies")
+        // A reply shown under its parent (joined by a thread line) opens a
+        // thread with the ancestors above, scrolled to the reply.
+        let times = "label BEGINSWITH '· '"
+        var withParent: XCUIElement?
+        for _ in 0..<4 {
+            withParent = app.descendants(matching: .any).matching(identifier: "feed-item").allElementsBoundByIndex
+                .first { $0.staticTexts.matching(NSPredicate(format: times)).count >= 2 && $0.staticTexts.matching(NSPredicate(format: times)).element(boundBy: 1).isHittable }
+            if withParent != nil { break }
+            app.swipeUp(velocity: .slow)
+            sleep(1)
+        }
+        if let item = withParent {
+            snapshot("bsky-profile-reply-with-parent")
+            item.staticTexts.matching(NSPredicate(format: times)).element(boundBy: 1).tap()
+            XCTAssert(element("focused-post").waitForExistence(timeout: 15), "reply thread didn't open")
+            sleep(3)
+            snapshot("bsky-thread-ancestors")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            sleep(1)
+        }
+        element("profile-tab-media").tap()
+        sleep(4)
+        snapshot("bsky-profile-media")
+
+        // Search: trending topics and feeds, then people as you type.
+        app.tabBars.buttons["Search"].tap()
+        XCTAssert(element("trending-topic").waitForExistence(timeout: 15), "no trending topics")
+        sleep(3)
+        snapshot("bsky-search")
+        let search = app.searchFields.firstMatch
+        XCTAssert(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("jay")
+        XCTAssert(element("actor-row").waitForExistence(timeout: 15), "no typeahead results")
+        sleep(3)
+        snapshot("bsky-search-typeahead")
+        // Put the field (and the keyboard) away so the tab bar comes back.
+        for name in ["Cancel", "Close"] where app.buttons[name].exists {
+            app.buttons[name].firstMatch.tap()
+            break
+        }
+        sleep(1)
+
+        // Signed out: notifications and profile ask you to sign in.
+        app.tabBars.buttons["Notifications"].tap()
+        XCTAssert(element("notifications-signed-out").waitForExistence(timeout: 5))
+        snapshot("bsky-notifications-signed-out")
+        app.tabBars.buttons["Profile"].tap()
+        XCTAssert(element("sign-in-card").waitForExistence(timeout: 5))
+        snapshot("bsky-me-signed-out")
+        // Dark mode, from the app's own setting.
+        app.buttons["Dark"].tap()
+        sleep(1)
+        app.tabBars.buttons["Home"].tap()
+        sleep(2)
+        snapshot("bsky-feed-dark")
+        app.tabBars.buttons["Profile"].tap()
+        app.buttons["System"].tap()
+
+        // The image viewer, from the first image in the feed.
+        app.tabBars.buttons["Home"].tap()
+        let image = element("post-image")
+        for _ in 0..<8 where !(image.exists && image.isHittable) {
+            app.swipeUp(velocity: .slow)
+        }
+        if image.exists && image.isHittable {
+            image.tap()
+            XCTAssert(element("image-viewer").waitForExistence(timeout: 5), "viewer didn't open")
+            sleep(3)
+            snapshot("bsky-image-viewer")
+            app.swipeDown(velocity: .fast)
+            XCTAssert(element("image-viewer").waitForNonExistence(timeout: 5), "swipe down didn't dismiss")
+        }
+    }
+
     func testHabits() {
         openApp("Habits")
         let row = element("habit-row")

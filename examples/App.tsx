@@ -17,6 +17,7 @@ import { Game2048App } from "./apps/game2048/App";
 import { HabitsApp } from "./apps/habits/App";
 import { RecipesApp } from "./apps/recipes/App";
 import { SocialApp } from "./apps/social/App";
+import { BlueskyApp } from "./apps/bluesky/App";
 import { HooksDemo } from "./screens/Hooks";
 import { NavigationDemo } from "./screens/Navigation";
 import { VirtualListDemo } from "./screens/VirtualListDemo";
@@ -70,6 +71,7 @@ const apps: Demo[] = [
   { title: "Notes", subtitle: "Markdown editing, split view, search", icon: "note.text", color: "yellow", screen: () => <NotesApp /> },
   { title: "Shop", subtitle: "Product grid, cart, validated checkout", icon: "bag.fill", color: "blue", screen: () => <ShopApp /> },
   { title: "2048", subtitle: "Swipe worklets, sliding tiles, undo", icon: "square.grid.4x3.fill", color: "orange", screen: () => <Game2048App /> },
+  { title: "Bluesky", subtitle: "Public AppView: feeds, threads, profiles, search, image viewer", icon: "cloud.fill", color: "blue", screen: () => <BlueskyApp /> },
   { title: "Social", subtitle: "Feed, stories, comments, worklet hearts", icon: "heart.text.square.fill", color: "pink", screen: () => <SocialApp /> },
   { title: "Habits", subtitle: "Streaks, calendars, heatmaps, locale weeks", icon: "flame.fill", color: "orange", screen: () => <HabitsApp /> },
   { title: "Recipes", subtitle: "TheMealDB, cooking mode, timers, speech", icon: "fork.knife", color: "green", screen: () => <RecipesApp /> },
