@@ -34665,14 +34665,16 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     }
     /**
      * Scroll a ScrollView, VirtualList, List or Form. `target` is a ref to a
-     * descendant (in a List or Form, its row), a child or row index, or
-     * "top" / "end".
+     * descendant (in a List or Form, its row), a child or row index,
+     * "top" / "end", or a content offset `{ x, y }` (ScrollView, VirtualList).
      */
     scrollTo(target, options = {}) {
       const resolved = target instanceof _HostInstance ? {
         node: target.id
       } : typeof target === "number" ? {
         index: target
+      } : typeof target === "object" ? {
+        offset: target
       } : {
         edge: target
       };

@@ -187,6 +187,8 @@ struct CollectionList: UIViewRepresentable {
             switch request.target.base {
             case let index as Int: item = index
             case let edge as ScrollEdge: item = edge == .top ? 0 : count - 1
+            case let offset as ScrollOffset:
+                return view.setContentOffset(CGPoint(x: offset.x ?? view.contentOffset.x, y: offset.y ?? view.contentOffset.y), animated: request.animated)
             default: return
             }
             guard count > 0 else { return }

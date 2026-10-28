@@ -31,6 +31,7 @@ function App() {
       <Button title="blur" onPress={() => input.current?.blur()} />
       <Button title="scroll to box" onPress={() => scroller.current?.scrollTo(box.current!)} />
       <Button title="scroll to index" onPress={() => scroller.current?.scrollTo(1)} />
+      <Button title="scroll to offset" onPress={() => scroller.current?.scrollTo({ y: 120 }, { animated: false })} />
       <Button title="scroll list to deep" onPress={() => list.current?.scrollTo(deep.current!)} />
       <Button title="scroll to end" onPress={() => scroller.current?.scrollTo("end", { animated: false, anchor: "bottom" })} />
       <Button

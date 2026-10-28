@@ -267,7 +267,11 @@ public final class JSXRuntime {
             node.focusRequest = FocusRequest(seq: node.focusRequest.seq + 1, focused: name == "focus")
         case "scrollTo":
             var target: AnyHashable =
-                (args["node"] as? NSNumber).map { AnyHashable($0.intValue) }
+                (args["offset"] as? [String: Any]).map {
+                    AnyHashable(ScrollOffset(x: ($0["x"] as? NSNumber).map { CGFloat($0.doubleValue) },
+                                             y: ($0["y"] as? NSNumber).map { CGFloat($0.doubleValue) }))
+                }
+                ?? (args["node"] as? NSNumber).map { AnyHashable($0.intValue) }
                 ?? (args["index"] as? NSNumber).map { AnyHashable($0.intValue) }
                 ?? AnyHashable(args["edge"] as? String == "end" ? ScrollEdge.end : ScrollEdge.top)
             if node.type != "VirtualList", let id = scrollTarget(in: node, args) { target = AnyHashable(id) }

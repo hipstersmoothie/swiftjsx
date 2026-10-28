@@ -138,6 +138,9 @@ struct RefTests {
         runtime.press("scroll to index")
         #expect(scroller.scrollRequest?.target == AnyHashable(box.id))
 
+        runtime.press("scroll to offset")
+        #expect(scroller.scrollRequest?.target == AnyHashable(ScrollOffset(x: nil, y: 120)))
+
         runtime.press("scroll to end")
         #expect(scroller.scrollRequest?.target == AnyHashable(ScrollEdge.end))
         #expect(scroller.scrollRequest?.animated == false)
@@ -294,6 +297,18 @@ struct CompilerTests {
         runtime.press("remove b")
         // The commit that sets the leaving view's exit props is animated.
         #expect(await eventually { SwiftJSXDiagnostics.animatedCommits > before })
+    }
+
+    @Test func animationKeyLimitsWhatAnimates() throws {
+        let runtime = try fixture("Animation")
+        var before = SwiftJSXDiagnostics.animatedOps
+        runtime.press("Change other")
+        #expect(runtime.texts().contains("keyed 0 1"))
+        #expect(SwiftJSXDiagnostics.animatedOps == before, "the key didn't change: no animation")
+        before = SwiftJSXDiagnostics.animatedOps
+        runtime.press("Change key")
+        #expect(runtime.texts().contains("keyed 1 1"))
+        #expect(SwiftJSXDiagnostics.animatedOps > before, "the key changed: animated")
     }
 
     @Test func parsesAnimationSpecs() {

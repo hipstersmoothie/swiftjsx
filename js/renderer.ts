@@ -40,7 +40,7 @@ declare const __native: {
 };
 
 export type Frame = { x: number; y: number; width: number; height: number };
-export type ScrollTarget = HostInstance | number | "top" | "end";
+export type ScrollTarget = HostInstance | number | "top" | "end" | { x?: number; y?: number };
 export type ScrollOptions = { animated?: boolean; anchor?: "top" | "center" | "bottom" | "leading" | "trailing" };
 
 /**
@@ -75,11 +75,15 @@ export class HostInstance {
   }
   /**
    * Scroll a ScrollView, VirtualList, List or Form. `target` is a ref to a
-   * descendant (in a List or Form, its row), a child or row index, or
-   * "top" / "end".
+   * descendant (in a List or Form, its row), a child or row index,
+   * "top" / "end", or a content offset `{ x, y }` (ScrollView, VirtualList).
    */
   scrollTo(target: ScrollTarget, options: ScrollOptions = {}) {
-    const resolved = target instanceof HostInstance ? { node: target.id } : typeof target === "number" ? { index: target } : { edge: target };
+    const resolved =
+      target instanceof HostInstance ? { node: target.id }
+      : typeof target === "number" ? { index: target }
+      : typeof target === "object" ? { offset: target }
+      : { edge: target };
     __native.command(this.id, "scrollTo", { ...resolved, animated: options.animated ?? true, anchor: options.anchor ?? null }, 0);
   }
   /** Frame in window coordinates, after the last layout. */

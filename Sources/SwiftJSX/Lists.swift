@@ -5,6 +5,9 @@ import SwiftUI
 /// reports which one is at the leading (top) edge.
 struct ScrollViewHost: View {
     let node: Node
+    /// For `scrollTo({ x, y })` (ScrollViewReader only scrolls to views).
+    @State private var position = ScrollPosition()
+
     var body: some View {
         let horizontal = node.string("axis") == "horizontal"
         ScrollViewReader { proxy in
@@ -25,7 +28,15 @@ struct ScrollViewHost: View {
             .environment(\.inList, false)
             .modifier(ScrollOptions(node: node))
             .modifier(Position(node: node, horizontal: horizontal))
-            .onChange(of: node.scrollRequest) { _, request in scroll(proxy, request) }
+            .scrollPosition($position)
+            .onChange(of: node.scrollRequest) { _, request in
+                if let request, let offset = request.target.base as? ScrollOffset {
+                    let jump = { position.scrollTo(point: CGPoint(x: offset.x ?? 0, y: offset.y ?? 0)) }
+                    if request.animated { withAnimation(.default, jump) } else { jump() }
+                } else {
+                    scroll(proxy, request)
+                }
+            }
             // A scrollTo from before the scroll view appeared (a mount effect).
             .onAppear { scroll(proxy, node.scrollRequest) }
         }
@@ -281,6 +292,7 @@ struct VirtualListHost: View {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
     @State private var visible = VisibleRange()
+    @State private var heights = RowHeights()
 
     var body: some View {
         let count = max(0, Int(node.double("count") ?? 0))
@@ -298,7 +310,7 @@ struct VirtualListHost: View {
         }
         #endif
         if node.string("listStyle") != "list" {
-            return AnyView(VirtualStack(node: node, count: count, layout: layout) { slots(count: count, layout: $0) })
+            return AnyView(VirtualStack(node: node, count: count, layout: layout, heights: heights) { slots(count: count, layout: $0) })
         }
         // listStyle="list" off iOS: SwiftUI's List.
         return AnyView(ScrollViewReader { proxy in
@@ -319,6 +331,7 @@ struct VirtualListHost: View {
     private func slots(count: Int, layout: SlotLayout) -> some View {
         ForEach(0..<count, id: \.self) { index in
             VirtualSlot(list: node, index: index, layout: layout)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { [heights] in heights.record(index, $0) }
                 .onAppear { visible.update(inserting: index, report: report) }
                 .onDisappear { visible.update(removing: index, report: report) }
         }
@@ -340,6 +353,7 @@ private struct VirtualStack<Slots: View>: View {
     let node: Node
     let count: Int
     let layout: SlotLayout
+    let heights: RowHeights
     @ViewBuilder let slots: (SlotLayout) -> Slots
     @State private var position = ScrollPosition()
     @State private var viewport: CGFloat = 0
@@ -386,12 +400,18 @@ private struct VirtualStack<Slots: View>: View {
         switch request.target.base {
         case let edge as ScrollEdge:
             position.scrollTo(edge: edge == .top ? .top : .bottom)
+        case let offset as ScrollOffset:
+            position.scrollTo(point: CGPoint(x: offset.x ?? 0, y: offset.y ?? 0))
         case let index as Int:
             let row = layout.fixed ?? layout.estimated
             // Grids: rows of `columns` (adaptive columns count as one per row: an estimate).
             let perRow = max(1, Int(node.double("columns") ?? 1))
             let header = headerHeight > 0 ? headerHeight + spacing : 0
-            let top = header + CGFloat(min(max(index, 0), max(count - 1, 0)) / perRow) * (row + spacing)
+            let target = min(max(index, 0), max(count - 1, 0))
+            // Rows of varying height: the ones measured so far, estimates for the rest.
+            let top = perRow == 1 && layout.fixed == nil
+                ? header + heights.offset(of: target, estimated: row, spacing: spacing)
+                : header + CGFloat(target / perRow) * (row + spacing)
             let y: CGFloat = switch request.anchor {
             case .center?: top - (viewport - row) / 2
             case .bottom?: top - (viewport - row)
@@ -441,6 +461,23 @@ struct VirtualSlot: View {
             if missing { SwiftJSXDiagnostics.renderedSlots.remove(index) } else { SwiftJSXDiagnostics.renderedSlots.insert(index) }
         }
         .onDisappear { SwiftJSXDiagnostics.renderedSlots.remove(index) }
+    }
+}
+
+/// Heights of the rows laid out so far, so `scrollTo(index)` lands on the
+/// row even when rows vary (unmeasured ones count as the estimate).
+@MainActor
+final class RowHeights {
+    private var heights: [Int: CGFloat] = [:]
+
+    func record(_ index: Int, _ height: CGFloat) {
+        heights[index] = height
+    }
+
+    func offset(of index: Int, estimated: CGFloat, spacing: CGFloat) -> CGFloat {
+        var y: CGFloat = 0
+        for i in 0..<index { y += (heights[i] ?? estimated) + spacing }
+        return y
     }
 }
 

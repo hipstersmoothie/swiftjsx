@@ -206,6 +206,12 @@ struct ScrollRequest: Equatable {
 
 enum ScrollEdge: Hashable { case top, end }
 
+/// `scrollTo({ x, y })`: a content offset in points.
+struct ScrollOffset: Hashable {
+    var x: CGFloat?
+    var y: CGFloat?
+}
+
 /// The mirror of React's host tree on the Swift side. Applies the op stream
 /// produced by `js/renderer.ts`.
 @MainActor
@@ -214,6 +220,8 @@ public final class NodeTree {
     private var nodes: [Int: Node] = [:]
     /// `animation` values set by update ops later in the batch being applied.
     private var upcomingAnimations: [Int: Any] = [:]
+    /// Nodes whose `animationKey` changes in the batch being applied.
+    private var keyChanges: Set<Int> = []
     /// Runs `animatedStyle` worklets for nodes that have one.
     var worklets: WorkletRuntime?
 
@@ -235,7 +243,11 @@ public final class NodeTree {
         // && <X/>}` would insert X under the old B. Look ahead: structural ops
         // use the `animation` this commit is about to set.
         upcomingAnimations = [:]
+        keyChanges = []
         for op in ops where op["op"] as? String == "update" {
+            if let id = (op["id"] as? NSNumber)?.intValue, (op["props"] as? [String: Any])?["animationKey"] != nil {
+                keyChanges.insert(id)
+            }
             if let id = (op["id"] as? NSNumber)?.intValue, let changes = op["props"] as? [String: Any],
                let animation = changes["animation"], upcomingAnimations[id] == nil {
                 upcomingAnimations[id] = animation
@@ -318,6 +330,10 @@ public final class NodeTree {
     /// Mutations to a node that has an `animation` prop (or whose parent does)
     /// run inside `withAnimation`, so `transition` and implicit animations work.
     private func animating(_ node: Node, _ override: Any?? = nil, _ body: () -> Void) {
+        // `animationKey`: the owner's animation only runs in commits that change the key.
+        if let owner = animationOwner(node, override), owner.has("animationKey"), !keyChanges.contains(owner.id) {
+            return body()
+        }
         let spec = override ?? animation(of: node) ?? inheritedAnimation(node.parent)
         if let animation = parseAnimation(spec) {
             SwiftJSXDiagnostics.animatedOps += 1
@@ -325,6 +341,17 @@ public final class NodeTree {
         } else {
             body()
         }
+    }
+
+    /// The node whose `animation` applies to a change on `node`.
+    private func animationOwner(_ node: Node, _ override: Any??) -> Node? {
+        if override != nil || animation(of: node) != nil { return node }
+        var current = node.parent
+        while let n = current {
+            if animation(of: n) != nil { return n }
+            current = n.parent
+        }
+        return nil
     }
 
     /// The nearest ancestor's `animation`: like SwiftUI's `.animation`, it

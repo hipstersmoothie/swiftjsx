@@ -115,9 +115,8 @@ for the record.
 - [ ] Over the UIKit list, a large navigation title doesn't collapse into the inline
       title (SwiftUI only tracks its own scroll views); use `titleDisplayMode="inline"`.
       Off iOS, `listStyle="list"` is still SwiftUI's `List`.
-- [ ] Without `itemHeight`, `VirtualList.scrollTo(index)` lands on an estimate
-      (`estimatedItemHeight`) when rows vary in height.
-- [ ] `scrollTo` by offset (`{ x, y }`), and scroll positions readable from worklets.
+- [x] `VirtualList.scrollTo(index)` uses measured row heights (estimates only for rows never laid out).
+- [x] `scrollTo({ x, y })` (ScrollView, VirtualList). [ ] Scroll positions readable from worklets.
 - [x] `scrollTo` on `List` and `Form` (a row, an index, an edge, or the row holding a
       view). A ScrollView's `scrollTo(n)` is its n-th child (it was treated as a node id).
 - [x] Carousels: `onScrollIndexChange` (sent only when the page changes),
@@ -175,7 +174,7 @@ for the record.
       `useDerivedValue` / `useAnimatedReaction`; springs don't take the finger's velocity.
 - [x] Transforms: `rotation3D` (card flips), `scaleX` / `scaleY`, `transformAnchor`.
 - [x] Animate on appear: `initial={{ opacity, scale, x, y, rotation }}` (+ `initialAnimation`).
-- [ ] Value-keyed animations (animate only when a given value changes).
+- [x] Value-keyed animations: `animationKey` (animate only commits that change it).
 - [x] `withAnimation(spec, fn, completion)`: runs when the animation is logically complete.
 - [x] `<AnimatePresence exit={…}>`: a keyed child that leaves animates to its exit props,
       then unmounts (`onExitComplete`).

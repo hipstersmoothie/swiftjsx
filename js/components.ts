@@ -195,6 +195,11 @@ export interface Modifiers {
    * `duration` (seconds) gets it there; `settle` is the way back.
    */
   /**
+   * With `animation`: animate only the commits where this value changes
+   * (SwiftUI's `.animation(_:value:)`); other updates apply at once.
+   */
+  animationKey?: string | number | boolean | null;
+  /**
    * Mount like this, then animate to the real props as the view appears
    * (a card sliding up into place, a badge popping in):
    * `initial={{ opacity: 0, y: 20 }}`. Uses `initialAnimation`, else `animation`.
