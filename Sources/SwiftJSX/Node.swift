@@ -18,6 +18,8 @@ public final class Node: Identifiable {
     public private(set) var animatedProps: [String: Any] = [:]
     public internal(set) var text: String
     public internal(set) var children: [Node] = []
+    /// Bumped when shared values a `<Canvas draw>` worklet read change.
+    var canvasVersion = 0
     @ObservationIgnored weak var parent: Node?
 
     // Imperative requests from refs (`ref.current.focus()` / `.scrollTo()`).

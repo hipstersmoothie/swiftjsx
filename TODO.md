@@ -43,7 +43,11 @@ for the record.
 - [x] Map overlays (`<MapPolyline>`, `<MapPolygon>`, `<MapCircle>`), `showsUserLocation`,
       `followsUserLocation`, `controls`; `navigator.geolocation` and `useGeolocation()`
       on Core Location (asks for when-in-use permission).
-- [ ] `Canvas` (immediate-mode drawing); map clustering, look-around, directions.
+- [x] `<Canvas draw>`: a worklet with a web-style 2D context (paths, arcs, rects, text,
+      gradients, transforms, clipping, SF Symbols), redrawn when the shared values it reads
+      change or every frame (`continuous`). The Canvas demo has a drawing pad.
+- [ ] Canvas: no images from URLs, `measureText`, shadows or blend modes; map clustering,
+      look-around, directions.
 
 ## Layout
 
@@ -187,9 +191,13 @@ for the record.
       animatable shape props (`trim`, `fill`), scroll offsets as shared values.
       Capturing `obj.member` sends all of `obj`; worklets that capture per-render
       closures are re-sent each render (needs stable `runOnJS` targets).
-- [ ] Worklet animations are SwiftUI animations: no reading values mid-animation, no
-      completion callbacks, `withDecay`, `withRepeat` or `withSequence`; no
-      `useDerivedValue` / `useAnimatedReaction`; springs don't take the finger's velocity.
+- [x] Worklet animations step on the main thread every frame (a display link while any
+      runs): mid-animation reads, `callback(finished)`, `withDecay`, `withDelay`,
+      `withSequence`, `withRepeat`, `cancelAnimation`, springs with a starting `velocity`
+      (and retargeting keeps speed), `useDerivedValue`, `useAnimatedReaction`. Colors and
+      booleans still go to SwiftUI's `withAnimation`.
+- [ ] Worklet springs are SwiftUI-style (duration and bounce): no stiffness/damping/mass
+      config; decay has no rubber-banding past `clamp`.
 - [x] Transforms: `rotation3D` (card flips), `scaleX` / `scaleY`, `transformAnchor`.
 - [x] Animate on appear: `initial={{ opacity, scale, x, y, rotation }}` (+ `initialAnimation`).
 - [x] Value-keyed animations: `animationKey` (animate only commits that change it).

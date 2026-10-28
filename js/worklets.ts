@@ -29,8 +29,7 @@ type WorkletFunction = Function & { __worklet?: Worklet; __builtin?: string };
   return fn;
 };
 
-const send = (message: { type: "set" | "delete"; id: number; value?: unknown }) =>
-  __native.command(0, "worklet", message, 0);
+const send = (message: { type: string; id: number; [key: string]: unknown }) => __native.command(0, "worklet", message, 0);
 
 // MARK: Shared values
 
@@ -46,10 +45,10 @@ class Shared<T> implements SharedValue<T> {
   get value(): T {
     return this._value;
   }
-  /** Assign a value, or an animation (`withSpring(…)`, `withTiming(…)`). */
+  /** Assign a value, or an animation (`withSpring(…)`, `withTiming(…)`…). */
   set value(v: T) {
-    this._value = isAnimation(v) ? (v.to as T) : v;
-    send({ type: "set", id: this.__shared, value: v });
+    this._value = isAnimation(v) ? (finalValue(v, this._value) as T) : v;
+    send({ type: "set", id: this.__shared, value: isAnimation(v) ? serializeAnimation(v) : v });
   }
   get(): T {
     return this.value;
@@ -61,6 +60,8 @@ class Shared<T> implements SharedValue<T> {
 
 let nextShared = 1;
 const live = new Map<number, Shared<unknown>>();
+/** Deleted on the main thread by an effect cleanup (sent again if the effect re-runs). */
+const deleted = new Set<number>();
 
 /** A shared value outside a component. Prefer `useSharedValue`. */
 export function makeMutable<T>(initial: T): SharedValue<T> {
@@ -79,11 +80,16 @@ export function makeMutable<T>(initial: T): SharedValue<T> {
 export function useSharedValue<T>(initial: T): SharedValue<T> {
   const [shared] = useState(() => makeMutable(initial) as Shared<T>);
   useEffect(() => {
-    // (Re-)register: Fast Refresh re-runs effects after running their cleanup.
+    // Re-register after a cleanup (Fast Refresh re-runs effects after running
+    // their cleanup). Not on mount: makeMutable already sent the value, and
+    // sending it again could undo a worklet's write that got there first.
     live.set(shared.__shared, shared as Shared<unknown>);
-    send({ type: "set", id: shared.__shared, value: shared._value });
+    if (deleted.delete(shared.__shared)) {
+      send({ type: "set", id: shared.__shared, value: shared._value });
+    }
     return () => {
       live.delete(shared.__shared);
+      deleted.add(shared.__shared);
       send({ type: "delete", id: shared.__shared });
     };
   }, [shared]);
@@ -99,9 +105,52 @@ export function useSharedValue<T>(initial: T): SharedValue<T> {
 };
 
 // MARK: Animations
+//
+// Assigned to a shared value, these run on the main thread, stepped every
+// frame: worklets read the current value mid-animation, and the optional
+// `callback(finished)` runs when it ends (`false` if something interrupted
+// it). Values are numbers, or objects and arrays of numbers (`{ x, y }`).
+// Values that aren't numbers (colors, booleans) are set at once and SwiftUI
+// animates the change with the closest curve. Durations are in seconds.
 
-type Animation<T> = { __animate: true; to: T; animation: AnimationSpec };
+type Animation<T> = { __animate: true; kind: string; to?: T; [key: string]: unknown };
 const isAnimation = (v: unknown): v is Animation<unknown> => !!v && typeof v === "object" && (v as any).__animate === true;
+type Callback = (finished: boolean) => void;
+
+/** Where an animation ends, as far as the JS thread can tell (it hears the real value later). */
+function finalValue(a: Animation<unknown>, from: unknown): unknown {
+  switch (a.kind) {
+    case "timing":
+    case "spring":
+      return a.to;
+    case "delay":
+      return finalValue(a.animation as Animation<unknown>, from);
+    case "sequence":
+      return (a.animations as Animation<unknown>[]).reduce((v, x) => finalValue(x, v), from);
+    case "repeat": {
+      const count = (a.count as number) ?? 2;
+      return a.reverse && count % 2 === 0 ? from : finalValue(a.animation as Animation<unknown>, from);
+    }
+    default:
+      return from;
+  }
+}
+
+/** Callbacks inside become functions the main thread can call (once). */
+function serializeAnimation(a: unknown): unknown {
+  if (Array.isArray(a)) return a.map(serializeAnimation);
+  if (!a || typeof a !== "object") return a;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(a)) {
+    if (typeof value === "function") {
+      const fn = value as WorkletFunction;
+      out[key] = fn.__worklet ? serializeWorkletProp(fn, new Set()) : { __jsFunction: callOnce(fn), name: fn.name || "callback", callback: true };
+    } else {
+      out[key] = serializeAnimation(value);
+    }
+  }
+  return out;
+}
 
 /** Marks a function as available on the main thread under the same name. */
 function builtin<F extends Function>(name: string, fn: F): F {
@@ -109,23 +158,60 @@ function builtin<F extends Function>(name: string, fn: F): F {
   return fn;
 }
 
-/**
- * Assign to a shared value to animate there with a spring. SwiftUI runs the
- * animation natively (and keeps velocity when it's retargeted mid-flight).
- */
-export const withSpring = builtin("withSpring", <T,>(to: T, config?: { duration?: number; bounce?: number }): T =>
-  ({ __animate: true, to, animation: { type: "spring", ...config } }) as unknown as T);
+export type SpringConfig = {
+  /** Perceptual duration in seconds, like SwiftUI's (default 0.5). */
+  duration?: number;
+  /** 0: no overshoot; 0.3: bouncy; negative: overdamped. */
+  bounce?: number;
+  /** Starting speed in units per second (a drag's `velocity`); default: the interrupted animation's. */
+  velocity?: number | Record<string, number> | number[];
+  delay?: number;
+};
 
-/** Assign to a shared value to animate there along a curve. Seconds. */
-export const withTiming = builtin(
-  "withTiming",
-  <T,>(to: T, config: { duration?: number; easing?: "easeInOut" | "easeIn" | "easeOut" | "linear"; delay?: number } = {}): T =>
-    ({
-      __animate: true,
-      to,
-      animation: { type: config.easing ?? "easeInOut", duration: config.duration ?? 0.3, delay: config.delay },
-    }) as unknown as T,
-);
+/** A spring to `to`. Interrupting a moving value keeps its speed. */
+export const withSpring = builtin("withSpring", <T,>(to: T, config: SpringConfig = {}, callback?: Callback): T =>
+  ({ __animate: true, kind: "spring", to, ...config, callback }) as unknown as T);
+
+export type TimingConfig = {
+  duration?: number;
+  /** A named curve or cubic-bezier control points [x1, y1, x2, y2]. */
+  easing?: "easeInOut" | "easeIn" | "easeOut" | "linear" | [number, number, number, number];
+  delay?: number;
+};
+
+/** Along a curve to `to` in `duration` seconds (default 0.3, easeInOut). */
+export const withTiming = builtin("withTiming", <T,>(to: T, config: TimingConfig = {}, callback?: Callback): T =>
+  ({ __animate: true, kind: "timing", to, ...config, callback }) as unknown as T);
+
+/**
+ * Coasts from the current value at `velocity` (units per second), slowing
+ * down (`deceleration` per millisecond, default 0.998) until it stops, or
+ * stops at `clamp`'s bounds: a flick.
+ */
+export const withDecay = builtin("withDecay", <T = number,>(
+  config: { velocity: number | Record<string, number>; deceleration?: number; clamp?: [number, number] },
+  callback?: Callback,
+): T => ({ __animate: true, kind: "decay", ...config, callback }) as unknown as T);
+
+/** Starts `animation` after `delay` seconds. */
+export const withDelay = builtin("withDelay", <T,>(delay: number, animation: T): T =>
+  ({ __animate: true, kind: "delay", delay, animation }) as unknown as T);
+
+/** Animations one after another, each from where the last one ended. */
+export const withSequence = builtin("withSequence", <T,>(...animations: T[]): T =>
+  ({ __animate: true, kind: "sequence", animations }) as unknown as T);
+
+/**
+ * `animation` `count` times (-1: forever); `reverse` plays every other round
+ * backwards (a pulse, a wiggle). `callback` runs when the last round ends.
+ */
+export const withRepeat = builtin("withRepeat", <T,>(animation: T, count = 2, reverse = false, callback?: Callback): T =>
+  ({ __animate: true, kind: "repeat", animation, count, reverse, callback }) as unknown as T);
+
+/** Stops a shared value's animation where it is (its callback gets `false`). */
+export const cancelAnimation = builtin("cancelAnimation", (value: SharedValue<unknown>) => {
+  send({ type: "cancel", id: value.__shared });
+});
 
 /**
  * Calls a JS-thread function (e.g. a state setter) from a worklet. It runs
@@ -135,6 +221,43 @@ export const withTiming = builtin(
  * missing its "worklet" directive.)
  */
 export const runOnJS = builtin("runOnJS", <A extends unknown[]>(fn: (...args: A) => unknown) => fn as (...args: A) => void);
+
+// MARK: Derived values and reactions
+
+let nextReaction = 1;
+const newReactionId = () => nextReaction++;
+
+/**
+ * A shared value computed on the main thread from other shared values; it
+ * updates (without rendering React) when they change. The callback is a
+ * worklet automatically. It may return an animation (`withSpring(…)`).
+ */
+export function useDerivedValue<T>(fn: () => T): SharedValue<T> {
+  const shared = useSharedValue<T>(undefined as T);
+  const worklet = fn as WorkletFunction;
+  if (!worklet.__worklet) throw new Error("useDerivedValue: the callback wasn't compiled as a worklet.");
+  useEffect(() => {
+    send({ type: "derive", id: shared.__shared, worklet: serializeWorkletProp(fn, retained) });
+  }, [shared, fn]);
+  return shared;
+}
+
+/**
+ * Runs `react(current, previous)` on the main thread when `prepare()`'s
+ * result changes; `prepare` reads shared values (and re-runs when they
+ * change). Both are worklets automatically. Call `runOnJS(fn)(…)` from
+ * `react` to tell React.
+ */
+export function useAnimatedReaction<T>(prepare: () => T, react: (current: T, previous: T | null) => void) {
+  const [id] = useState(newReactionId);
+  if (!(prepare as WorkletFunction).__worklet || !(react as WorkletFunction).__worklet) {
+    throw new Error("useAnimatedReaction: the callbacks weren't compiled as worklets.");
+  }
+  useEffect(() => {
+    send({ type: "react", id, prepare: serializeWorkletProp(prepare, retained), react: serializeWorkletProp(react, retained) });
+    return () => send({ type: "unreact", id });
+  }, [id, prepare, react]);
+}
 
 // MARK: Animated styles
 
@@ -226,4 +349,17 @@ export function retainFunctions(previous: Set<number> | undefined, next: Set<num
 
 export function jsFunction(id: number): Function | undefined {
   return jsFunctions.get(id);
+}
+
+/** JS functions that derived values and reactions capture: kept while the app runs. */
+const retained = new Set<number>();
+
+/** An id for a function the main thread calls once (an animation's callback). */
+function callOnce(fn: Function): number {
+  const id = nextFunction++;
+  jsFunctions.set(id, (...args: unknown[]) => {
+    jsFunctions.delete(id);
+    return fn(...args);
+  });
+  return id;
 }

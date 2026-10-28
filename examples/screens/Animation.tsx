@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import {
   Screen, ScrollView, VStack, HStack, Text, Button, AbsoluteStack, AnimatePresence, Portal, Sheet, Spacer, withAnimation, haptic,
-  SwipeActions, Label, Image, Divider, ProgressView,
+  SwipeActions, Label, Image, Divider, ProgressView, Circle, ZStack,
+  useSharedValue, useAnimatedStyle, useAnimatedReaction, withTiming, withSpring, withDecay, withSequence, withRepeat, runOnJS,
+  type DragEvent,
 } from "swiftjsx";
 
 const COLORS = ["orange", "pink", "indigo", "teal", "green", "red", "blue", "purple", "yellow"] as const;
@@ -19,6 +21,56 @@ function place(slot: number) {
 function shuffled(tiles: Tile[]): Tile[] {
   const slots = Array.from({ length: SLOTS }, (_, i) => i).sort(() => Math.random() - 0.5);
   return tiles.map((t, i) => ({ ...t, slot: slots[i] }));
+}
+
+/** Worklet animations, stepped on the main thread every frame. */
+function EngineDemo() {
+  // A bell that wiggles: a sequence, repeated.
+  const tilt = useSharedValue(0);
+  const bell = useAnimatedStyle(() => ({ rotation: tilt.get() }));
+  const ring = () =>
+    tilt.set(withSequence(withRepeat(withSequence(withTiming(-18, { duration: 0.06 }), withTiming(18, { duration: 0.06 })), 3), withSpring(0)));
+
+  // A puck you flick: it coasts (decay) to the edge, then springs home.
+  const x = useSharedValue(0);
+  const puck = useAnimatedStyle(() => ({ offset: { x: x.get(), y: 0 }, scale: Math.abs(x.get()) > 120 ? 0.9 : 1 }));
+  // A reaction: counts the times it reaches an edge.
+  const [hits, setHits] = useState(0);
+  const hitEdge = () => setHits((n) => n + 1);
+  useAnimatedReaction(
+    () => Math.abs(x.get()) >= 139,
+    (atEdge, before) => {
+      if (atEdge && before === false) runOnJS(hitEdge)();
+    },
+  );
+
+  return (
+    <VStack alignment="leading" spacing={10}>
+      <HStack spacing={16}>
+        <Image systemName="bell.fill" font="largeTitle" foregroundStyle="orange" animatedStyle={bell} transformAnchor="top" />
+        <Button title="Ring" buttonStyle="bordered" onPress={ring} accessibilityIdentifier="ring-bell" />
+      </HStack>
+      <ZStack frame={{ maxWidth: Infinity, height: 60 }} background="secondarySystemBackground" cornerRadius={30}>
+        <Circle
+          fill="indigo"
+          frame={{ width: 48, height: 48 }}
+          animatedStyle={puck}
+          onDrag={(e: DragEvent) => {
+            "worklet";
+            x.set(e.translation.x);
+          }}
+          onDragEnd={(e: DragEvent) => {
+            "worklet";
+            x.set(withDecay({ velocity: e.velocity.x, clamp: [-140, 140] }, (finished) => {
+              if (finished) x.set(withSpring(0, { bounce: 0.4 }));
+            }));
+          }}
+          accessibilityIdentifier="puck"
+        />
+      </ZStack>
+      <Text font="footnote" foregroundStyle="secondary" accessibilityIdentifier="puck-side">{`Flick the puck · edge hits: ${hits}`}</Text>
+    </VStack>
+  );
 }
 
 export function AnimationDemo() {
@@ -259,6 +311,8 @@ export function AnimationDemo() {
             </>
           ) : null}
 
+          <Text font="headline" padding={{ top: 12 }}>Worklet animations</Text>
+          <EngineDemo />
           <Text font="headline" padding={{ top: 12 }}>3D, keyframes</Text>
           <HStack spacing={16}>
             {/* A card flip: the back face is shown past 90°. */}

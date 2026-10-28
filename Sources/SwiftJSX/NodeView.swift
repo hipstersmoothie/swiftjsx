@@ -168,6 +168,9 @@ struct NodeView: View {
         case "WebView":
             WebViewHost(node: node, runtime: runtime)
 
+        case "Canvas":
+            CanvasHost(node: node)
+
         case "NativeView":
             NativeViewHost(node: node)
 

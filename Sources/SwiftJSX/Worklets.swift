@@ -1,4 +1,5 @@
 import JavaScriptCore
+import QuartzCore
 import SwiftUI
 
 /// Runs worklets: small JS functions that run on the main thread, in their own
@@ -11,8 +12,16 @@ import SwiftUI
 /// - Animated styles (`useAnimatedStyle` → `animatedStyle` prop) re-run when
 ///   a shared value they read changes. Their result overrides those props on
 ///   the node (`Node.animatedProps`) without a React render.
-/// - `withSpring` / `withTiming` don't step frames in JS: the style change is
-///   applied inside SwiftUI's `withAnimation`, which interpolates natively.
+/// - Animations (`withTiming`, `withSpring`, `withDecay`, `withSequence`,
+///   `withRepeat`, `withDelay`) of numbers, and objects and arrays of them,
+///   step here every frame (a display link runs while any is running), so
+///   worklets read their current values, they end with callbacks, and springs
+///   start at the speed of whatever they interrupt. Values that can't be
+///   stepped (colors, booleans) are set once inside SwiftUI's `withAnimation`.
+/// - Derived values (`useDerivedValue`) and reactions (`useAnimatedReaction`)
+///   re-run when the shared values they read change.
+/// - `<Canvas draw>` worklets record drawing commands (see CanvasHost), and
+///   draw again when the shared values they read change.
 ///
 /// Worklet functions arrive as `{ __worklet: { code, closure } }`, produced
 /// by the worklets Babel pass (scripts/worklets-plugin.mjs).
@@ -28,6 +37,8 @@ final class WorkletRuntime {
     private let report: (String) -> Void
     /// Animations of the steps the last flush applied ("none" if unanimated), for tests.
     private(set) var lastSteps: [String] = []
+    /// Steps animations while any is running.
+    private let ticker = FrameTicker()
 
     init(tree: NodeTree, callJS: @escaping (Int, [Any]) -> Void, syncToJS: @escaping ([String: Any]) -> Void,
          report: @escaping (String) -> Void) {
@@ -49,6 +60,8 @@ final class WorkletRuntime {
         host.setObject(haptic, forKeyedSubscript: "haptic" as NSString)
         context.setObject(host, forKeyedSubscript: "__host" as NSString)
         api = context.evaluateScript(Self.prelude)!
+
+        ticker.onFrame = { [weak self] now in self?.frame(now) }
 
         context.exceptionHandler = { _, exception in
             let message = exception?.toString() ?? "unknown error"
@@ -107,6 +120,23 @@ final class WorkletRuntime {
         flush()
     }
 
+    // MARK: Canvas
+
+    /// The drawing commands of a `<Canvas draw>` worklet at this size (see
+    /// CanvasHost). The canvas redraws when shared values it read change.
+    func draw(_ node: Node, size: CGSize, time: Double) -> [Any] {
+        guard let worklet = node.props["draw"] as? [String: Any], worklet["__worklet"] != nil else { return [] }
+        let result = api.invokeMethod("draw", withArguments: [node.id, worklet, size.width, size.height, time])
+        return result?.toArray() ?? []
+    }
+
+    // MARK: Frames
+
+    private func frame(_ now: Double) {
+        api.invokeMethod("frame", withArguments: [now])
+        flush()
+    }
+
     // MARK: Applying results
 
     /// Re-runs styles whose shared values changed and applies them, animated
@@ -129,6 +159,10 @@ final class WorkletRuntime {
                 withTransaction(transaction) { node.setAnimatedProps(props) }
             }
         }
+        for case let id as NSNumber in result["canvases"] as? [Any] ?? [] {
+            tree?.node(id.intValue)?.canvasVersion += 1
+        }
+        if result["animating"] as? Bool == true { ticker.start() } else { ticker.stop() }
         if let values = result["values"] as? [String: Any], !values.isEmpty {
             syncToJS(values)
         }
@@ -138,172 +172,50 @@ final class WorkletRuntime {
             callJS(id, call.dropFirst().first as? [Any] ?? [])
         }
     }
+}
 
-    // MARK: Prelude
+/// Calls `onFrame(time)` every display frame while started (a display link on
+/// iOS; a 60 Hz timer on the main queue elsewhere, which also runs where
+/// nothing runs the main run loop, as in `swift test`). Time in seconds, `CACurrentMediaTime()`.
+@MainActor
+final class FrameTicker: NSObject {
+    var onFrame: ((Double) -> Void)?
+    #if os(iOS)
+    private var link: CADisplayLink?
+    #else
+    private var timer: DispatchSourceTimer?
+    #endif
 
-    private static let prelude = #"""
-    (() => {
-      const shared = new Map();   // id -> { value, styles: Set<nodeId>, proxy }
-      const styles = new Map();   // nodeId -> { fn, deps: Set<id> }
-      const changed = new Map();  // id -> { animation, previous }, since the last flush
-      const calls = [];           // [id, args] of JS-thread functions, run after the flush
-      const warned = new Set();
-      const toJS = new Map();     // id -> value written by a worklet, to sync back
-      let tracking = null;
-
-      function entry(id) {
-        let s = shared.get(id);
-        if (!s) {
-          s = { value: undefined, styles: new Set(), proxy: null };
-          s.proxy = {
-            __shared: id,
-            get value() { if (tracking) tracking.add(id); return s.value; },
-            set value(v) { set(id, v, true); },
-            get() { return this.value; },
-            set(v) { set(id, v, true); },
-          };
-          shared.set(id, s);
+    func start() {
+        #if os(iOS)
+        guard link == nil else { return }
+        let link = CADisplayLink(target: self, selector: #selector(tick))
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
+        link.add(to: .main, forMode: .common)
+        self.link = link
+        #else
+        guard timer == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(16))
+        timer.setEventHandler { [weak self] in
+            MainActor.assumeIsolated { self?.tick() }
         }
-        return s;
-      }
+        timer.resume()
+        self.timer = timer
+        #endif
+    }
 
-      function set(id, v, fromWorklet) {
-        const s = entry(id);
-        let animation = null;
-        if (v && typeof v === "object" && v.__animate) { animation = v.animation; v = v.to; }
-        const previous = changed.has(id) ? changed.get(id).previous : s.value;
-        changed.set(id, { animation, previous });
-        s.value = v;
-        if (fromWorklet) toJS.set(id, v);
-      }
+    func stop() {
+        #if os(iOS)
+        link?.invalidate()
+        link = nil
+        #else
+        timer?.cancel()
+        timer = nil
+        #endif
+    }
 
-      const builtins = {
-        withSpring: (to, config) => ({ __animate: true, to, animation: { type: "spring", ...config } }),
-        withTiming: (to, config = {}) => ({
-          __animate: true, to,
-          animation: { type: config.easing ?? "easeInOut", duration: config.duration ?? 0.3, delay: config.delay },
-        }),
-        withAnimation: (animation, to) => ({ __animate: true, to, animation }),
-        runOnJS: (fn) => fn.__runOnJS ?? fn,
-        haptic: (kind) => __host.haptic(kind),
-      };
-
-      function hydrate(v) {
-        if (Array.isArray(v)) return v.map(hydrate);
-        if (v && typeof v === "object") {
-          if ("__shared" in v) return entry(v.__shared).proxy;
-          if ("__worklet" in v) return compile(v.__worklet);
-          if ("__jsFunction" in v) {
-            const id = v.__jsFunction;
-            const call = (...args) => { calls.push([id, args]); };
-            // Called without runOnJS: usually a helper missing "worklet".
-            const direct = (...args) => {
-              if (!warned.has(id)) {
-                warned.add(id);
-                __host.log(`A worklet called ${v.name}(), a JS-thread function: it runs later on the JS thread and returns undefined. Mark it "worklet" to run it here, or call it through runOnJS().`);
-              }
-              call(...args);
-            };
-            direct.__runOnJS = call;
-            return direct;
-          }
-          if ("__builtin" in v) return builtins[v.__builtin];
-          const out = {};
-          for (const k in v) out[k] = hydrate(v[k]);
-          return out;
-        }
-        return v;
-      }
-
-      const factories = new Map();
-      function compile(w) {
-        const closure = w.closure ?? {};
-        const keys = Object.keys(closure);
-        const key = keys.join(",") + "\n" + w.code;
-        let factory = factories.get(key);
-        if (!factory) {
-          factory = new Function(...keys, "return (" + w.code + ");");
-          factories.set(key, factory);
-        }
-        return factory(...keys.map((k) => hydrate(closure[k])));
-      }
-
-      function evaluate(node) {
-        const st = styles.get(node);
-        for (const id of st.deps) shared.get(id)?.styles.delete(node);
-        tracking = new Set();
-        let props;
-        try {
-          props = st.fn();
-        } finally {
-          st.deps = tracking;
-          tracking = null;
-          for (const id of st.deps) entry(id).styles.add(node);
-        }
-        return props ?? {};
-      }
-
-      function removeStyle(node) {
-        const st = styles.get(node);
-        if (!st) return;
-        for (const id of st.deps) shared.get(id)?.styles.delete(node);
-        styles.delete(node);
-      }
-
-      return {
-        compile,
-        setStyle(node, w) {
-          removeStyle(node);
-          styles.set(node, { fn: compile(w.__worklet), deps: new Set() });
-          return evaluate(node);
-        },
-        removeStyle,
-        message(m) {
-          if (m.type === "delete") shared.delete(m.id);
-          else set(m.id, m.value, false);
-        },
-        // Styles whose shared values changed, re-evaluated. Values changed with
-        // different animations are applied in steps, one animation each (only
-        // that group's values new so far), so a spring on one value and a
-        // timing curve on another both keep their own curve. Unanimated
-        // changes go last.
-        flush() {
-          const byNode = new Map();  // node -> Map<animation key, { animation, ids }>
-          for (const [id, change] of changed) {
-            const s = shared.get(id);
-            if (!s) continue;
-            const key = change.animation ? JSON.stringify(change.animation) : "";
-            for (const node of s.styles) {
-              const groups = byNode.get(node) ?? new Map();
-              const group = groups.get(key) ?? { animation: change.animation, ids: [] };
-              group.ids.push(id);
-              groups.set(key, group);
-              byNode.set(node, groups);
-            }
-          }
-          const out = [];
-          for (const [node, groups] of byNode) {
-            if (!styles.has(node)) continue;
-            const steps = [...groups.values()].sort((a, b) => (a.animation ? 0 : 1) - (b.animation ? 0 : 1));
-            if (steps.length === 1) {
-              out.push({ node, props: evaluate(node), animation: steps[0].animation });
-              continue;
-            }
-            const ids = steps.flatMap((step) => step.ids);
-            const now = new Map(ids.map((id) => [id, shared.get(id).value]));
-            for (const id of ids) shared.get(id).value = changed.get(id).previous;
-            for (const step of steps) {
-              for (const id of step.ids) shared.get(id).value = now.get(id);
-              out.push({ node, props: evaluate(node), animation: step.animation });
-            }
-          }
-          changed.clear();
-          const values = {};
-          for (const [id, v] of toJS) values[id] = v;
-          toJS.clear();
-          return { styles: out, values, calls: calls.splice(0) };
-        },
-      };
-    })()
-    """#
+    @objc private func tick() {
+        onFrame?(CACurrentMediaTime())
+    }
 }

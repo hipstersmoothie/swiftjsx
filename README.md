@@ -151,8 +151,21 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   ```
 
   The build compiles worklets to source plus the values they capture; a small second
-  JSContext on the main thread runs them. `withSpring`/`withTiming` hand the change to
-  SwiftUI, which animates it natively.
+  JSContext on the main thread runs them.
+  - Animations: `withTiming`, `withSpring` (with a starting `velocity`, e.g. a drag's;
+    interrupting a moving value keeps its speed), `withDecay` (flicks, with `clamp`),
+    `withDelay`, `withSequence`, `withRepeat` (`-1`: forever; `reverse` for pulses and
+    wiggles) and `cancelAnimation`. They step on the main thread every frame (a display
+    link runs while one is running), so worklets read mid-animation values, and each
+    takes a `callback(finished)` (a worklet, or a JS function that runs on the JS thread).
+    Numbers and objects or arrays of numbers animate this way; colors and booleans are
+    handed to SwiftUI, which animates them natively.
+  - `useDerivedValue(() => …)` and `useAnimatedReaction(prepare, react)` re-run on the main
+    thread when the shared values they read change.
+- **`<Canvas draw>`**: immediate-mode drawing with a web-style 2D context (paths, `arc`,
+  `fillRect`, `fillText`, gradients, transforms, `drawImage` for SF Symbols). `draw` is a
+  worklet: it draws again when its size or the shared values it reads change (animate
+  them and the drawing follows), or every frame with `continuous`.
 - **Shapes, colors and fonts.**
   - Shapes: `<Circle>`, `<Capsule>`, `<RoundedRectangle>`, `<Ellipse>`, `<Rectangle>`
     with `fill`, `stroke`, `lineWidth`, `dash` and `trim` (progress rings).
@@ -313,7 +326,8 @@ Things that behave differently from React on the web, or from what you'd guess:
   you set `contentTransition="identity"`.
 - **`Intl` works** (currency, dates, plural rules, `getWeekInfo`). JavaScriptCore has no JIT
   on iOS, so keep heavy work, like date-fns `format()` per row, out of hot loops.
-- **Worklets:** `withTiming`'s `delay` stands in for `withDelay`.
+- **Worklets:** the JS thread sees an animating shared value about ten times a second
+  (and its last value); read it in a worklet for the current frame.
 - **Native backend:** `onMain` calls run in the order they're made; `delegate` properties
   are weak (`keepAlive`).
 

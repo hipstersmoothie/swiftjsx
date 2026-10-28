@@ -369,13 +369,17 @@ struct CompilerTests {
         #expect(card.double("scale") == 1.1)
 
         runtime.fire(card, "onDragEnd", drag(150, 80))
-        #expect(offset(card) == [0, 0])
+        // The boolean `lifted` can't be stepped: SwiftUI springs the scale it
+        // drives. The offset's timing curve steps here, frame by frame.
+        #expect(runtime.worklets.lastSteps == ["spring"])
+        #expect(card.double("scale") == 1)
+        #expect(await eventually { offset(card)[0] > 0 && offset(card)[0] < 100 })
+        #expect(await eventually { offset(card) == [0, 0] })
         #expect(card.double("opacity") == 1)
-        // A spring and a timing curve in one handler each keep their own.
-        #expect(runtime.worklets.lastSteps.sorted() == ["easeInOut", "spring"])
         #expect(await eventually { runtime.texts().contains("drops 1") })
-        // runOnJS callbacks run after the values sync, so they see the drop.
-        #expect(runtime.texts().contains("dropped at 0,0"))
+        // runOnJS callbacks run after the values sync: they see the values as
+        // the drop left them (the animation back has only just started).
+        #expect(runtime.texts().contains("dropped at 100,80"))
     }
 
     @Test func jsThreadWritesReachTheMainThread() async throws {

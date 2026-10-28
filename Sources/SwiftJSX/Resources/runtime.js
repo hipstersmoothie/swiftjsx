@@ -34961,6 +34961,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     Background: () => Background,
     BarMark: () => BarMark,
     Button: () => Button,
+    Canvas: () => Canvas,
     Capsule: () => Capsule,
     Chart: () => Chart,
     Circle: () => Circle,
@@ -35043,6 +35044,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     WebView: () => WebView,
     ZStack: () => ZStack,
     canOpenURL: () => canOpenURL,
+    cancelAnimation: () => cancelAnimation,
     createNavigationRef: () => createNavigationRef,
     defineNativeClass: () => defineNativeClass,
     geolocation: () => geolocation,
@@ -35066,8 +35068,10 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     share: () => share,
     speech: () => speech,
     toJS: () => toJS,
+    useAnimatedReaction: () => useAnimatedReaction,
     useAnimatedStyle: () => useAnimatedStyle,
     useColorScheme: () => useColorScheme,
+    useDerivedValue: () => useDerivedValue,
     useEnvironment: () => useEnvironment,
     useGeolocation: () => useGeolocation,
     useKeepAwake: () => useKeepAwake,
@@ -35076,6 +35080,10 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     useNotificationListener: () => useNotificationListener,
     useSharedValue: () => useSharedValue,
     withAnimation: () => withAnimation,
+    withDecay: () => withDecay,
+    withDelay: () => withDelay,
+    withRepeat: () => withRepeat,
+    withSequence: () => withSequence,
     withSpring: () => withSpring,
     withTiming: () => withTiming
   });
@@ -35104,13 +35112,13 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     get value() {
       return this._value;
     }
-    /** Assign a value, or an animation (`withSpring(…)`, `withTiming(…)`). */
+    /** Assign a value, or an animation (`withSpring(…)`, `withTiming(…)`…). */
     set value(v) {
-      this._value = isAnimation(v) ? v.to : v;
+      this._value = isAnimation(v) ? finalValue(v, this._value) : v;
       send({
         type: "set",
         id: this.__shared,
-        value: v
+        value: isAnimation(v) ? serializeAnimation(v) : v
       });
     }
     get() {
@@ -35122,6 +35130,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
   };
   var nextShared = 1;
   var live = /* @__PURE__ */ new Map();
+  var deleted = /* @__PURE__ */ new Set();
   function makeMutable(initial) {
     const shared = new Shared(nextShared++, initial);
     live.set(shared.__shared, shared);
@@ -35134,11 +35143,11 @@ Content-Type: ${value.type || "application/octet-stream"}\r
   }
   function useSharedValue(initial) {
     const $ = (0, import_compiler_runtime.c)(6);
-    if ($[0] !== "dd8ddb3cf9892f189e032540bf063189022469521210ae98486f5e9bd1c61d5f") {
+    if ($[0] !== "ce648c46b8ea7c8b06ac4973d2dbda534b95fdba85ecf82465956b8386bd252a") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "dd8ddb3cf9892f189e032540bf063189022469521210ae98486f5e9bd1c61d5f";
+      $[0] = "ce648c46b8ea7c8b06ac4973d2dbda534b95fdba85ecf82465956b8386bd252a";
     }
     let t0;
     if ($[1] !== initial) {
@@ -35154,13 +35163,16 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     if ($[3] !== shared) {
       t1 = () => {
         live.set(shared.__shared, shared);
-        send({
-          type: "set",
-          id: shared.__shared,
-          value: shared._value
-        });
+        if (deleted.delete(shared.__shared)) {
+          send({
+            type: "set",
+            id: shared.__shared,
+            value: shared._value
+          });
+        }
         return () => {
           live.delete(shared.__shared);
+          deleted.add(shared.__shared);
           send({
             type: "delete",
             id: shared.__shared
@@ -35185,28 +35197,172 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     }
   };
   var isAnimation = (v) => !!v && typeof v === "object" && v.__animate === true;
+  function finalValue(a, from) {
+    switch (a.kind) {
+      case "timing":
+      case "spring":
+        return a.to;
+      case "delay":
+        return finalValue(a.animation, from);
+      case "sequence":
+        return a.animations.reduce((v, x) => finalValue(x, v), from);
+      case "repeat": {
+        const count = a.count ?? 2;
+        return a.reverse && count % 2 === 0 ? from : finalValue(a.animation, from);
+      }
+      default:
+        return from;
+    }
+  }
+  function serializeAnimation(a) {
+    if (Array.isArray(a)) return a.map(serializeAnimation);
+    if (!a || typeof a !== "object") return a;
+    const out = {};
+    for (const [key, value] of Object.entries(a)) {
+      if (typeof value === "function") {
+        const fn = value;
+        out[key] = fn.__worklet ? serializeWorkletProp(fn, /* @__PURE__ */ new Set()) : {
+          __jsFunction: callOnce(fn),
+          name: fn.name || "callback",
+          callback: true
+        };
+      } else {
+        out[key] = serializeAnimation(value);
+      }
+    }
+    return out;
+  }
   function builtin(name, fn) {
     fn.__builtin = name;
     return fn;
   }
-  var withSpring = builtin("withSpring", (to, config) => ({
+  var withSpring = builtin("withSpring", (to, config = {}, callback) => ({
     __animate: true,
+    kind: "spring",
     to,
-    animation: {
-      type: "spring",
-      ...config
-    }
+    ...config,
+    callback
   }));
-  var withTiming = builtin("withTiming", (to, config = {}) => ({
+  var withTiming = builtin("withTiming", (to, config = {}, callback) => ({
     __animate: true,
+    kind: "timing",
     to,
-    animation: {
-      type: config.easing ?? "easeInOut",
-      duration: config.duration ?? 0.3,
-      delay: config.delay
-    }
+    ...config,
+    callback
   }));
+  var withDecay = builtin("withDecay", (config, callback) => ({
+    __animate: true,
+    kind: "decay",
+    ...config,
+    callback
+  }));
+  var withDelay = builtin("withDelay", (delay, animation) => ({
+    __animate: true,
+    kind: "delay",
+    delay,
+    animation
+  }));
+  var withSequence = builtin("withSequence", (...animations) => ({
+    __animate: true,
+    kind: "sequence",
+    animations
+  }));
+  var withRepeat = builtin("withRepeat", (animation, count = 2, reverse = false, callback) => ({
+    __animate: true,
+    kind: "repeat",
+    animation,
+    count,
+    reverse,
+    callback
+  }));
+  var cancelAnimation = builtin("cancelAnimation", (value) => {
+    send({
+      type: "cancel",
+      id: value.__shared
+    });
+  });
   var runOnJS = builtin("runOnJS", (fn) => fn);
+  var nextReaction = 1;
+  var newReactionId = () => nextReaction++;
+  function useDerivedValue(fn) {
+    const $ = (0, import_compiler_runtime.c)(7);
+    if ($[0] !== "ce648c46b8ea7c8b06ac4973d2dbda534b95fdba85ecf82465956b8386bd252a") {
+      for (let $i = 0; $i < 7; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "ce648c46b8ea7c8b06ac4973d2dbda534b95fdba85ecf82465956b8386bd252a";
+    }
+    const shared = useSharedValue(void 0);
+    const worklet = fn;
+    if (!worklet.__worklet) {
+      throw new Error("useDerivedValue: the callback wasn't compiled as a worklet.");
+    }
+    let t0;
+    if ($[1] !== fn || $[2] !== shared.__shared) {
+      t0 = () => {
+        send({
+          type: "derive",
+          id: shared.__shared,
+          worklet: serializeWorkletProp(fn, retained)
+        });
+      };
+      $[1] = fn;
+      $[2] = shared.__shared;
+      $[3] = t0;
+    } else {
+      t0 = $[3];
+    }
+    let t1;
+    if ($[4] !== fn || $[5] !== shared) {
+      t1 = [shared, fn];
+      $[4] = fn;
+      $[5] = shared;
+      $[6] = t1;
+    } else {
+      t1 = $[6];
+    }
+    (0, import_react.useEffect)(t0, t1);
+    return shared;
+  }
+  function useAnimatedReaction(prepare, react) {
+    const $ = (0, import_compiler_runtime.c)(6);
+    if ($[0] !== "ce648c46b8ea7c8b06ac4973d2dbda534b95fdba85ecf82465956b8386bd252a") {
+      for (let $i = 0; $i < 6; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "ce648c46b8ea7c8b06ac4973d2dbda534b95fdba85ecf82465956b8386bd252a";
+    }
+    const [id] = (0, import_react.useState)(newReactionId);
+    if (!prepare.__worklet || !react.__worklet) {
+      throw new Error("useAnimatedReaction: the callbacks weren't compiled as worklets.");
+    }
+    let t0;
+    let t1;
+    if ($[1] !== id || $[2] !== prepare || $[3] !== react) {
+      t0 = () => {
+        send({
+          type: "react",
+          id,
+          prepare: serializeWorkletProp(prepare, retained),
+          react: serializeWorkletProp(react, retained)
+        });
+        return () => send({
+          type: "unreact",
+          id
+        });
+      };
+      t1 = [id, prepare, react];
+      $[1] = id;
+      $[2] = prepare;
+      $[3] = react;
+      $[4] = t0;
+      $[5] = t1;
+    } else {
+      t0 = $[4];
+      t1 = $[5];
+    }
+    (0, import_react.useEffect)(t0, t1);
+  }
   function useAnimatedStyle(fn) {
     if (!fn.__worklet) {
       throw new Error("useAnimatedStyle: the callback wasn't compiled as a worklet. Build with scripts/build.mjs, which runs the worklets Babel pass.");
@@ -35281,6 +35437,15 @@ Content-Type: ${value.type || "application/octet-stream"}\r
   }
   function jsFunction(id) {
     return jsFunctions.get(id);
+  }
+  var retained = /* @__PURE__ */ new Set();
+  function callOnce(fn) {
+    const id = nextFunction++;
+    jsFunctions.set(id, (...args) => {
+      jsFunctions.delete(id);
+      return fn(...args);
+    });
+    return id;
   }
 
   // js/renderer.ts
@@ -35767,6 +35932,7 @@ ${e.stack}` : String(e);
   var Image = host("Image");
   var Label = host("Label");
   var Path = host("Path");
+  var Canvas = host("Canvas");
   var Polyline = host("Polyline");
   var Rectangle = host("Rectangle");
   var RoundedRectangle = host("RoundedRectangle");

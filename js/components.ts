@@ -582,6 +582,78 @@ type PathBox = {
 
 /** An SVG path (`d="M0 50 L50 0 …"`: M L H V C S Q T A Z, absolute and relative). Strokes with the foreground by default. */
 export const Path = host<ShapeProps & PathBox & { d: string }>("Path");
+
+/** A fill or stroke for `<Canvas>` drawing: a color, or a gradient from `ctx.create…Gradient`. */
+export type CanvasStyle = ColorValue | CanvasGradient;
+export type CanvasGradient = { addColorStop(offset: number, color: ColorValue): void };
+
+/**
+ * The drawing context a `<Canvas draw>` worklet gets: a subset of the web's
+ * CanvasRenderingContext2D (paths, fills and strokes, text, transforms,
+ * gradients), plus `circle()` and `drawImage(systemName, …)` for SF Symbols.
+ */
+export type CanvasContext = {
+  fillStyle: CanvasStyle;
+  strokeStyle: CanvasStyle;
+  lineWidth: number;
+  lineCap: "butt" | "round" | "square";
+  lineJoin: "miter" | "round" | "bevel";
+  globalAlpha: number;
+  /** "bold 16px", a size, or `{ size, weight }`. */
+  font: string | number | { size?: number; weight?: FontWeight };
+  textAlign: "start" | "left" | "center" | "end" | "right";
+  textBaseline: "top" | "middle" | "alphabetic" | "bottom";
+  beginPath(): void;
+  moveTo(x: number, y: number): void;
+  lineTo(x: number, y: number): void;
+  quadraticCurveTo(cx: number, cy: number, x: number, y: number): void;
+  bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void;
+  /** Angles in radians, clockwise from the positive x axis (as on the web). */
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, counterclockwise?: boolean): void;
+  ellipse(x: number, y: number, radiusX: number, radiusY: number): void;
+  circle(x: number, y: number, radius: number): void;
+  rect(x: number, y: number, width: number, height: number): void;
+  roundRect(x: number, y: number, width: number, height: number, radius?: number): void;
+  closePath(): void;
+  fill(style?: CanvasStyle): void;
+  stroke(style?: CanvasStyle): void;
+  clip(): void;
+  fillRect(x: number, y: number, width: number, height: number): void;
+  strokeRect(x: number, y: number, width: number, height: number): void;
+  clearRect(x: number, y: number, width: number, height: number): void;
+  fillText(text: string, x: number, y: number): void;
+  /** An SF Symbol in a rect, tinted with `fillStyle`. */
+  drawImage(systemName: string, x: number, y: number, width: number, height: number): void;
+  setLineDash(segments: number[]): void;
+  save(): void;
+  restore(): void;
+  translate(x: number, y: number): void;
+  rotate(radians: number): void;
+  scale(x: number, y?: number): void;
+  transform(a: number, b: number, c: number, d: number, e: number, f: number): void;
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradient;
+  createRadialGradient(x0: number, y0: number, r0: number, x1: number, y1: number, r1: number): CanvasGradient;
+};
+
+/**
+ * Immediate-mode drawing. `draw` is a worklet (automatically, when written
+ * inline): it runs on the main thread when the canvas draws, and draws again
+ * when its size changes, when shared values it reads change (animate them
+ * and the drawing follows, frame by frame), or every frame with
+ * `continuous` (`time` is seconds since the canvas appeared).
+ *
+ *   <Canvas frame={{ height: 120 }} draw={(ctx, { width, height }) => {
+ *     ctx.fillStyle = "orange";
+ *     ctx.circle(width / 2, height / 2, radius.get());
+ *     ctx.fill();
+ *   }} />
+ */
+export const Canvas = host<
+  Modifiers & {
+    draw: (ctx: CanvasContext, size: { width: number; height: number }, time: number) => void;
+    continuous?: boolean;
+  }
+>("Canvas");
 /** Straight lines through `points` ([x, y] in the view box): sparklines; `closed` + `fill` for areas. */
 export const Polyline = host<ShapeProps & PathBox & { points: [number, number][]; closed?: boolean }>("Polyline");
 

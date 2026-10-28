@@ -822,4 +822,40 @@ final class GalleryTests: XCTestCase {
         sleep(1)
         snapshot("sparkline-morphed")
     }
+    func testCanvas() {
+        open("Canvas")
+        let pad = element("drawing-pad")
+        XCTAssert(pad.waitForExistence(timeout: 5))
+        // Two strokes, drawn by worklets on the main thread.
+        pad.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3))
+            .press(forDuration: 0.05, thenDragTo: pad.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.6)))
+        pad.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.8))
+            .press(forDuration: 0.05, thenDragTo: pad.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.2)))
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == '2 strokes'"), evaluatedWith: label("stroke-count"))], timeout: 5) == .completed,
+                  label("stroke-count").label)
+        app.buttons["Shuffle bars"].tap()
+        snapshot("canvas-springing")
+        sleep(2)
+        snapshot("canvas")
+    }
+
+    func testWorkletAnimations() {
+        open("Animation")
+        let puck = element("puck")
+        for _ in 0..<8 where !(puck.exists && puck.isHittable) { app.swipeUp() }
+        XCTAssert(puck.waitForExistence(timeout: 5))
+        app.buttons["ring-bell"].tap()
+        snapshot("bell-ringing")
+        // A fast flick right: decay to the right edge, then a spring home.
+        puck.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.02, thenDragTo: puck.coordinate(withNormalizedOffset: CGVector(dx: 2.5, dy: 0.5)), withVelocity: .fast, thenHoldForDuration: 0)
+        snapshot("puck-flicked")
+        let side = label("puck-side")
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label ENDSWITH 'edge hits: 1'"), evaluatedWith: side)], timeout: 5) == .completed, side.label)
+        // Then the decay's callback springs it home.
+        sleep(2)
+        snapshot("puck-home")
+        let middle = element("puck").frame.midX
+        XCTAssertEqual(middle, app.windows.firstMatch.frame.midX, accuracy: 30, "the puck springs back to the middle")
+    }
 }

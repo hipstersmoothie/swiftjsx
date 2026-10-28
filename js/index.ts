@@ -14,8 +14,9 @@ export {
   type Native, type NativeValueOptions, type NativeClass, type NativeClassSpec,
 } from "./native";
 export {
-  useSharedValue, makeMutable, useAnimatedStyle, withSpring, withTiming, runOnJS,
-  type SharedValue, type AnimatedStyle, type AnimatableProps,
+  useSharedValue, makeMutable, useAnimatedStyle, withSpring, withTiming, withDecay, withDelay, withSequence, withRepeat,
+  cancelAnimation, useDerivedValue, useAnimatedReaction, runOnJS,
+  type SharedValue, type AnimatedStyle, type AnimatableProps, type SpringConfig, type TimingConfig,
 } from "./worklets";
 export { Sheet, Alert, ConfirmationDialog } from "./presentations";
 export { AnimatePresence, type AnimatePresenceProps } from "./presence";
