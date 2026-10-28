@@ -3,18 +3,26 @@ import SwiftUI
 // Text input, date and color pickers, menus.
 
 /// `<TextField>` and `<TextEditor>`: controlled text input with focus
-/// (`ref.focus()`, `autoFocus`, onFocus/onBlur) and keyboard options.
+/// (`focused`, `ref.focus()`, `autoFocus`, onFocus/onBlur), the selection
+/// (`selection` / `onSelectionChange`, UTF-16 offsets like JS strings), hardware
+/// keys (`onKeyPress`) and keyboard options.
 struct TextFieldHost: View {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
     @FocusState private var focused: Bool
+    @State private var selection: TextSelection?
+    /// The last selection JS set, to apply only changes to it.
+    @State private var appliedSelection: [Int]?
+
+    /// Selection-aware fields (a ref can call setSelection).
+    private var tracksSelection: Bool { node.has("onSelectionChange") || node.has("selection") || node.has("__ref") }
 
     var body: some View {
         Controlled(node: node, fallback: "") { text in
             let placeholder = node.string("placeholder") ?? ""
             Group {
                 if node.type == "TextEditor" {
-                    TextEditor(text: text)
+                    editor(text)
                         .scrollContentBackground(node.string("scrollContentBackground") == "hidden" ? .hidden : .automatic)
                         .overlay(alignment: .topLeading) {
                             // TextEditor has no placeholder of its own.
@@ -26,13 +34,39 @@ struct TextFieldHost: View {
                     SecureField(placeholder, text: text)
                 } else if node.string("axis") == "vertical" {
                     // Grows with its text, between minLines and maxLines.
-                    TextField(placeholder, text: text, axis: .vertical)
-                        .lineLimit(lineRange)
+                    Group {
+                        if tracksSelection {
+                            TextField(placeholder, text: text, selection: $selection, axis: .vertical)
+                        } else {
+                            TextField(placeholder, text: text, axis: .vertical)
+                        }
+                    }
+                    .lineLimit(lineRange)
+                } else if tracksSelection {
+                    TextField(placeholder, text: text, selection: $selection)
                 } else {
                     TextField(placeholder, text: text)
                 }
             }
             .focused($focused)
+            .onChange(of: selection) { _, value in
+                guard node.has("onSelectionChange"), let range = offsets(value, in: text.wrappedValue) else { return }
+                runtime?.dispatch(node.id, "onSelectionChange", ["start": range[0], "end": range[1]])
+            }
+            .onChange(of: node.selectionRequest) { _, request in
+                // Focusing puts the cursor at the end: focus first, then select.
+                let wasFocused = focused
+                focused = true
+                Task { @MainActor in
+                    if !wasFocused { try? await Task.sleep(for: .milliseconds(80)) }
+                    selection = textSelection([request.start, request.end], in: text.wrappedValue)
+                }
+            }
+            .onChange(of: selectionProp, initial: true) { _, wanted in
+                guard let wanted, wanted != appliedSelection else { return }
+                appliedSelection = wanted
+                selection = textSelection(wanted, in: text.wrappedValue)
+            }
         }
         .modifier(FieldStyle(node: node))
         .multilineTextAlignment(textAlignment(node.string("textAlignment")))
@@ -55,8 +89,71 @@ struct TextFieldHost: View {
             focused = true
         }
         .onChange(of: node.focusRequest) { _, request in focused = request.focused }
+        // `focused`: controlled focus (move it between fields with state).
+        .onChange(of: node.prop("focused") as? Bool) { _, wanted in
+            if let wanted, wanted != focused { focused = wanted }
+        }
+        .task {
+            guard node.prop("focused") as? Bool == true else { return }
+            try? await Task.sleep(for: .milliseconds(350))
+            focused = true
+        }
+        .modifier(FieldKeys(node: node))
         .onChange(of: focused) { _, isFocused in
             runtime?.dispatch(node.id, isFocused ? "onFocus" : "onBlur")
+        }
+    }
+
+    @ViewBuilder private func editor(_ text: Binding<String>) -> some View {
+        if tracksSelection { TextEditor(text: text, selection: $selection) } else { TextEditor(text: text) }
+    }
+
+    /// `selection` from JS as [start, end].
+    private var selectionProp: [Int]? {
+        guard let dict = node.dict("selection") else { return nil }
+        let start = (dict["start"] as? NSNumber)?.intValue ?? 0
+        return [start, (dict["end"] as? NSNumber)?.intValue ?? start]
+    }
+
+    /// A selection as UTF-16 offsets (JS string indices).
+    private func offsets(_ selection: TextSelection?, in text: String) -> [Int]? {
+        guard let selection else { return nil }
+        let range: Range<String.Index>? = switch selection.indices {
+        case .selection(let range): range
+        case .multiSelection(let set): set.ranges.first
+        @unknown default: nil
+        }
+        guard let range else { return nil }
+        let utf16 = text.utf16
+        func offset(_ index: String.Index) -> Int {
+            utf16.distance(from: utf16.startIndex, to: min(index, text.endIndex))
+        }
+        return [offset(range.lowerBound), offset(range.upperBound)]
+    }
+
+    private func textSelection(_ offsets: [Int], in text: String) -> TextSelection {
+        let count = text.utf16.count
+        let start = String.Index(utf16Offset: min(max(offsets[0], 0), count), in: text)
+        let end = String.Index(utf16Offset: min(max(offsets[1], offsets[0]), count), in: text)
+        return start == end ? TextSelection(insertionPoint: start) : TextSelection(range: start..<end)
+    }
+
+    /// `onKeyPress` on a field (hardware keyboards): reported, and consumed
+    /// only for the `keys` listed (so typing still works).
+    private struct FieldKeys: ViewModifier {
+        let node: Node
+        @Environment(\.jsxRuntime) private var runtime
+        func body(content: Content) -> some View {
+            if node.has("onKeyPress") {
+                content.onKeyPress(phases: .down) { press in
+                    let key = KeyPressModifier.name(press)
+                    runtime?.fire(node, "onKeyPress", ["key": key, "characters": press.characters,
+                                                       "modifiers": KeyPressModifier.modifiers(press.modifiers)])
+                    return (node.prop("keys") as? [String])?.contains(key) == true ? .handled : .ignored
+                }
+            } else {
+                content
+            }
         }
     }
 

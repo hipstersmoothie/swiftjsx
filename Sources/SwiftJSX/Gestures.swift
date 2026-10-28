@@ -264,7 +264,8 @@ struct KeyPressModifier: ViewModifier {
     @FocusState private var focused: Bool
 
     func body(content: Content) -> some View {
-        if node.features.contains(.keyPress) {
+        // Text fields handle their own keys (FieldKeys): no .focusable() on them.
+        if node.features.contains(.keyPress), node.type != "TextField", node.type != "TextEditor" {
             content
                 .focusable()
                 .focusEffectDisabled()

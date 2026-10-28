@@ -487,6 +487,28 @@ final class GalleryTests: XCTestCase {
         snapshot("animation-exited")
     }
 
+    func testFocusAndSelection() {
+        open("Controls & layout")
+        let first = app.textFields["first-field"], second = app.textFields["second-field"]
+        XCTAssert(first.waitForExistence(timeout: 5))
+        first.tap()
+        first.typeText("hello")
+        // Controlled focus: state moves it to the second field.
+        element("next-field").tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "hasKeyboardFocus == true"), evaluatedWith: second)], timeout: 3) == .completed,
+                  "focus didn't move")
+        second.typeText("world")
+        XCTAssertEqual(second.value as? String, "world")
+        // setSelection, then insert at the cursor.
+        element("cursor-start").tap()
+        element("insert-star").tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "value == '★hello'"), evaluatedWith: first)], timeout: 3) == .completed,
+                  "got \(first.value ?? "nil")")
+        first.typeText("!")
+        XCTAssertEqual(first.value as? String, "★!hello", "the cursor should sit after the inserted star")
+        snapshot("focus-selection")
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

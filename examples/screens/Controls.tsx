@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Screen, List, Section, SectionHeader, Text, TextField, TextEditor, DatePicker, ColorPicker, Menu, Button, Divider,
-  NavigationRow, Flow, Grid, GridRow, HStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle, MenuLabel, Spacer,
+  NavigationRow, Flow, Grid, GridRow, HStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle, MenuLabel, Spacer, type HostInstance,
   type Color,
 } from "swiftjsx";
 
@@ -20,6 +20,11 @@ export function ControlsDemo() {
   const [showCompleted, setShowCompleted] = useState(true);
   const [presses, setPresses] = useState(0);
   const [water, setWater] = useState(0);
+  const [first, setFirst] = useState("");
+  const [second, setSecond] = useState("");
+  const [field, setField] = useState<"first" | "second" | null>(null);
+  const [cursor, setCursor] = useState({ start: 0, end: 0 });
+  const firstField = useRef<HostInstance>(null);
 
   return (
     <Screen title="Controls & layout" titleDisplayMode="inline">
@@ -44,6 +49,47 @@ export function ControlsDemo() {
           <TextField placeholder="Email" value={email} onChange={setEmail} keyboardType="email" textContentType="email" autocapitalize="none" autocorrect={false} submitLabel="next" textFieldStyle="plain" />
           <TextField placeholder="Bio" value={bio} onChange={setBio} axis="vertical" maxLines={4} textFieldStyle="plain" />
           <TextEditor placeholder="Notes…" value={notes} onChange={setNotes} frame={{ height: 90 }} />
+        </Section>
+
+        <Section header="Focus and selection" footer={`Cursor ${cursor.start}–${cursor.end}`}>
+          <TextField
+            placeholder="First"
+            value={first}
+            onChange={setFirst}
+            textFieldStyle="plain"
+            focused={field === "first"}
+            onFocus={() => setField("first")}
+            onBlur={() => setField((f) => (f === "first" ? null : f))}
+            ref={firstField}
+            onSelectionChange={setCursor}
+            submitLabel="next"
+            onSubmit={() => setField("second")}
+            accessibilityIdentifier="first-field"
+          />
+          <TextField
+            placeholder="Second"
+            value={second}
+            onChange={setSecond}
+            textFieldStyle="plain"
+            focused={field === "second"}
+            onFocus={() => setField("second")}
+            onBlur={() => setField((f) => (f === "second" ? null : f))}
+            accessibilityIdentifier="second-field"
+          />
+          <HStack spacing={12}>
+            <Button title="Next field" buttonStyle="bordered" onPress={() => setField(field === "first" ? "second" : "first")} accessibilityIdentifier="next-field" />
+            <Button
+              title="Insert ★"
+              buttonStyle="bordered"
+              onPress={() => {
+                const at = Math.min(cursor.start, first.length);
+                setFirst(first.slice(0, at) + "★" + first.slice(Math.min(cursor.end, first.length)));
+                firstField.current?.setSelection(at + 1);
+              }}
+              accessibilityIdentifier="insert-star"
+            />
+            <Button title="To start" buttonStyle="bordered" onPress={() => firstField.current?.setSelection(0)} accessibilityIdentifier="cursor-start" />
+          </HStack>
         </Section>
 
         <Section header="Pickers">

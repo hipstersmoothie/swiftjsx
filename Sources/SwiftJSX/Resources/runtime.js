@@ -34290,6 +34290,13 @@ ${error.stack}` : String(error));
     blur() {
       __native.command(this.id, "blur", null, 0);
     }
+    /** Move a TextField's cursor (or select `start`–`end`), in UTF-16 offsets; focuses it. */
+    setSelection(start, end = start) {
+      queueMicrotask(() => __native.command(this.id, "setSelection", {
+        start,
+        end
+      }, 0));
+    }
     /**
      * Scroll a ScrollView, VirtualList, List or Form. `target` is a ref to a
      * descendant (in a List or Form, its row), a child or row index, or

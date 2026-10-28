@@ -22,6 +22,7 @@ public final class Node: Identifiable {
 
     // Imperative requests from refs (`ref.current.focus()` / `.scrollTo()`).
     var focusRequest = FocusRequest()
+    var selectionRequest = SelectionRequest()
     var scrollRequest: ScrollRequest?
     /// Last laid-out frame in window coordinates, for `ref.current.measure()`.
     @ObservationIgnored private(set) var frame: CGRect = .zero
@@ -178,6 +179,13 @@ public final class Node: Identifiable {
     func cgFloat(_ key: String) -> CGFloat? { double(key).map { CGFloat($0) } }
     func dict(_ key: String) -> [String: Any]? { prop(key) as? [String: Any] }
     func has(_ key: String) -> Bool { prop(key) != nil }
+}
+
+/// `ref.current.setSelection(start, end)`: UTF-16 offsets.
+struct SelectionRequest: Equatable {
+    var seq = 0
+    var start = 0
+    var end = 0
 }
 
 struct FocusRequest: Equatable {

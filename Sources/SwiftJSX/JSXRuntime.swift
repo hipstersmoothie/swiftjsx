@@ -236,6 +236,10 @@ public final class JSXRuntime {
             }
         case "canOpenURL":
             engine.resolve(callback: callback, value: (args["url"] as? String).flatMap(URL.init(string:)).map(canOpenExternal) ?? false)
+        case "setSelection":
+            let start = (args["start"] as? NSNumber)?.intValue ?? 0
+            node.selectionRequest = SelectionRequest(seq: node.selectionRequest.seq + 1, start: start,
+                                                     end: (args["end"] as? NSNumber)?.intValue ?? start)
         case "focus", "blur":
             node.focusRequest = FocusRequest(seq: node.focusRequest.seq + 1, focused: name == "focus")
         case "scrollTo":

@@ -75,8 +75,11 @@ for the record.
 - [x] `Menu`, `DatePicker`, `ColorPicker`, `TextEditor`, `NavigationRow`, `EditButton`.
 - [x] `TextField` styles, vertical growth, autofocus, keyboard and content types,
       autocapitalization, `submitLabel`, `blurOnSubmit`.
-- [ ] Text input: no cursor/selection API, no key events (backspace on an empty field),
-      no focus binding shared across fields (moving focus means unmount + `focus()`).
+- [x] Text input: controlled `focused` (move focus between fields with state),
+      `selection` / `onSelectionChange` and `ref.setSelection()` (UTF-16 offsets; insert
+      at the cursor), hardware-keyboard `onKeyPress` on fields.
+- [ ] Backspace on an empty field from the software keyboard (OTP inputs): SwiftUI has no
+      hook for it; needs UIKit's `deleteBackward`.
 - [x] Buttons: `pressedScale`, `pressedOpacity`, `pressedBackground`, `onPressIn` /
       `onPressOut`.
 - [ ] `controlSize`; the Calculator still builds keys from drag gestures.
