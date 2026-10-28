@@ -54,6 +54,9 @@ function App() {
           cache.delegate = keepAlive(CacheDelegate.new());
           cache.setObjectForKey("one", "k1");
           cache.setObjectForKey("two", "k2");
+          // NSCache evicts what's left when it's freed, after this JS context
+          // may be gone: unhook the JS delegate first.
+          cache.delegate = null;
           setClasses(`${first}|${second}|evicted ${evicted.join(",")}`);
         }}
       />

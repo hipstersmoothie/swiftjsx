@@ -247,6 +247,10 @@ for the record.
       catches it, but the throw can't unwind through libffi: its prebuilt `libffi.a`
       (built with `-fembed-bitcode`) has no unwind info in `sysv.o`. Fix: rebuild libffi
       with CFI in `scripts/build-nativescript.sh`.
+- [ ] A native object that outlives its JS context (a full reload, a torn-down runtime)
+      and calls a JS-defined delegate crashes (NSCache evicting on dealloc did, in tests).
+      Unhook delegates before reloading; NativeScript should ignore calls into a dead
+      context.
 - [ ] NativeScript's Node-API runtime is an alpha; its metadata generator (LLVM 17)
       misses some declarations in current SDKs. Long synchronous JS still delays
       main-thread native callbacks. The six patches in `nativescript/patches/` haven't
