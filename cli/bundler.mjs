@@ -12,7 +12,7 @@
 
 import * as esbuild from "esbuild";
 import { transformAsync } from "@babel/core";
-import workletsPlugin from "./worklets-plugin.mjs";
+import workletsPlugin, { markAutoWorklets } from "./worklets-plugin.mjs";
 import nativeGlobalsPlugin from "./native-globals-plugin.mjs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -65,6 +65,8 @@ export const useRuntimeModules = {
  *    useMemo/useCallback/memo by hand.
  *  - react-refresh (app code only): registers components with React Refresh.
  */
+const WORKLET_HINT = /worklet|useAnimatedStyle|useDerivedValue|useAnimatedReaction|<Canvas/;
+
 export function babel({ refresh, dev = true, worklets = false }) {
   return {
     name: refresh ? "babel-app" : dev ? "babel-runtime" : worklets ? "babel-app-production" : "babel-production",
@@ -82,11 +84,17 @@ export function babel({ refresh, dev = true, worklets = false }) {
         const source = await readFile(args.path, "utf8");
         const file = path.relative(process.cwd(), args.path);
         const options = { filename: args.path, babelrc: false, configFile: false, parserOpts: { plugins: ["jsx", "typescript"] } };
-        // Worklets first, while useAnimatedStyle's callback is still inline
-        // (the compiler hoists it into a memoized temporary).
-        const input = worklets && /worklet|useAnimatedStyle/.test(source)
-          ? (await transformAsync(source, { ...options, plugins: [workletsPlugin] })).code
-          : source;
+        // Worklets: callbacks that are worklets by position (useAnimatedStyle's)
+        // get a "worklet" directive while they're still inline (the compiler
+        // hoists them into memoized temporaries); the worklets pass itself runs
+        // after the compiler. Before it, its registration call
+        // (`__swiftjsx_worklet(fn, code, () => ({ captures }))`) looked to the
+        // compiler like render-time calls of everything a worklet captures, so a
+        // captured function that touched a ref skipped the whole component.
+        // After it, worklets are memoized like any callback (stable, so they
+        // aren't re-sent to the main thread every render).
+        const hasWorklets = worklets && WORKLET_HINT.test(source);
+        const input = hasWorklets ? (await transformAsync(source, { ...options, plugins: [markAutoWorklets] })).code : source;
         const skipped = [];
         const compiled = await transformAsync(input, {
           ...options,
@@ -96,6 +104,9 @@ export function babel({ refresh, dev = true, worklets = false }) {
             ...(worklets ? [nativeGlobalsPlugin] : []),
           ],
         });
+        if (hasWorklets) {
+          compiled.code = (await transformAsync(compiled.code, { ...options, plugins: [workletsPlugin] })).code;
+        }
         // React Refresh runs as a second pass over the compiler's *printed*
         // output. In a shared pass it reads hook arguments from source text the
         // compiler's new nodes don't have, so editing `useState(0)` to

@@ -239,6 +239,10 @@ struct CompilerTests {
 
     @Test func bundlesAreCompiled() throws {
         #expect(try fixtureSource("Compiler").contains("import_compiler_runtime.c)("))
+        // A component whose worklet captures a ref-reading function is memoized too.
+        let source = try fixtureSource("Compiler")
+        let draggable = try #require(source.range(of: "function Draggable(")).upperBound
+        #expect(source[draggable...].prefix(120).contains("import_compiler_runtime.c)("))
         let runtime = try #require(JSXRuntime.runtimeScript("runtime"))
         #expect(runtime.contains("import_compiler_runtime.c)("))
     }

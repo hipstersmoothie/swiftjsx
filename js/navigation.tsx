@@ -27,18 +27,21 @@ export type NavigationRef = Navigation & {
   isReady(): boolean;
 };
 
+/** How a Navigator connects to its ref (not part of the ref's public API). */
+const attachers = new WeakMap<NavigationRef, (nav: Navigation | null) => void>();
+
+function attach(ref: NavigationRef, nav: Navigation | null) {
+  attachers.get(ref)?.(nav);
+}
+
 export function createNavigationRef(): NavigationRef {
   let current: Navigation | null = null;
   // Calls before the Navigator mounts are kept and replayed.
   const queued: ((nav: Navigation) => void)[] = [];
   const run = (fn: (nav: Navigation) => void) => (current ? fn(current) : queued.push(fn));
-  return {
+  const ref = {
     get current() {
       return current;
-    },
-    set current(nav: Navigation | null) {
-      current = nav;
-      if (nav) queued.splice(0).forEach((fn) => fn(nav));
     },
     isReady: () => current !== null,
     push: (screen) => run((nav) => nav.push(screen)),
@@ -49,6 +52,11 @@ export function createNavigationRef(): NavigationRef {
       return current?.depth ?? 0;
     },
   } as NavigationRef;
+  attachers.set(ref, (nav) => {
+    current = nav;
+    if (nav) queued.splice(0).forEach((fn) => fn(nav));
+  });
+  return ref;
 }
 
 const NavigationContext = createContext<Navigation | null>(null);
@@ -88,10 +96,8 @@ export function Navigator({
 
   useLayoutEffect(() => {
     if (!navigationRef) return;
-    (navigationRef as { current: Navigation | null }).current = nav;
-    return () => {
-      (navigationRef as { current: Navigation | null }).current = null;
-    };
+    attach(navigationRef, nav);
+    return () => attach(navigationRef, null);
   });
 
   return (

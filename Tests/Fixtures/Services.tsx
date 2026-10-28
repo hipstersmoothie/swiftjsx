@@ -12,9 +12,11 @@ function App() {
       <Button
         title="speak"
         onPress={async () => {
-          let words = 0;
-          const result = await speech.speak("hello there", { volume: 0, rate: 1, onWord: () => words++ });
-          add(`spoke ${result} ${words > 0}`);
+          // (Not `let words = 0` + `words++`: the compiler can't lower an
+          // update of a variable captured by a closure.)
+          const words: number[] = [];
+          const result = await speech.speak("hello there", { volume: 0, rate: 1, onWord: (range) => void words.push(range.start) });
+          add(`spoke ${result} ${words.length > 0}`);
         }}
       />
       <Button title="listen" onPress={() => notifications.addListener("response", (r) => add(`tapped ${r.id} ${JSON.stringify(r.data)}`))} />

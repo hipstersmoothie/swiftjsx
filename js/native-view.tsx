@@ -9,6 +9,7 @@ import { native, onMain } from "./native";
 const NativeViewHost = "NativeView" as unknown as (props: any) => ReactNode;
 
 let nextView = 1;
+const newViewKey = () => `swiftjsx.nativeView.${nextView++}`;
 
 export type NativeViewProps = Modifiers & {
   /**
@@ -39,7 +40,7 @@ export function NativeView({ create, onCreate, ...props }: NativeViewProps) {
   useEffect(() => {
     // Handed to Swift through the main thread's dictionary (both sides see
     // it; only touched on main), under a key in the props.
-    const id = `swiftjsx.nativeView.${nextView++}`;
+    const id = newViewKey();
     let live = true;
     onMain(() => {
       const view = latest.current.create();

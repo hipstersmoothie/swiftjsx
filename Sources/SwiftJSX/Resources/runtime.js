@@ -7498,7 +7498,7 @@
               function supportsConsoleTasks(componentInfo) {
                 return !!componentInfo.debugTask;
               }
-              function attach(hook, rendererID, renderer, global) {
+              function attach2(hook, rendererID, renderer, global) {
                 var getCurrentComponentInfo = renderer.getCurrentComponentInfo;
                 function getComponentStack(topFrame) {
                   if (getCurrentComponentInfo === void 0) {
@@ -14847,7 +14847,7 @@
                 var rendererInterface = hook.rendererInterfaces.get(id);
                 if (rendererInterface == null) {
                   if (typeof renderer.getCurrentComponentInfo === "function") {
-                    rendererInterface = attach(hook, id, renderer, global);
+                    rendererInterface = attach2(hook, id, renderer, global);
                   } else if (typeof renderer.findFiberByHostInstance === "function" || renderer.currentDispatcherRef != null) {
                     rendererInterface = renderer_attach(hook, id, renderer, global, shouldStartProfilingNow, profilingSettings, componentFiltersOrComponentFiltersPromise);
                   } else if (renderer.ComponentTree) {
@@ -35823,6 +35823,7 @@ ${e.stack}` : String(e);
   var RectangleMark = host("RectangleMark");
 
   // js/native-view.tsx
+  var import_compiler_runtime3 = __toESM(require_compiler_runtime(), 1);
   var import_react4 = __toESM(require_react(), 1);
 
   // js/native.ts
@@ -36097,54 +36098,118 @@ ${e.stack}` : String(e);
   var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
   var NativeViewHost = "NativeView";
   var nextView = 1;
-  function NativeView({
-    create,
-    onCreate,
-    ...props
-  }) {
+  var newViewKey = () => `swiftjsx.nativeView.${nextView++}`;
+  function NativeView(t0) {
+    const $ = (0, import_compiler_runtime3.c)(16);
+    if ($[0] !== "9d8dd83b5dbb3502064eb5ad226218425b63bbe8b8a7e3caea576c7922252ed3") {
+      for (let $i = 0; $i < 16; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "9d8dd83b5dbb3502064eb5ad226218425b63bbe8b8a7e3caea576c7922252ed3";
+    }
+    let create;
+    let onCreate;
+    let props;
+    if ($[1] !== t0) {
+      ({
+        create,
+        onCreate,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = create;
+      $[3] = onCreate;
+      $[4] = props;
+    } else {
+      create = $[2];
+      onCreate = $[3];
+      props = $[4];
+    }
     const [key, setKey] = (0, import_react4.useState)(null);
-    const latest = (0, import_react4.useRef)({
-      create,
-      onCreate
-    });
-    (0, import_react4.useEffect)(() => {
-      latest.current = {
+    let t1;
+    if ($[5] !== create || $[6] !== onCreate) {
+      t1 = {
         create,
         onCreate
       };
-    });
-    (0, import_react4.useEffect)(() => {
-      const id = `swiftjsx.nativeView.${nextView++}`;
-      let live2 = true;
-      onMain(() => {
-        const view = latest.current.create();
-        native.NSThread.mainThread.threadDictionary.setObjectForKey(view, id);
-        latest.current.onCreate?.(view);
-      }).then(() => live2 && setKey(id), (error) => console.error("NativeView create() failed:", error));
-      return () => {
-        live2 = false;
-        void onMain(() => native.NSThread.mainThread.threadDictionary.removeObjectForKey(id)).catch(() => {
-        });
+      $[5] = create;
+      $[6] = onCreate;
+      $[7] = t1;
+    } else {
+      t1 = $[7];
+    }
+    const latest = (0, import_react4.useRef)(t1);
+    let t2;
+    if ($[8] !== create || $[9] !== onCreate) {
+      t2 = () => {
+        latest.current = {
+          create,
+          onCreate
+        };
       };
-    }, []);
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NativeViewHost, { ...props, viewKey: key });
+      $[8] = create;
+      $[9] = onCreate;
+      $[10] = t2;
+    } else {
+      t2 = $[10];
+    }
+    (0, import_react4.useEffect)(t2);
+    let t3;
+    let t4;
+    if ($[11] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t3 = () => {
+        const id = newViewKey();
+        let live2 = true;
+        onMain(() => {
+          const view = latest.current.create();
+          native.NSThread.mainThread.threadDictionary.setObjectForKey(view, id);
+          latest.current.onCreate?.(view);
+        }).then(() => live2 && setKey(id), _temp3);
+        return () => {
+          live2 = false;
+          onMain(() => native.NSThread.mainThread.threadDictionary.removeObjectForKey(id)).catch(_temp2);
+        };
+      };
+      t4 = [];
+      $[11] = t3;
+      $[12] = t4;
+    } else {
+      t3 = $[11];
+      t4 = $[12];
+    }
+    (0, import_react4.useEffect)(t3, t4);
+    let t5;
+    if ($[13] !== key || $[14] !== props) {
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(NativeViewHost, { ...props, viewKey: key });
+      $[13] = key;
+      $[14] = props;
+      $[15] = t5;
+    } else {
+      t5 = $[15];
+    }
+    return t5;
+  }
+  function _temp2() {
+  }
+  function _temp3(error) {
+    return console.error("NativeView create() failed:", error);
   }
 
   // js/navigation.tsx
-  var import_compiler_runtime3 = __toESM(require_compiler_runtime(), 1);
+  var import_compiler_runtime4 = __toESM(require_compiler_runtime(), 1);
   var import_react5 = __toESM(require_react(), 1);
   var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+  var attachers = /* @__PURE__ */ new WeakMap();
+  function attach(ref, nav) {
+    attachers.get(ref)?.(nav);
+  }
   function createNavigationRef() {
     let current2 = null;
     const queued = [];
     const run = (fn) => current2 ? fn(current2) : queued.push(fn);
-    return {
+    const ref = {
       get current() {
         return current2;
-      },
-      set current(nav) {
-        current2 = nav;
-        if (nav) queued.splice(0).forEach((fn) => fn(nav));
       },
       isReady: () => current2 !== null,
       push: (screen) => run((nav) => nav.push(screen)),
@@ -36155,57 +36220,170 @@ ${e.stack}` : String(e);
         return current2?.depth ?? 0;
       }
     };
+    attachers.set(ref, (nav) => {
+      current2 = nav;
+      if (nav) queued.splice(0).forEach((fn) => fn(nav));
+    });
+    return ref;
   }
   var NavigationContext = (0, import_react5.createContext)(null);
-  function Navigator({
-    children,
-    navigationRef,
-    ...modifiers
-  }) {
-    const [stack, setStack] = (0, import_react5.useState)([]);
+  function Navigator(t0) {
+    const $ = (0, import_compiler_runtime4.c)(27);
+    if ($[0] !== "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7") {
+      for (let $i = 0; $i < 27; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7";
+    }
+    let children;
+    let modifiers;
+    let navigationRef;
+    if ($[1] !== t0) {
+      ({
+        children,
+        navigationRef,
+        ...modifiers
+      } = t0);
+      $[1] = t0;
+      $[2] = children;
+      $[3] = modifiers;
+      $[4] = navigationRef;
+    } else {
+      children = $[2];
+      modifiers = $[3];
+      navigationRef = $[4];
+    }
+    let t1;
+    if ($[5] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t1 = [];
+      $[5] = t1;
+    } else {
+      t1 = $[5];
+    }
+    const [stack, setStack] = (0, import_react5.useState)(t1);
     const lastKey = (0, import_react5.useRef)(0);
-    const nav = {
-      push: (screen) => {
-        const key = ++lastKey.current;
+    let t2;
+    let t3;
+    let t4;
+    let t5;
+    if ($[6] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t2 = (screen) => {
+        const key = lastKey.current = lastKey.current + 1;
         setStack((s) => [...s, {
           key,
           screen
         }]);
-      },
-      pop: () => setStack((s_0) => s_0.slice(0, -1)),
-      popToRoot: () => setStack([]),
-      replace: (screen_0) => {
-        const key_0 = ++lastKey.current;
+      };
+      t3 = () => setStack(_temp4);
+      t4 = () => setStack([]);
+      t5 = (screen_0) => {
+        const key_0 = lastKey.current = lastKey.current + 1;
         setStack((s_1) => s_1.length ? [...s_1.slice(0, -1), {
           key: key_0,
           screen: screen_0
         }] : s_1);
-      },
-      depth: stack.length
-    };
-    (0, import_react5.useLayoutEffect)(() => {
-      if (!navigationRef) return;
-      navigationRef.current = nav;
-      return () => {
-        navigationRef.current = null;
       };
-    });
-    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationContext.Provider, { value: nav, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(NavigationStack, { ...modifiers, onPathChange: (depth) => setStack((s_2) => s_2.slice(0, depth)), children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationPage, { children }),
-      stack.map((entry) => (
-        // Each pushed screen gets its own key, so pushing the same component
-        // twice gives two independent instances (own state, own effects).
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationPage, { children: entry.screen }, entry.key)
-      ))
-    ] }) });
+      $[6] = t2;
+      $[7] = t3;
+      $[8] = t4;
+      $[9] = t5;
+    } else {
+      t2 = $[6];
+      t3 = $[7];
+      t4 = $[8];
+      t5 = $[9];
+    }
+    let t6;
+    if ($[10] !== stack.length) {
+      t6 = {
+        push: t2,
+        pop: t3,
+        popToRoot: t4,
+        replace: t5,
+        depth: stack.length
+      };
+      $[10] = stack.length;
+      $[11] = t6;
+    } else {
+      t6 = $[11];
+    }
+    const nav = t6;
+    let t7;
+    if ($[12] !== nav || $[13] !== navigationRef) {
+      t7 = () => {
+        if (!navigationRef) {
+          return;
+        }
+        attach(navigationRef, nav);
+        return () => attach(navigationRef, null);
+      };
+      $[12] = nav;
+      $[13] = navigationRef;
+      $[14] = t7;
+    } else {
+      t7 = $[14];
+    }
+    (0, import_react5.useLayoutEffect)(t7);
+    let t8;
+    if ($[15] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t8 = (depth) => setStack((s_2) => s_2.slice(0, depth));
+      $[15] = t8;
+    } else {
+      t8 = $[15];
+    }
+    let t9;
+    if ($[16] !== children) {
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationPage, { children });
+      $[16] = children;
+      $[17] = t9;
+    } else {
+      t9 = $[17];
+    }
+    let t10;
+    if ($[18] !== stack) {
+      t10 = stack.map(_temp22);
+      $[18] = stack;
+      $[19] = t10;
+    } else {
+      t10 = $[19];
+    }
+    let t11;
+    if ($[20] !== modifiers || $[21] !== t10 || $[22] !== t9) {
+      t11 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(NavigationStack, { ...modifiers, onPathChange: t8, children: [
+        t9,
+        t10
+      ] });
+      $[20] = modifiers;
+      $[21] = t10;
+      $[22] = t9;
+      $[23] = t11;
+    } else {
+      t11 = $[23];
+    }
+    let t12;
+    if ($[24] !== nav || $[25] !== t11) {
+      t12 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationContext.Provider, { value: nav, children: t11 });
+      $[24] = nav;
+      $[25] = t11;
+      $[26] = t12;
+    } else {
+      t12 = $[26];
+    }
+    return t12;
+  }
+  function _temp22(entry) {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NavigationPage, { children: entry.screen }, entry.key);
+  }
+  function _temp4(s_0) {
+    return s_0.slice(0, -1);
   }
   function useNavigation() {
-    const $ = (0, import_compiler_runtime3.c)(1);
-    if ($[0] !== "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793") {
+    const $ = (0, import_compiler_runtime4.c)(1);
+    if ($[0] !== "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793";
+      $[0] = "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7";
     }
     const nav = (0, import_react5.useContext)(NavigationContext);
     if (!nav) {
@@ -36214,12 +36392,12 @@ ${e.stack}` : String(e);
     return nav;
   }
   function NavigationSplitView(t0) {
-    const $ = (0, import_compiler_runtime3.c)(22);
-    if ($[0] !== "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793") {
+    const $ = (0, import_compiler_runtime4.c)(22);
+    if ($[0] !== "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7") {
       for (let $i = 0; $i < 22; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "e753d5a89b0068e59f3306aafa5f96f4a01e9ce28d90c6ccbfa7ec8ee4820793";
+      $[0] = "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7";
     }
     let content;
     let detail;
@@ -36303,7 +36481,7 @@ ${e.stack}` : String(e);
   }
 
   // js/virtual-list.tsx
-  var import_compiler_runtime4 = __toESM(require_compiler_runtime(), 1);
+  var import_compiler_runtime5 = __toESM(require_compiler_runtime(), 1);
   var import_react6 = __toESM(require_react(), 1);
   var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
   var VirtualListHost = "VirtualList";
@@ -36311,7 +36489,7 @@ ${e.stack}` : String(e);
   var VirtualListFooter = "VirtualListFooter";
   var VirtualRow = "VirtualRow";
   function VirtualList(t0) {
-    const $ = (0, import_compiler_runtime4.c)(39);
+    const $ = (0, import_compiler_runtime5.c)(39);
     if ($[0] !== "c236ce2747c335bfb8b8870a752804857adce740120af85bdf94582ea93b75f0") {
       for (let $i = 0; $i < 39; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36483,11 +36661,11 @@ ${e.stack}` : String(e);
   }
 
   // js/presentations.tsx
-  var import_compiler_runtime5 = __toESM(require_compiler_runtime(), 1);
+  var import_compiler_runtime6 = __toESM(require_compiler_runtime(), 1);
   var import_react7 = __toESM(require_react(), 1);
   var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
   function usePresentation(props) {
-    const $ = (0, import_compiler_runtime5.c)(9);
+    const $ = (0, import_compiler_runtime6.c)(9);
     if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 9; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36504,7 +36682,7 @@ ${e.stack}` : String(e);
     if (presented !== wasPresented) {
       setWasPresented(presented);
       if (presented) {
-        setGeneration(_temp2);
+        setGeneration(_temp5);
       }
     }
     let t0;
@@ -36535,11 +36713,11 @@ ${e.stack}` : String(e);
     }
     return t1;
   }
-  function _temp2(g3) {
+  function _temp5(g3) {
     return g3 + 1;
   }
   function Sheet(props) {
-    const $ = (0, import_compiler_runtime5.c)(21);
+    const $ = (0, import_compiler_runtime6.c)(21);
     if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 21; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36601,7 +36779,7 @@ ${e.stack}` : String(e);
     return t2;
   }
   function useDialog(props) {
-    const $ = (0, import_compiler_runtime5.c)(13);
+    const $ = (0, import_compiler_runtime6.c)(13);
     if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 13; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36653,7 +36831,7 @@ ${e.stack}` : String(e);
     return t3;
   }
   function Alert(props) {
-    const $ = (0, import_compiler_runtime5.c)(7);
+    const $ = (0, import_compiler_runtime6.c)(7);
     if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36681,7 +36859,7 @@ ${e.stack}` : String(e);
     return t0;
   }
   function ConfirmationDialog(props) {
-    const $ = (0, import_compiler_runtime5.c)(7);
+    const $ = (0, import_compiler_runtime6.c)(7);
     if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36709,7 +36887,7 @@ ${e.stack}` : String(e);
     return t0;
   }
   function Fresh(t0) {
-    const $ = (0, import_compiler_runtime5.c)(3);
+    const $ = (0, import_compiler_runtime6.c)(3);
     if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
       for (let $i = 0; $i < 3; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36731,64 +36909,111 @@ ${e.stack}` : String(e);
   }
 
   // js/presence.tsx
+  var import_compiler_runtime7 = __toESM(require_compiler_runtime(), 1);
   var import_react8 = __toESM(require_react(), 1);
   var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
-  function AnimatePresence({
-    children,
-    exit,
-    animation = "default",
-    onExitComplete
-  }) {
-    "use no memo";
-    const current2 = import_react8.Children.toArray(children).filter(import_react8.isValidElement);
-    const [leaving, setLeaving] = (0, import_react8.useState)(() => /* @__PURE__ */ new Map());
-    const previous = (0, import_react8.useRef)([]);
-    (0, import_react8.useLayoutEffect)(() => {
-      previous.current = current2;
-    });
-    const keys = new Set(current2.map((c) => c.key));
-    let next = leaving;
-    previous.current.forEach((element, index) => {
-      if (keys.has(element.key) || next.has(element.key)) return;
-      if (next === leaving) next = new Map(leaving);
-      next.set(element.key, {
-        element,
-        index,
-        exiting: false
-      });
-    });
-    for (const key of next.keys()) {
-      if (!keys.has(key)) continue;
-      if (next === leaving) next = new Map(leaving);
-      next.delete(key);
-    }
-    if (next !== leaving) setLeaving(next);
-    const started = (0, import_react8.useRef)(/* @__PURE__ */ new Set());
-    (0, import_react8.useLayoutEffect)(() => {
-      for (const [key_0, entry] of leaving) {
-        if (entry.exiting || started.current.has(key_0)) continue;
-        started.current.add(key_0);
-        queueMicrotask(() => withAnimation(animation, () => setLeaving((map) => map.has(key_0) ? new Map(map).set(key_0, {
-          ...map.get(key_0),
-          exiting: true
-        }) : map), () => {
-          started.current.delete(key_0);
-          setLeaving((map_0) => {
-            if (!map_0.has(key_0)) return map_0;
-            const next_0 = new Map(map_0);
-            next_0.delete(key_0);
-            return next_0;
-          });
-          onExitComplete?.(String(key_0).replace(/^\.\$/, ""));
-        }));
+  function AnimatePresence(t0) {
+    const $ = (0, import_compiler_runtime7.c)(6);
+    if ($[0] !== "8ecf1b7eae8f4e3c2a0591ce3ba1a5711c38705a613d5b71ba58611290f190e6") {
+      for (let $i = 0; $i < 6; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
+      $[0] = "8ecf1b7eae8f4e3c2a0591ce3ba1a5711c38705a613d5b71ba58611290f190e6";
+    }
+    const {
+      children,
+      exit,
+      animation: t1,
+      onExitComplete
+    } = t0;
+    const animation = t1 === void 0 ? "default" : t1;
+    const current2 = import_react8.Children.toArray(children).filter(import_react8.isValidElement);
+    const [leaving, setLeaving] = (0, import_react8.useState)(_temp6);
+    const [previous, setPrevious] = (0, import_react8.useState)({
+      children,
+      elements: current2
     });
+    if (previous.children !== children) {
+      setPrevious({
+        children,
+        elements: current2
+      });
+      const keys = new Set(current2.map(_temp23));
+      let next = leaving;
+      previous.elements.forEach((element, index) => {
+        if (keys.has(element.key) || next.has(element.key)) {
+          return;
+        }
+        if (next === leaving) {
+          next = new Map(leaving);
+        }
+        next.set(element.key, {
+          element,
+          index,
+          exiting: false
+        });
+      });
+      for (const key of next.keys()) {
+        if (!keys.has(key)) {
+          continue;
+        }
+        if (next === leaving) {
+          next = new Map(leaving);
+        }
+        next.delete(key);
+      }
+      if (next !== leaving) {
+        setLeaving(next);
+      }
+    }
+    let t2;
+    if ($[1] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t2 = /* @__PURE__ */ new Set();
+      $[1] = t2;
+    } else {
+      t2 = $[1];
+    }
+    const started = (0, import_react8.useRef)(t2);
+    let t3;
+    if ($[2] !== animation || $[3] !== leaving || $[4] !== onExitComplete) {
+      t3 = () => {
+        for (const [key_0, entry] of leaving) {
+          if (entry.exiting || started.current.has(key_0)) {
+            continue;
+          }
+          started.current.add(key_0);
+          queueMicrotask(() => withAnimation(animation, () => setLeaving((map) => map.has(key_0) ? new Map(map).set(key_0, {
+            ...map.get(key_0),
+            exiting: true
+          }) : map), () => {
+            started.current.delete(key_0);
+            setLeaving((map_0) => {
+              if (!map_0.has(key_0)) {
+                return map_0;
+              }
+              const next_0 = new Map(map_0);
+              next_0.delete(key_0);
+              return next_0;
+            });
+            onExitComplete?.(String(key_0).replace(/^\.\$/, ""));
+          }));
+        }
+      };
+      $[2] = animation;
+      $[3] = leaving;
+      $[4] = onExitComplete;
+      $[5] = t3;
+    } else {
+      t3 = $[5];
+    }
+    (0, import_react8.useLayoutEffect)(t3);
     const rendered = [...current2];
-    [...leaving.values()].sort((a, b) => a.index - b.index).forEach(({
-      element: element_0,
-      index: index_0,
-      exiting
-    }) => {
+    [...leaving.values()].sort(_temp32).forEach((t4) => {
+      const {
+        element: element_0,
+        index: index_0,
+        exiting
+      } = t4;
       const shown = exiting ? (0, import_react8.cloneElement)(element_0, {
         ...typeof exit === "function" ? exit(element_0) : exit,
         allowsHitTesting: false
@@ -36797,13 +37022,22 @@ ${e.stack}` : String(e);
     });
     return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_jsx_runtime5.Fragment, { children: rendered });
   }
+  function _temp32(a, b) {
+    return a.index - b.index;
+  }
+  function _temp23(c) {
+    return c.key;
+  }
+  function _temp6() {
+    return /* @__PURE__ */ new Map();
+  }
 
   // js/controls.tsx
-  var import_compiler_runtime6 = __toESM(require_compiler_runtime(), 1);
+  var import_compiler_runtime8 = __toESM(require_compiler_runtime(), 1);
   var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
   var DatePickerHost = "DatePicker";
   function DatePicker(t0) {
-    const $ = (0, import_compiler_runtime6.c)(21);
+    const $ = (0, import_compiler_runtime8.c)(21);
     if ($[0] !== "e60ea6e76857fa3a80aab38b9e5a86053ce2834216d1406b82c1fee460da4dff") {
       for (let $i = 0; $i < 21; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36836,7 +37070,7 @@ ${e.stack}` : String(e);
       props = $[5];
       value = $[6];
     }
-    const ms = _temp3;
+    const ms = _temp7;
     let t1;
     if ($[7] !== value) {
       t1 = ms(value);
@@ -36883,11 +37117,11 @@ ${e.stack}` : String(e);
     }
     return t5;
   }
-  function _temp3(d) {
+  function _temp7(d) {
     return d === void 0 ? void 0 : typeof d === "number" ? d : d.getTime();
   }
   function TimePicker(t0) {
-    const $ = (0, import_compiler_runtime6.c)(24);
+    const $ = (0, import_compiler_runtime8.c)(24);
     if ($[0] !== "e60ea6e76857fa3a80aab38b9e5a86053ce2834216d1406b82c1fee460da4dff") {
       for (let $i = 0; $i < 24; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36924,7 +37158,7 @@ ${e.stack}` : String(e);
       props = $[6];
       value = $[7];
     }
-    const today = _temp22;
+    const today = _temp24;
     let t1;
     if ($[8] !== minuteInterval || $[9] !== onChange) {
       t1 = (ms) => {
@@ -36984,11 +37218,11 @@ ${e.stack}` : String(e);
     }
     return t5;
   }
-  function _temp22(t) {
+  function _temp24(t) {
     return t === void 0 ? void 0 : (/* @__PURE__ */ new Date()).setHours(t.hour, t.minute, 0, 0);
   }
   function NavigationRow(t0) {
-    const $ = (0, import_compiler_runtime6.c)(33);
+    const $ = (0, import_compiler_runtime8.c)(33);
     if ($[0] !== "e60ea6e76857fa3a80aab38b9e5a86053ce2834216d1406b82c1fee460da4dff") {
       for (let $i = 0; $i < 33; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37127,7 +37361,7 @@ ${e.stack}` : String(e);
     return t9;
   }
   function Picker(t0) {
-    const $ = (0, import_compiler_runtime6.c)(16);
+    const $ = (0, import_compiler_runtime8.c)(16);
     if ($[0] !== "e60ea6e76857fa3a80aab38b9e5a86053ce2834216d1406b82c1fee460da4dff") {
       for (let $i = 0; $i < 16; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37173,7 +37407,7 @@ ${e.stack}` : String(e);
     }
     let t3;
     if ($[9] !== options) {
-      t3 = options.map(_temp32);
+      t3 = options.map(_temp33);
       $[9] = options;
       $[10] = t3;
     } else {
@@ -37192,7 +37426,7 @@ ${e.stack}` : String(e);
     }
     return t4;
   }
-  function _temp32(o_0) {
+  function _temp33(o_0) {
     return {
       ...o_0,
       value: String(o_0.value)
@@ -37284,7 +37518,7 @@ ${e.stack}` : String(e);
   };
 
   // js/services.ts
-  var import_compiler_runtime7 = __toESM(require_compiler_runtime(), 1);
+  var import_compiler_runtime9 = __toESM(require_compiler_runtime(), 1);
   var import_react9 = __toESM(require_react(), 1);
   var listeners2 = /* @__PURE__ */ new Map();
   var heldResponses = [];
@@ -37366,7 +37600,7 @@ ${e.stack}` : String(e);
     }
   };
   function useNotificationListener(type, listener) {
-    const $ = (0, import_compiler_runtime7.c)(6);
+    const $ = (0, import_compiler_runtime9.c)(6);
     if ($[0] !== "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37456,7 +37690,7 @@ ${e.stack}` : String(e);
     };
   }
   function useKeepAwake(t0) {
-    const $ = (0, import_compiler_runtime7.c)(4);
+    const $ = (0, import_compiler_runtime9.c)(4);
     if ($[0] !== "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753") {
       for (let $i = 0; $i < 4; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37534,7 +37768,7 @@ ${e.stack}` : String(e);
   };
   globalThis.navigator.geolocation = geolocation;
   function useGeolocation(t0) {
-    const $ = (0, import_compiler_runtime7.c)(8);
+    const $ = (0, import_compiler_runtime9.c)(8);
     if ($[0] !== "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753") {
       for (let $i = 0; $i < 8; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37598,7 +37832,7 @@ ${e.stack}` : String(e);
   }
 
   // js/environment.ts
-  var import_compiler_runtime8 = __toESM(require_compiler_runtime(), 1);
+  var import_compiler_runtime10 = __toESM(require_compiler_runtime(), 1);
   var import_react10 = __toESM(require_react(), 1);
   var current = {
     horizontalSizeClass: "compact",
@@ -37661,20 +37895,20 @@ ${e.stack}` : String(e);
     return () => listeners3.delete(listener);
   }
   function useEnvironment() {
-    const $ = (0, import_compiler_runtime8.c)(1);
+    const $ = (0, import_compiler_runtime10.c)(1);
     if ($[0] !== "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
       $[0] = "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b";
     }
-    return (0, import_react10.useSyncExternalStore)(subscribe, _temp4);
+    return (0, import_react10.useSyncExternalStore)(subscribe, _temp8);
   }
-  function _temp4() {
+  function _temp8() {
     return current;
   }
   function useColorScheme() {
-    const $ = (0, import_compiler_runtime8.c)(1);
+    const $ = (0, import_compiler_runtime10.c)(1);
     if ($[0] !== "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");

@@ -289,9 +289,17 @@ Things that behave differently from React on the web, or from what you'd guess:
   module-level state in `hot.data`.
 - **zustand v5:** a selector that returns a new array or object every time loops; select
   the raw state or use `useShallow`.
-- **The React Compiler skips** a component that calls `useStore.getState()` while
-  rendering, or whose worklet captures a function that reads a ref; it says so in the
-  build log and the app's console.
+- **The React Compiler skips** a component it can't prove safe, and says so in the build
+  log and the app's console (the app and examples here have none). Common causes:
+  - `useStore.getState()` while rendering. With zustand, read state in render through
+    the hook (`const todos = useStore((s) => s.todos)`); `getState()` belongs in event
+    handlers, effects and worklet `runOnJS` callbacks.
+  - Writing a prop or a hook's return value (`navRef.current = …`,
+    `offset.value = …` in a component body): use methods (`offset.set(…)`).
+  - `let n = 0` updated (`n++`) inside a closure: use an array or a ref.
+  - A compiler bug: `Math.max(0, list.findIndex((x) => …))` (a method call whose argument
+    is a method call with a callback) fails with "MethodCall::property must be an
+    unpromoted + unmemoized MemberExpression". Split it into two statements.
 - **Buttons in a List row:** several default-style buttons in one row all fire on a tap
   (SwiftUI); give the inner ones a `buttonStyle`.
 - **`role="destructive"` swipe actions** remove the row right away (SwiftUI) before any

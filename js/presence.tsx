@@ -24,30 +24,30 @@ export type AnimatePresenceProps = {
 type Leaving = { element: ReactElement; index: number; exiting: boolean };
 
 export function AnimatePresence({ children, exit, animation = "default", onExitComplete }: AnimatePresenceProps) {
-  "use no memo"; // Reads the last committed children from a ref while rendering.
   const current = Children.toArray(children).filter(isValidElement) as ReactElement[];
   const [leaving, setLeaving] = useState<Map<Key, Leaving>>(() => new Map());
-  // The children as last committed (latest props), to keep showing one that leaves.
-  const previous = useRef<ReactElement[]>([]);
-  useLayoutEffect(() => {
-    previous.current = current;
-  });
+  // The children as last rendered (latest props), to keep showing one that leaves.
+  const [previous, setPrevious] = useState({ children, elements: current });
 
-  // Adjusting state while rendering: children that just left join `leaving`
-  // (still rendered as they were), and children that came back leave it.
-  const keys = new Set<Key>(current.map((c) => c.key!));
-  let next = leaving;
-  previous.current.forEach((element, index) => {
-    if (keys.has(element.key!) || next.has(element.key!)) return;
-    if (next === leaving) next = new Map(leaving);
-    next.set(element.key!, { element, index, exiting: false });
-  });
-  for (const key of next.keys()) {
-    if (!keys.has(key)) continue;
-    if (next === leaving) next = new Map(leaving);
-    next.delete(key);
+  // Adjusting state while rendering, when the children change: children that
+  // just left join `leaving` (still rendered as they were), and children that
+  // came back leave it.
+  if (previous.children !== children) {
+    setPrevious({ children, elements: current });
+    const keys = new Set<Key>(current.map((c) => c.key!));
+    let next = leaving;
+    previous.elements.forEach((element, index) => {
+      if (keys.has(element.key!) || next.has(element.key!)) return;
+      if (next === leaving) next = new Map(leaving);
+      next.set(element.key!, { element, index, exiting: false });
+    });
+    for (const key of next.keys()) {
+      if (!keys.has(key)) continue;
+      if (next === leaving) next = new Map(leaving);
+      next.delete(key);
+    }
+    if (next !== leaving) setLeaving(next);
   }
-  if (next !== leaving) setLeaving(next);
 
   // Start each leaving child's exit after its "as it was" frame has rendered.
   // withAnimation can't flush from inside an effect, so it runs a tick later.

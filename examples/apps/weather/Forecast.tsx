@@ -30,7 +30,11 @@ function Card({ title, icon, children }: { title: string; icon: string; children
 export function HourlyForecast({ forecast }: { forecast: Forecast }) {
   const temp = useTemperature();
   const thisHour = forecast.current.time.slice(0, 13); // "2026-10-27T14"
-  const start = Math.max(0, forecast.hours.findIndex((hour) => hour.time.startsWith(thisHour)));
+  // Two statements: `Math.max(0, list.findIndex(…))` in one trips a React
+  // Compiler bug ("MethodCall::property must be an unpromoted + unmemoized
+  // MemberExpression") and leaves the component unmemoized.
+  const found = forecast.hours.findIndex((hour) => hour.time.startsWith(thisHour));
+  const start = Math.max(0, found);
   const hours = forecast.hours.slice(start, start + 24);
 
   return (

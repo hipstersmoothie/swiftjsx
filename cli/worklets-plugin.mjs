@@ -1,7 +1,10 @@
 // Babel pass for worklets (see js/worklets.ts).
 //
 // A function is a worklet if its body starts with a "worklet" directive, or if
-// it's the callback passed to useAnimatedStyle(). Each one becomes
+// it's a callback of useAnimatedStyle(), useDerivedValue() or
+// useAnimatedReaction(), or `<Canvas draw>` (markAutoWorklets gives those the
+// directive before the React Compiler runs; this pass runs after it). Each one
+// becomes
 //
 //   __swiftjsx_worklet(fn, "<its source as plain JS>", () => ({ a, b }))
 //
@@ -16,7 +19,39 @@ import { transformSync } from "esbuild";
 
 const generate = generatorModule.default ?? generatorModule;
 
-const AUTO_WORKLET_CALLEES = new Set(["useAnimatedStyle"]);
+/** Hooks whose callbacks (all function arguments) are worklets. */
+const AUTO_WORKLET_CALLEES = new Set(["useAnimatedStyle", "useDerivedValue", "useAnimatedReaction"]);
+/** JSX props that are worklets: `<Canvas draw={(ctx) => …}>`. */
+const AUTO_WORKLET_PROPS = { Canvas: new Set(["draw"]) };
+
+/**
+ * Runs before the React Compiler: gives callbacks that are worklets by
+ * position a "worklet" directive, so they're still found after the compiler
+ * has hoisted them out of the call.
+ */
+export function markAutoWorklets({ types: t }) {
+  function mark(fn) {
+    if (!t.isArrowFunctionExpression(fn) && !t.isFunctionExpression(fn)) return;
+    if (!t.isBlockStatement(fn.body)) fn.body = t.blockStatement([t.returnStatement(fn.body)]);
+    if (!fn.body.directives.some((d) => d.value.value === "worklet")) fn.body.directives.unshift(t.directive(t.directiveLiteral("worklet")));
+  }
+  return {
+    name: "swiftjsx-auto-worklets",
+    visitor: {
+      CallExpression(path) {
+        const callee = path.node.callee;
+        const name = t.isIdentifier(callee) ? callee.name : t.isMemberExpression(callee) && t.isIdentifier(callee.property) ? callee.property.name : null;
+        if (name && AUTO_WORKLET_CALLEES.has(name)) path.node.arguments.forEach(mark);
+      },
+      JSXAttribute(path) {
+        const element = path.parentPath.node.name;
+        const props = t.isJSXIdentifier(element) ? AUTO_WORKLET_PROPS[element.name] : undefined;
+        if (!props || !t.isJSXIdentifier(path.node.name) || !props.has(path.node.name.name)) return;
+        if (t.isJSXExpressionContainer(path.node.value)) mark(path.node.value.expression);
+      },
+    },
+  };
+}
 
 export default function workletsPlugin({ types: t }) {
   function calleeName(call) {
@@ -30,7 +65,7 @@ export default function workletsPlugin({ types: t }) {
     const body = path.node.body;
     if (t.isBlockStatement(body) && body.directives.some((d) => d.value.value === "worklet")) return true;
     const parent = path.parentPath;
-    return parent.isCallExpression() && parent.node.arguments[0] === path.node && AUTO_WORKLET_CALLEES.has(calleeName(parent.node));
+    return parent.isCallExpression() && parent.node.arguments.includes(path.node) && AUTO_WORKLET_CALLEES.has(calleeName(parent.node));
   }
 
   /** Variables the function reads that are declared outside it (globals excluded). */

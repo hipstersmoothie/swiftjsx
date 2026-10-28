@@ -218,9 +218,11 @@ for the record.
       headers black.
 - [x] Modifier props on a `Section` style each of its rows (`tint`, `listRowBackground`,
       `font`…) instead of wrapping it (which stopped it being a section).
-- [ ] The React Compiler skips a component whose worklet captures a function that reads a
-      ref ("Cannot access refs during render"), or that calls `useStore.getState()` in
-      render. Hide worklet captures from the compiler; document the zustand idiom.
+- [x] Worklets no longer make the React Compiler skip components: the worklets pass runs
+      after the compiler (a pre-pass marks `useAnimatedStyle` callbacks), so worklets are
+      memoized like any callback and stop being re-sent every render. The runtime, the
+      seventeen apps and the test fixtures compile with no skipped functions. The zustand
+      idiom and the compiler's known bug are in the README's Gotchas.
 
 ## Web APIs and platform
 
@@ -291,9 +293,11 @@ for the record.
 ## Build and tooling
 
 - [x] React Compiler bail-outs are console warnings in development builds.
-- [ ] The React Compiler runs on Babel 7: `babel-plugin-react-compiler` 1.0 is built
-      against Babel 7's AST, and under Babel 8 it rejects some valid code. It also hit an
-      internal error on one function in the Weather app (left unmemoized).
+- [ ] The React Compiler runs on Babel 7. Checked against Babel 8.0.9 (October 2026):
+      both 1.0 and the May 2026 experimental build fail on valid code there (39–50
+      functions in this repo; destructuring defaults, "Expected value kind to be
+      initialized"), while on Babel 7 both compile everything. The `Math.max(0,
+      list.findIndex(cb))` internal error is still in the experimental build.
 - [x] CI (GitHub Actions, Xcode 26): typecheck, bundles up to date, `swift test`, the
       packaged template, the iOS demo build. Builds with Xcode 26 and 27.
 - [x] React DevTools: the standalone app (`npx react-devtools`) over WebSocket, in the
