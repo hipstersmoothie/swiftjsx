@@ -174,7 +174,7 @@ for the record.
 - [ ] Worklet animations are SwiftUI animations: no reading values mid-animation, no
       completion callbacks, `withDecay`, `withRepeat` or `withSequence`; no
       `useDerivedValue` / `useAnimatedReaction`; springs don't take the finger's velocity.
-- [ ] Transforms: `rotation3DEffect` (card flips), x/y scale, anchors.
+- [x] Transforms: `rotation3D` (card flips), `scaleX` / `scaleY`, `transformAnchor`.
 - [ ] Value-keyed animations and "animate on appear" (a state change in a mount effect can
       land in the same frame as the mount and not animate).
 - [x] `withAnimation(spec, fn, completion)`: runs when the animation is logically complete.
@@ -185,8 +185,9 @@ for the record.
       before the parent's update, so the tree looks ahead).
 - [x] Transitions: `{ insert, remove }`, `move` / `push` edges, a starting scale and
       anchor, `offset`, `blur`, `identity`, and a transition's own `animation`.
-- [ ] Keyframes / phases for React props (`keyframeAnimator`): a 1 → 1.2 → 1 pop, a shake.
-      No `requestAnimationFrame`.
+- [x] `keyframes={{ trigger, steps, repeat }}` (SwiftUI's phase animator): pops, shakes,
+      looping wiggles.
+- [ ] No `requestAnimationFrame`.
 - [ ] Drag and drop between containers (drop targets) outside `List`.
 
 ## Rendering

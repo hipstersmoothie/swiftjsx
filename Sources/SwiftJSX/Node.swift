@@ -76,7 +76,7 @@ public final class Node: Identifiable {
         case accessibility, accessibilityElement
         case refresh, swipeActions, contextMenu
         case overlay, backgroundView, contentShape, layout, relativeFrame, listRow
-        case tint, aspectRatio, safeAreaInset, keyPress
+        case tint, aspectRatio, safeAreaInset, keyPress, keyframes
     }
 
     /// Called after props or children change.
@@ -106,12 +106,13 @@ public final class Node: Identifiable {
     }
 
     static let interactionFeatures: Set<Feature> = [
-        .transform, .doubleTap, .longPress, .drag, .magnify, .rotate, .accessibility, .accessibilityElement, .keyPress,
+        .transform, .doubleTap, .longPress, .drag, .magnify, .rotate, .accessibility, .accessibilityElement, .keyPress, .keyframes,
     ]
 
     static let featureKeys: [(String, Feature)] = [
         ("foregroundStyle", .foreground), ("onTapGesture", .tap), ("__ref", .ref),
         ("offset", .transform), ("scale", .transform), ("rotation", .transform),
+        ("scaleX", .transform), ("scaleY", .transform), ("rotation3D", .transform), ("keyframes", .keyframes),
         ("onDoubleTap", .doubleTap), ("onLongPress", .longPress),
         ("onDrag", .drag), ("onDragEnd", .drag), ("onDragStart", .drag), ("onMagnify", .magnify), ("onMagnifyEnd", .magnify),
         ("onRotate", .rotate), ("onRotateEnd", .rotate),

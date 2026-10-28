@@ -27,6 +27,9 @@ export function AnimationDemo() {
   const [nextId, setNextId] = useState(4);
   const [finished, setFinished] = useState(0);
   const [exited, setExited] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [pops, setPops] = useState(0);
+  const [shakes, setShakes] = useState(0);
 
   const shuffle = () =>
     withAnimation(
@@ -84,6 +87,48 @@ export function AnimationDemo() {
           <Text font="footnote" monospacedDigit foregroundStyle="secondary" accessibilityIdentifier="animation-status">
             {`Shuffles finished: ${finished} · tiles exited: ${exited}`}
           </Text>
+
+          <Text font="headline" padding={{ top: 12 }}>3D, keyframes</Text>
+          <HStack spacing={16}>
+            {/* A card flip: the back face is shown past 90°. */}
+            <VStack
+              frame={{ width: 120, height: 160 }}
+              background={flipped ? "indigo" : "orange"}
+              cornerRadius={16}
+              rotation3D={{ degrees: flipped ? 180 : 0, axis: { y: 1 }, perspective: 0.6 }}
+              animation={{ type: "spring", duration: 0.6, bounce: 0.2 }}
+              onTapGesture={() => setFlipped((f) => !f)}
+              accessibilityIdentifier="flip-card"
+              accessibilityLabel={flipped ? "Back" : "Front"}
+            >
+              <Text font="title" fontWeight="bold" foregroundStyle="white" scaleX={flipped ? -1 : 1}>
+                {flipped ? "Back" : "Front"}
+              </Text>
+            </VStack>
+            <VStack spacing={14}>
+              <Button
+                title="Pop"
+                buttonStyle="borderedProminent"
+                keyframes={{ trigger: pops, steps: [{ scale: 1.3, duration: 0.12 }, { scale: 0.92, duration: 0.1 }, { scale: 1 }] }}
+                onPress={() => setPops((n) => n + 1)}
+                accessibilityIdentifier="pop"
+              />
+              <Button
+                title="Shake"
+                buttonStyle="bordered"
+                tint="red"
+                keyframes={{ trigger: shakes, steps: [{ x: -10, duration: 0.06 }, { x: 10, duration: 0.06 }, { x: -6, duration: 0.06 }, { x: 6, duration: 0.06 }, { x: 0 }] }}
+                onPress={() => setShakes((n) => n + 1)}
+                accessibilityIdentifier="shake"
+              />
+              <Text
+                font="title2"
+                keyframes={{ repeat: true, steps: [{ rotation: -12, duration: 0.5 }, { rotation: 12, duration: 0.5 }] }}
+              >
+                🔔
+              </Text>
+            </VStack>
+          </HStack>
         </VStack>
       </ScrollView>
     </Screen>

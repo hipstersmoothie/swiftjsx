@@ -7,18 +7,84 @@ import SwiftUI
 
 /// `offset`, `scale`, `rotation`: applied after the box (background, border,
 /// shadow), like a CSS transform.
+/// `scale` (or `scaleX` / `scaleY`), `rotation`, `rotation3D` (`{ degrees,
+/// axis: { x, y, z }, perspective }`: card flips) and `offset`, around
+/// `transformAnchor` (default center).
 struct TransformModifier: ViewModifier {
     let node: Node
     func body(content: Content) -> some View {
         if node.features.contains(.transform) {
             let offset = node.dict("offset")
+            let anchor = unitPoint(node.string("transformAnchor")) ?? .center
+            let scale = node.cgFloat("scale") ?? 1
+            let flip = node.dict("rotation3D")
+            let axis = flip?["axis"] as? [String: Any]
             content
-                .scaleEffect(node.cgFloat("scale") ?? 1)
-                .rotationEffect(.degrees(node.double("rotation") ?? 0))
+                .scaleEffect(x: scale * (node.cgFloat("scaleX") ?? 1), y: scale * (node.cgFloat("scaleY") ?? 1), anchor: anchor)
+                .rotationEffect(.degrees(node.double("rotation") ?? 0), anchor: anchor)
+                .rotation3DEffect(.degrees((flip?["degrees"] as? NSNumber)?.doubleValue ?? 0),
+                                  axis: (x: cgFloat(axis?["x"]) ?? 0, y: cgFloat(axis?["y"]) ?? 1, z: cgFloat(axis?["z"]) ?? 0),
+                                  anchor: anchor, perspective: cgFloat(flip?["perspective"]) ?? 1)
                 .offset(x: cgFloat(offset?["x"]) ?? 0, y: cgFloat(offset?["y"]) ?? 0)
         } else {
             content
         }
+    }
+}
+
+/// `keyframes={{ trigger, steps, repeat }}`: plays `steps` in order (each a
+/// scale, opacity, x / y offset and rotation, with its `animation` or
+/// `duration`) whenever `trigger` changes, then settles back; `repeat` loops.
+/// A pop: `[{ scale: 1.25 }, { scale: 1 }]`; a shake: `[{ x: -8 }, { x: 8 }, { x: -4 }, { x: 0 }]`.
+struct KeyframesModifier: ViewModifier {
+    let node: Node
+
+    struct Step: Equatable {
+        var scale = 1.0, opacity = 1.0, x = 0.0, y = 0.0, rotation = 0.0
+        init() {}
+        init(_ dict: [String: Any]) {
+            func number(_ key: String) -> Double? { (dict[key] as? NSNumber)?.doubleValue }
+            scale = number("scale") ?? 1
+            opacity = number("opacity") ?? 1
+            x = number("x") ?? 0
+            y = number("y") ?? 0
+            rotation = number("rotation") ?? 0
+        }
+    }
+
+    func body(content: Content) -> some View {
+        if node.features.contains(.keyframes), let spec = node.dict("keyframes") {
+            let raw = (spec["steps"] as? [[String: Any]]) ?? []
+            let steps = [Step()] + raw.map(Step.init)
+            let animations: [Animation] = [parseAnimation(spec["settle"]) ?? .spring(duration: 0.3)] + raw.map { step in
+                parseAnimation(step["animation"]) ?? .easeInOut(duration: (step["duration"] as? NSNumber)?.doubleValue ?? 0.12)
+            }
+            if spec["repeat"] as? Bool == true {
+                content.phaseAnimator(Array(steps.indices)) { view, phase in
+                    apply(view, steps[phase])
+                } animation: { animations[$0] }
+            } else {
+                content.phaseAnimator(Array(steps.indices), trigger: trigger(spec["trigger"])) { view, phase in
+                    apply(view, steps[phase])
+                } animation: { animations[$0] }
+            }
+        } else {
+            content
+        }
+    }
+
+    private func apply<V: View>(_ view: V, _ step: Step) -> some View {
+        view
+            .scaleEffect(step.scale)
+            .opacity(step.opacity)
+            .rotationEffect(.degrees(step.rotation))
+            .offset(x: step.x, y: step.y)
+    }
+
+    private func trigger(_ value: Any?) -> String {
+        guard let value, !(value is NSNull) else { return "" }
+        if let data = try? JSONSerialization.data(withJSONObject: [value]), let text = String(data: data, encoding: .utf8) { return text }
+        return "\(value)"
     }
 }
 

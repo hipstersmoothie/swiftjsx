@@ -485,6 +485,14 @@ final class GalleryTests: XCTestCase {
                   "exit: \(status.label)")
         XCTAssert(element("tile-2").waitForNonExistence(timeout: 3))
         snapshot("animation-exited")
+        let card = element("flip-card")
+        for _ in 0..<3 where !card.isHittable { app.swipeUp() }
+        card.tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'Back'"), evaluatedWith: card)], timeout: 3) == .completed)
+        element("shake").tap()
+        element("pop").tap()
+        usleep(150_000)
+        snapshot("animation-flip-pop")
     }
 
     func testFocusAndSelection() {

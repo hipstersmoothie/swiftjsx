@@ -179,8 +179,27 @@ export interface Modifiers {
   /** Move the view without affecting layout, in points. */
   offset?: { x?: number; y?: number };
   scale?: number;
+  /** Stretch one axis (multiplied with `scale`). */
+  scaleX?: number;
+  scaleY?: number;
   /** Degrees, clockwise. */
   rotation?: number;
+  /** Rotation around an axis in 3D (card flips: `{ degrees: 180, axis: { y: 1 } }`); `perspective` 0–1. */
+  rotation3D?: { degrees: number; axis?: { x?: number; y?: number; z?: number }; perspective?: number };
+  /** The point scale and rotations happen around (default "center"). */
+  transformAnchor?: "center" | "top" | "bottom" | "leading" | "trailing" | "topLeading" | "topTrailing" | "bottomLeading" | "bottomTrailing";
+  /**
+   * A sequence of steps that plays whenever `trigger` changes (or forever with
+   * `repeat`), then settles back: a pop `[{ scale: 1.25 }, { scale: 1 }]`, a shake
+   * `[{ x: -8 }, { x: 8 }, { x: -4 }, { x: 0 }]`. Each step's `animation` or
+   * `duration` (seconds) gets it there; `settle` is the way back.
+   */
+  keyframes?: {
+    trigger?: unknown;
+    steps: { scale?: number; opacity?: number; x?: number; y?: number; rotation?: number; duration?: number; animation?: AnimationSpec }[];
+    repeat?: boolean;
+    settle?: AnimationSpec;
+  };
 
   // Gestures. Handlers run on the JS thread; state you set re-renders as usual.
   /** With where the tap landed, in the view's own coordinates. */
