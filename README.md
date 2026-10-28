@@ -1,5 +1,7 @@
 # SwiftJSX (experimental)
 
+[![CI](https://github.com/hipstersmoothie/swiftjsx/actions/workflows/ci.yml/badge.svg)](https://github.com/hipstersmoothie/swiftjsx/actions/workflows/ci.yml)
+
 Write SwiftUI apps in React + JSX + hooks. Real React (19.3) runs in JavaScriptCore;
 a custom renderer turns React's commits into native SwiftUI views.
 

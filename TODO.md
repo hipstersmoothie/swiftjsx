@@ -256,7 +256,10 @@ for the record.
 - [ ] The React Compiler runs on Babel 7: `babel-plugin-react-compiler` 1.0 is built
       against Babel 7's AST, and under Babel 8 it rejects some valid code. It also hit an
       internal error on one function in the Weather app (left unmemoized).
-- [ ] React DevTools support. CI for `swift test` and the XCUITest suite.
+- [x] CI (GitHub Actions, Xcode 26): typecheck, bundles up to date, `swift test`, the
+      packaged template, the iOS demo build. Builds with Xcode 26 and 27.
+- [ ] React DevTools support. The XCUITest suite in CI (about 10 minutes; needs a
+      simulator and network for the toy apps).
 - [ ] `xcodebuild test` hangs after the UI tests finish (an Xcode quirk while writing
       the results); it has to be stopped once it prints "Executed N tests".
 - [x] Hot reload on devices: `npm run dev` serves the bundle (long polling, port 8081);
