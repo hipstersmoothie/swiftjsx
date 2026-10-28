@@ -34,6 +34,8 @@ const ARROWS: { direction: Direction; icon: string }[] = [
 /** Points the board bumps toward a direction that doesn't move anything. */
 const BUMP = 6;
 
+const KEY_DIRECTIONS: Record<string, Direction> = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
+
 function GameScreen() {
   const nav = useNavigation();
   const size = useGame((s) => s.size);
@@ -118,7 +120,17 @@ function GameScreen() {
         </Menu>
       </ToolbarItem>
 
-      <VStack spacing={14} padding={{ horizontal: 16, top: 8, bottom: 12 }} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background={palette.page}>
+      <VStack
+        spacing={14}
+        padding={{ horizontal: 16, top: 8, bottom: 12 }}
+        frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+        background={palette.page}
+        // Arrow keys on a hardware keyboard (iPad, Mac).
+        keys={Object.keys(KEY_DIRECTIONS)}
+        onKeyPress={({ key }) => {
+          if (!blocked) swipe(KEY_DIRECTIONS[key]);
+        }}
+      >
         <HStack spacing={8}>
           <VStack alignment="leading" spacing={0}>
             <Text font={{ size: 46, weight: "heavy" }} foregroundStyle={palette.text} accessibilityTraits="header">

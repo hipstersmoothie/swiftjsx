@@ -37,8 +37,8 @@ for the record.
 - [ ] Absolute positioning: a `position` prop that's part of layout. With a top-leading
       ZStack + `offset` (2048's tiles), a `scale` transition scales the offset too, every
       layer's `frame` needs `alignment: "topLeading"`, and offsets are points only.
-- [ ] Screen size and safe-area insets in `useEnvironment()`; an `ignoresSafeArea` prop
-      (rounded or non-background content can't go under the bars); `statusBarHidden`.
+- [x] Window size and safe-area insets in `useEnvironment()`; an `ignoresSafeArea` prop.
+- [ ] `statusBarHidden`, `persistentSystemOverlays`.
 - [ ] On a material background, `cornerRadius` rounds the background but doesn't clip
       the content: a rounded clip over a material turns off vibrancy, and hierarchical
       text and dividers on it vanish.
@@ -95,7 +95,7 @@ for the record.
 - [ ] Accessibility actions (custom VoiceOver actions, adjustable increments for charts
       and cards).
 - [ ] Share sheet (`share({ text, url })`), file export.
-- [ ] `Image.prefetch(url)` to warm the cache (next carousel page, next story).
+- [x] `prefetchImage(url)` warms `<Image>`'s cache (next carousel page, next story).
 
 ## Lists and scrolling
 
@@ -154,7 +154,8 @@ for the record.
 - [x] `onDragStart` for immediate drags (with the first event); a cancelled drag's
       `onDragEnd` is decided a turn later, so it can't double-fire whichever order
       SwiftUI resets state and calls `onEnded`.
-- [ ] Hardware keyboard: `onKeyPress`, `keyboardShortcut` (arrow keys in 2048 on iPad/Mac).
+- [x] Hardware keyboard: `onKeyPress` (with `keys`), Button `keyboardShortcut`; 2048
+      takes arrow keys.
 - [ ] Worklets: measuring and reading layout inside worklets, haptics from worklets,
       animatable shape props (`trim`, `fill`), scroll offsets as shared values.
       Capturing `obj.member` sends all of `obj`; worklets that capture per-render
@@ -171,7 +172,8 @@ for the record.
 - [ ] Insertion/removal animations come from the parent's `animation`, never the child's
       own; changing the parent's `animation` in the same commit as the insert has no
       effect (React applies child ops before the parent's update).
-- [ ] Transitions: asymmetric insert/remove, edges for `move`, a starting scale, blur.
+- [x] Transitions: `{ insert, remove }`, `move` / `push` edges, a starting scale and
+      anchor, `offset`, `blur`, `identity`, and a transition's own `animation`.
 - [ ] Keyframes / phases for React props (`keyframeAnimator`): a 1 → 1.2 → 1 pop, a shake.
       No `requestAnimationFrame`.
 - [ ] Drag and drop between containers (drop targets) outside `List`.

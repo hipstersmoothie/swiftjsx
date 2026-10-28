@@ -253,3 +253,111 @@ struct AnyViewModifier: ViewModifier {
     init<M: ViewModifier>(_ modifier: M) { apply = { AnyView($0.modifier(modifier)) } }
     func body(content: Content) -> some View { apply(content) }
 }
+
+/// `onKeyPress({ key, characters, modifiers })`: hardware keyboard keys while
+/// the view (or something inside it) has focus; it takes focus when it
+/// appears. `keys` limits which keys it takes (the rest pass on). Key names
+/// follow the web: "ArrowUp", "Enter", "Escape", "Backspace", "Tab", " ", "a"…
+struct KeyPressModifier: ViewModifier {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        if node.features.contains(.keyPress) {
+            content
+                .focusable()
+                .focusEffectDisabled()
+                .focused($focused)
+                .onAppear { focused = true }
+                .onKeyPress(phases: .down) { press in
+                    let key = Self.name(press)
+                    if let keys = node.prop("keys") as? [String], !keys.contains(key) { return .ignored }
+                    guard node.has("onKeyPress") else { return .ignored }
+                    runtime?.fire(node, "onKeyPress", [
+                        "key": key, "characters": press.characters,
+                        "modifiers": Self.modifiers(press.modifiers),
+                    ])
+                    return .handled
+                }
+        } else {
+            content
+        }
+    }
+
+    static func name(_ press: KeyPress) -> String {
+        switch press.key {
+        case .upArrow: "ArrowUp"
+        case .downArrow: "ArrowDown"
+        case .leftArrow: "ArrowLeft"
+        case .rightArrow: "ArrowRight"
+        case .return: "Enter"
+        case .escape: "Escape"
+        case .delete: "Backspace"
+        case .deleteForward: "Delete"
+        case .tab: "Tab"
+        case .space: " "
+        case .home: "Home"
+        case .end: "End"
+        case .pageUp: "PageUp"
+        case .pageDown: "PageDown"
+        default: press.characters
+        }
+    }
+
+    static func modifiers(_ flags: EventModifiers) -> [String] {
+        var names: [String] = []
+        if flags.contains(.command) { names.append("command") }
+        if flags.contains(.shift) { names.append("shift") }
+        if flags.contains(.option) { names.append("option") }
+        if flags.contains(.control) { names.append("control") }
+        return names
+    }
+}
+
+/// `keyboardShortcut` on a Button: "k" (with ⌘), or `{ key, modifiers }`.
+/// Keys: a character, or "Enter" / "Escape" / "ArrowUp"…, or "default" /
+/// "cancel" (Return and Escape in dialogs).
+struct KeyboardShortcutModifier: ViewModifier {
+    let spec: Any?
+
+    func body(content: Content) -> some View {
+        if let shortcut {
+            content.keyboardShortcut(shortcut)
+        } else {
+            content
+        }
+    }
+
+    private var shortcut: KeyboardShortcut? {
+        let dict = spec as? [String: Any]
+        guard let key = (spec as? String) ?? (dict?["key"] as? String) else { return nil }
+        if key == "default" { return .defaultAction }
+        if key == "cancel" { return .cancelAction }
+        let equivalent: KeyEquivalent? = switch key {
+        case "Enter": .return
+        case "Escape": .escape
+        case "ArrowUp": .upArrow
+        case "ArrowDown": .downArrow
+        case "ArrowLeft": .leftArrow
+        case "ArrowRight": .rightArrow
+        case "Backspace": .delete
+        case "Tab": .tab
+        case " ": .space
+        default: key.count == 1 ? KeyEquivalent(Character(key)) : nil
+        }
+        guard let equivalent else { return nil }
+        guard let names = dict?["modifiers"] as? [String] else { return KeyboardShortcut(equivalent) }
+        var flags: EventModifiers = []
+        for name in names {
+            switch name {
+            case "command": flags.insert(.command)
+            case "shift": flags.insert(.shift)
+            case "option": flags.insert(.option)
+            case "control": flags.insert(.control)
+            default: break
+            }
+        }
+        return KeyboardShortcut(equivalent, modifiers: flags)
+    }
+}

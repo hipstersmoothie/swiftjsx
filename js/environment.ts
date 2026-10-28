@@ -11,6 +11,10 @@ export type Environment = {
   /** SwiftUI's DynamicTypeSize, e.g. "large" (the default) or "accessibility2". */
   dynamicTypeSize: string;
   isAccessibilitySize: boolean;
+  /** The app's window size in points (the whole screen on iPhone), including the safe area. */
+  window: { width: number; height: number };
+  /** Space taken by the status bar, home indicator and notch (keyboard not included). */
+  safeAreaInsets: { top: number; bottom: number; leading: number; trailing: number };
 };
 
 let current: Environment = {
@@ -19,6 +23,8 @@ let current: Environment = {
   colorScheme: "light",
   dynamicTypeSize: "large",
   isAccessibilitySize: false,
+  window: { width: 393, height: 852 },
+  safeAreaInsets: { top: 59, bottom: 34, leading: 0, trailing: 0 },
 };
 const listeners = new Set<() => void>();
 
@@ -29,6 +35,13 @@ const listeners = new Set<() => void>();
     colorScheme: values.colorScheme === "dark" ? "dark" : "light",
     dynamicTypeSize: values.dynamicTypeSize,
     isAccessibilitySize: values.isAccessibilitySize === "true",
+    window: { width: Number(values.width) || current.window.width, height: Number(values.height) || current.window.height },
+    safeAreaInsets: {
+      top: Number(values.safeTop) || 0,
+      bottom: Number(values.safeBottom) || 0,
+      leading: Number(values.safeLeading) || 0,
+      trailing: Number(values.safeTrailing) || 0,
+    },
   };
   listeners.forEach((listener) => listener());
 };
@@ -38,7 +51,7 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-/** The current SwiftUI environment (size classes, color scheme, text size). */
+/** The current SwiftUI environment (size classes, color scheme, text size, window size, safe area). */
 export function useEnvironment(): Environment {
   return useSyncExternalStore(subscribe, () => current);
 }

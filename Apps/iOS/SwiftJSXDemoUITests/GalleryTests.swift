@@ -375,6 +375,13 @@ final class GalleryTests: XCTestCase {
         sleep(1)
         XCTAssertFalse(moves.label.hasPrefix("0"), "moves: \(moves.label)")
         snapshot("2048-played")
+        // Arrow keys on a hardware keyboard (onKeyPress).
+        let before = moves.label
+        for key in [XCUIKeyboardKey.leftArrow, .upArrow, .rightArrow, .downArrow, .leftArrow] {
+            app.typeKey(key.rawValue, modifierFlags: [])
+            usleep(300_000)
+        }
+        XCTAssertNotEqual(moves.label, before, "arrow keys didn't move")
     }
 
     func testSocial() {

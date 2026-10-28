@@ -84,6 +84,24 @@ export type Material = "ultraThinMaterial" | "thinMaterial" | "regularMaterial" 
  * order: padding → frame → background → cornerRadius → border → shadow →
  * opacity. So `padding` is *inside* `background`, like on the web.
  */
+export type SafeAreaEdge = "top" | "bottom" | "leading" | "trailing" | "horizontal" | "vertical" | "all";
+export type TransitionName = "opacity" | "scale" | "slide" | "move" | "push" | "offset" | "blur" | "identity";
+export type TransitionSpec =
+  | TransitionName
+  | {
+      type: TransitionName;
+      /** move / push: where it comes from and goes to. */
+      edge?: "top" | "bottom" | "leading" | "trailing";
+      /** scale: the size it starts from (default 0), around `anchor`. */
+      scale?: number;
+      anchor?: "center" | "top" | "bottom" | "leading" | "trailing" | "topLeading" | "topTrailing" | "bottomLeading" | "bottomTrailing";
+      /** offset: where it starts from, in points. */
+      x?: number;
+      y?: number;
+      /** The transition's own animation, whatever its parent's. */
+      animation?: AnimationSpec;
+    };
+
 export interface Modifiers {
   padding?: number | boolean | { top?: number; leading?: number; bottom?: number; trailing?: number; horizontal?: number; vertical?: number };
   frame?: { width?: number; height?: number; minWidth?: number; maxWidth?: Dimension; minHeight?: number; maxHeight?: Dimension; alignment?: Alignment };
@@ -141,8 +159,12 @@ export interface Modifiers {
   disabled?: boolean;
   /** Animate every change to this view (and its children's insertions/removals). */
   animation?: AnimationSpec;
-  /** Like `key`, but for SwiftUI transitions when the view is inserted/removed. */
-  transition?: "opacity" | "scale" | "slide" | "move";
+  /**
+   * How the view comes in and goes out (with an animated commit, or its own
+   * `animation`). An object sets options, or `{ insert, remove }` differs
+   * each way: `{ insert: { type: "scale", animation: "bouncy" }, remove: "opacity" }`.
+   */
+  transition?: TransitionSpec | { insert?: TransitionSpec; remove?: TransitionSpec };
   onAppear?: () => void;
   onDisappear?: () => void;
   /** Invisible but still laid out (like CSS `visibility: hidden`). */
@@ -178,6 +200,15 @@ export interface Modifiers {
    * `dragActivation="longPress"` when the hold completes (no event).
    */
   onDragStart?: (event?: DragEvent) => void;
+  /**
+   * Hardware keyboard keys (iPad keyboards, Mac). The view takes focus when it
+   * appears. Key names follow the web: "ArrowUp", "Enter", "Escape", "a"…
+   */
+  onKeyPress?: (event: { key: string; characters: string; modifiers: ("command" | "shift" | "option" | "control")[] }) => void;
+  /** Only these keys go to `onKeyPress`; others pass on (e.g. to text fields). */
+  keys?: string[];
+  /** Extend into the safe area (under the status bar and home indicator): true, or some edges. */
+  ignoresSafeArea?: boolean | SafeAreaEdge | SafeAreaEdge[];
   /**
    * How this view's gestures combine with others: "simultaneous" (e.g. a drag
    * inside a ScrollView that still lets it scroll), "high" (wins over
@@ -464,6 +495,11 @@ export const Button = host<
     buttonStyle?: "automatic" | "bordered" | "borderedProminent" | "borderless" | "plain";
     /** Accent color of the button (and its background in `<SwipeActions>`). */
     tint?: ColorValue;
+    /**
+     * A hardware keyboard shortcut: "k" (⌘K), `{ key, modifiers }`, or
+     * "default" / "cancel" (Return / Escape in dialogs).
+     */
+    keyboardShortcut?: string | { key: string; modifiers?: ("command" | "shift" | "option" | "control")[] };
     /**
      * While pressed: scale (e.g. 0.95), opacity, or a background behind the
      * content. Any of these (or onPressIn / onPressOut) replaces `buttonStyle`

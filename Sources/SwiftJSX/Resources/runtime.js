@@ -18062,6 +18062,7 @@ ${error.stack}` : String(error));
     onJS: () => onJS,
     onMain: () => onMain,
     openURL: () => openURL,
+    prefetchImage: () => prefetchImage,
     render: () => render,
     runOnJS: () => runOnJS,
     toJS: () => toJS,
@@ -19768,6 +19769,11 @@ ${e.stack}` : String(e);
       kind
     });
   }
+  function prefetchImage(url) {
+    return nativeCall("prefetchImage", {
+      url
+    });
+  }
   globalThis.navigator.clipboard = {
     async writeText(text) {
       await nativeCall("clipboardWrite", {
@@ -19787,7 +19793,17 @@ ${e.stack}` : String(e);
     verticalSizeClass: "regular",
     colorScheme: "light",
     dynamicTypeSize: "large",
-    isAccessibilitySize: false
+    isAccessibilitySize: false,
+    window: {
+      width: 393,
+      height: 852
+    },
+    safeAreaInsets: {
+      top: 59,
+      bottom: 34,
+      leading: 0,
+      trailing: 0
+    }
   };
   var listeners2 = /* @__PURE__ */ new Set();
   globalThis.__swiftjsx_environment = (values) => {
@@ -19796,7 +19812,17 @@ ${e.stack}` : String(e);
       verticalSizeClass: values.verticalSizeClass === "compact" ? "compact" : "regular",
       colorScheme: values.colorScheme === "dark" ? "dark" : "light",
       dynamicTypeSize: values.dynamicTypeSize,
-      isAccessibilitySize: values.isAccessibilitySize === "true"
+      isAccessibilitySize: values.isAccessibilitySize === "true",
+      window: {
+        width: Number(values.width) || current.window.width,
+        height: Number(values.height) || current.window.height
+      },
+      safeAreaInsets: {
+        top: Number(values.safeTop) || 0,
+        bottom: Number(values.safeBottom) || 0,
+        leading: Number(values.safeLeading) || 0,
+        trailing: Number(values.safeTrailing) || 0
+      }
     };
     listeners2.forEach((listener) => listener());
   };
@@ -19806,11 +19832,11 @@ ${e.stack}` : String(e);
   }
   function useEnvironment() {
     const $ = (0, import_compiler_runtime7.c)(1);
-    if ($[0] !== "00a32b7fa37dfcf3224f6ee76325353b1df70bc351be5a415cf8f975653f957b") {
+    if ($[0] !== "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "00a32b7fa37dfcf3224f6ee76325353b1df70bc351be5a415cf8f975653f957b";
+      $[0] = "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697";
     }
     return (0, import_react7.useSyncExternalStore)(subscribe, _temp6);
   }
@@ -19819,11 +19845,11 @@ ${e.stack}` : String(e);
   }
   function useColorScheme() {
     const $ = (0, import_compiler_runtime7.c)(1);
-    if ($[0] !== "00a32b7fa37dfcf3224f6ee76325353b1df70bc351be5a415cf8f975653f957b") {
+    if ($[0] !== "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "00a32b7fa37dfcf3224f6ee76325353b1df70bc351be5a415cf8f975653f957b";
+      $[0] = "20b4411eabb07e8d79104949f635cc31997c0b31665ab87a04dc79f2885ac697";
     }
     return useEnvironment().colorScheme;
   }

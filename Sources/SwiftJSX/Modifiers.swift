@@ -81,6 +81,7 @@ struct Modifiers: ViewModifier {
                 }
             }
             .modifier(ViewAttachments(node: node))
+            .ignoresSafeArea(.all, edges: safeAreaEdges(node.prop("ignoresSafeArea")))
             .shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
             .opacity(node.bool("hidden") ? 0 : node.double("opacity") ?? 1)
             .fixedSize(horizontal: fixedSize.horizontal, vertical: fixedSize.vertical)
@@ -92,7 +93,7 @@ struct Modifiers: ViewModifier {
             .gridCellColumns(Int(node.double("gridColumns") ?? 1))
             .modifier(LayoutExtras(node: node))
             .disabled(node.bool("disabled"))
-            .transition(transition(node.string("transition")))
+            .transition(transition(node.prop("transition")))
             .onAppear { if node.has("onAppear") { runtime?.dispatch(node.id, "onAppear") } }
             .onDisappear { if node.has("onDisappear") { runtime?.dispatch(node.id, "onDisappear") } }
             // Interactions (incl. double tap) inside the single tap, so a view
@@ -165,6 +166,7 @@ struct Interactions: ViewModifier {
                 .modifier(TransformModifier(node: node))
                 .modifier(GestureModifiers(node: node))
                 .modifier(AccessibilityModifier(node: node))
+                .modifier(KeyPressModifier(node: node))
         }
     }
 }
@@ -674,11 +676,62 @@ func buttonRole(_ name: String?) -> ButtonRole? {
     }
 }
 
-func transition(_ name: String?) -> AnyTransition {
+/// `transition`: a name, or `{ type, edge, scale, anchor, x, y, animation }`,
+/// or `{ insert, remove }` (each a name or an object) for different ways in
+/// and out. `animation` is the transition's own (a new tile pops in with a
+/// bouncy spring while its parent's changes use another curve).
+func transition(_ spec: Any?) -> AnyTransition {
+    if let spec = spec as? [String: Any] {
+        if spec["insert"] != nil || spec["remove"] != nil {
+            return .asymmetric(insertion: transition(spec["insert"]), removal: transition(spec["remove"]))
+        }
+        let base = namedTransition(spec["type"] as? String, spec)
+        return parseAnimation(spec["animation"]).map { base.animation($0) } ?? base
+    }
+    return namedTransition(spec as? String, [:])
+}
+
+private func namedTransition(_ name: String?, _ options: [String: Any]) -> AnyTransition {
+    let edge = (options["edge"] as? String).flatMap(edge)
+    func number(_ key: String) -> CGFloat? { (options[key] as? NSNumber).map { CGFloat($0.doubleValue) } }
     switch name {
-    case "scale": .scale.combined(with: .opacity)
-    case "slide": .slide
-    case "move": .move(edge: .bottom).combined(with: .opacity)
-    default: .opacity
+    case "scale":
+        return .scale(scale: number("scale") ?? 0, anchor: unitPoint(options["anchor"] as? String) ?? .center).combined(with: .opacity)
+    case "slide": return .slide
+    case "move": return .move(edge: edge ?? .bottom).combined(with: .opacity)
+    case "push": return .push(from: edge ?? .trailing)
+    case "offset": return .offset(x: number("x") ?? 0, y: number("y") ?? 0).combined(with: .opacity)
+    case "blur": return AnyTransition(.blurReplace)
+    case "identity": return .identity
+    default: return .opacity
+    }
+}
+
+private func edge(_ name: String) -> Edge? {
+    switch name {
+    case "top": .top
+    case "bottom": .bottom
+    case "leading": .leading
+    case "trailing": .trailing
+    default: nil
+    }
+}
+
+/// `ignoresSafeArea`: true (every edge), an edge ("top", "bottom",
+/// "horizontal", "vertical", "leading", "trailing"), or a list of them.
+func safeAreaEdges(_ value: Any?) -> Edge.Set {
+    if let all = value as? Bool { return all ? .all : [] }
+    let names = (value as? [String]) ?? (value as? String).map { [$0] } ?? []
+    return names.reduce(into: Edge.Set()) { edges, name in
+        switch name {
+        case "top": edges.insert(.top)
+        case "bottom": edges.insert(.bottom)
+        case "leading": edges.insert(.leading)
+        case "trailing": edges.insert(.trailing)
+        case "horizontal": edges.formUnion(.horizontal)
+        case "vertical": edges.formUnion(.vertical)
+        case "all": edges.formUnion(.all)
+        default: break
+        }
     }
 }

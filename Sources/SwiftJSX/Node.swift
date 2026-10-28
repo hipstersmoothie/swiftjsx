@@ -75,7 +75,7 @@ public final class Node: Identifiable {
         case accessibility, accessibilityElement
         case refresh, swipeActions, contextMenu
         case overlay, backgroundView, contentShape, layout, relativeFrame, listRow
-        case tint, aspectRatio, safeAreaInset
+        case tint, aspectRatio, safeAreaInset, keyPress
     }
 
     /// Called after props or children change.
@@ -105,7 +105,7 @@ public final class Node: Identifiable {
     }
 
     static let interactionFeatures: Set<Feature> = [
-        .transform, .doubleTap, .longPress, .drag, .magnify, .rotate, .accessibility, .accessibilityElement,
+        .transform, .doubleTap, .longPress, .drag, .magnify, .rotate, .accessibility, .accessibilityElement, .keyPress,
     ]
 
     static let featureKeys: [(String, Feature)] = [
@@ -123,14 +123,14 @@ public final class Node: Identifiable {
         ("contentShape", .contentShape), ("onLayout", .layout),
         ("relativeWidth", .relativeFrame), ("relativeHeight", .relativeFrame),
         ("listRowBackground", .listRow), ("listRowInsets", .listRow), ("listRowSeparator", .listRow), ("badge", .listRow),
-        ("tint", .tint), ("aspectRatio", .aspectRatio),
+        ("tint", .tint), ("aspectRatio", .aspectRatio), ("onKeyPress", .keyPress),
     ]
 
     static let modifierKeys: Set<String> = Set([
         "padding", "frame", "background", "foregroundStyle", "font", "fontWeight", "fontDesign",
         "cornerRadius", "border", "shadow", "opacity", "disabled", "transition", "onAppear",
         "onTapGesture", "hidden", "onDisappear", "colorScheme", "zIndex", "layoutPriority", "gridColumns",
-        "fixedSize", "allowsHitTesting", "preferredColorScheme", "tag", "redacted",
+        "fixedSize", "allowsHitTesting", "preferredColorScheme", "tag", "redacted", "ignoresSafeArea",
     ]).union(featureKeys.map(\.0)).subtracting(["__ref"])
 
     /// Views with state of their own get the wrapper from the start, so even

@@ -11,6 +11,12 @@ public struct ReactView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var screen = Screen()
+
+    /// The root's size and safe-area insets, rounded to whole points.
+    struct Screen: Equatable {
+        var width = 0.0, height = 0.0, top = 0.0, bottom = 0.0, leading = 0.0, trailing = 0.0
+    }
 
     public init(runtime: JSXRuntime) {
         self.runtime = runtime
@@ -24,6 +30,9 @@ public struct ReactView: View {
             "colorScheme": colorScheme == .dark ? "dark" : "light",
             "dynamicTypeSize": "\(dynamicTypeSize)",
             "isAccessibilitySize": dynamicTypeSize.isAccessibilitySize ? "true" : "false",
+            "width": "\(screen.width)", "height": "\(screen.height)",
+            "safeTop": "\(screen.top)", "safeBottom": "\(screen.bottom)",
+            "safeLeading": "\(screen.leading)", "safeTrailing": "\(screen.trailing)",
         ]
     }
 
@@ -35,6 +44,13 @@ public struct ReactView: View {
             }
         }
         .background { Presenters(node: runtime.tree.root) }
+        .onGeometryChange(for: Screen.self) { proxy in
+            let insets = proxy.safeAreaInsets
+            return Screen(width: (proxy.size.width + insets.leading + insets.trailing).rounded(),
+                          height: (proxy.size.height + insets.top + insets.bottom).rounded(),
+                          top: insets.top.rounded(), bottom: insets.bottom.rounded(),
+                          leading: insets.leading.rounded(), trailing: insets.trailing.rounded())
+        } action: { screen = $0 }
         .environment(\.jsxRuntime, runtime)
         // useEnvironment() / useColorScheme() in JS.
         .onChange(of: environment, initial: true) { _, values in runtime.setEnvironment(values) }
@@ -249,6 +265,7 @@ struct NodeView: View {
                 if let title = node.string("title") { Text(title) } else { Children(node: node) }
             }
             .modifier(ButtonStyleModifier(node: node))
+            .modifier(KeyboardShortcutModifier(spec: node.prop("keyboardShortcut")))
 
         case "DatePicker":
             DatePickerHost(node: node)

@@ -149,6 +149,14 @@ public final class JSXRuntime {
             worklets.handle(args)
         case "eventDone":
             if let callback = (args["callback"] as? NSNumber)?.intValue { waiting.removeValue(forKey: callback)?.resume() }
+        case "prefetchImage":
+            guard let url = (args["url"] as? String).flatMap(URL.init(string:)) else {
+                return engine.resolve(callback: callback, value: false)
+            }
+            Task { [engine] in
+                let loaded = (try? await ImageLoader.shared.load(url)) != nil
+                engine?.resolve(callback: callback, value: loaded)
+            }
         case "haptic":
             playHaptic(args["kind"] as? String)
             engine.resolve(callback: callback, value: NSNull())

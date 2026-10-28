@@ -10,6 +10,6 @@ export {
 } from "./worklets";
 export { Sheet, Alert, ConfirmationDialog } from "./presentations";
 export { DatePicker, NavigationRow } from "./controls";
-export { haptic } from "./platform";
+export { haptic, prefetchImage } from "./platform";
 export { useEnvironment, useColorScheme, type Environment } from "./environment";
 export { hot } from "./hot";
