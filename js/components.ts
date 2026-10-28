@@ -556,6 +556,9 @@ export const Button = host<
     pressedScale?: number;
     pressedOpacity?: number;
     pressedBackground?: Fill;
+    /** Fires after holding (`longPressDuration`, default 0.5 s); the release then doesn't fire `onPress`. */
+    onLongPress?: () => void;
+    longPressDuration?: number;
     onPressIn?: () => void;
     onPressOut?: () => void;
   }

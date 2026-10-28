@@ -230,10 +230,10 @@ final class GalleryTests: XCTestCase {
 
     func testControls() {
         open("Controls & layout")
-        XCTAssert(app.staticTexts["Milk"].waitForExistence(timeout: 5))
-        // Swipe to delete (Section onDelete).
+        // Swipe to delete (Section onDelete). The list is lazy: scroll to it.
         let milk = app.staticTexts["Milk"]
-        for _ in 0..<4 where !milk.isHittable { app.swipeUp() }
+        for _ in 0..<5 where !milk.exists || !milk.isHittable { app.swipeUp() }
+        XCTAssert(milk.waitForExistence(timeout: 5))
         app.cells.containing(.staticText, identifier: "Milk").firstMatch.swipeLeft(velocity: .fast)
         snapshot("controls-swiped")
         app.buttons["Delete"].firstMatch.tap()
@@ -555,6 +555,29 @@ final class GalleryTests: XCTestCase {
         element("toast-undo").tap()
         XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'Undone'"), evaluatedWith: element("undo-state"))], timeout: 3) == .completed)
         XCTAssert(element("center-toast").waitForNonExistence(timeout: 3))
+    }
+
+    func testButtonLongPressInScrollView() {
+        open("Animation")
+        checkTapOrHold(element("tap-or-hold-scroll"))
+    }
+
+    func testButtonLongPress() {
+        open("Controls & layout")
+        checkTapOrHold(element("tap-or-hold"))
+    }
+
+    private func checkTapOrHold(_ button: XCUIElement) {
+        for _ in 0..<5 where !button.isHittable { app.swipeUp() }
+        button.tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'Taps 1 · holds 0'"), evaluatedWith: button)], timeout: 3) == .completed,
+                  button.label)
+        button.press(forDuration: 1.2)
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'Taps 1 · holds 1'"), evaluatedWith: button)], timeout: 3) == .completed,
+                  "a hold should fire onLongPress only: \(button.label)")
+        button.tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'Taps 2 · holds 1'"), evaluatedWith: button)], timeout: 3) == .completed,
+                  "the next tap should count: \(button.label)")
     }
 
     func testCharts() {

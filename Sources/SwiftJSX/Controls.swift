@@ -354,3 +354,47 @@ extension View {
         if hidden { labelsHidden() } else { self }
     }
 }
+
+/// `<Button>`. With `onLongPress`, holding fires it and a tap fires
+/// `onPress`: the Button is drawn for its look, and tap and long-press
+/// gestures (which SwiftUI arbitrates, in List rows too, where a gesture added
+/// to a Button breaks its tap) take the touches; pressing dims it.
+struct ButtonHost: View {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+    @State private var pressing = false
+
+    var body: some View {
+        let button = Button(role: buttonRole(node.string("role"))) {
+            fire("onPress")
+        } label: {
+            if let title = node.string("title") {
+                if let icon = node.string("systemImage") { Label(title, systemImage: icon) } else { Text(title) }
+            } else {
+                Children(node: node)
+            }
+        }
+        .modifier(ButtonStyleModifier(node: node))
+        .modifier(KeyboardShortcutModifier(spec: node.prop("keyboardShortcut")))
+        if node.has("onLongPress") {
+            button
+                .allowsHitTesting(false)
+                .opacity(pressing ? 0.55 : 1)
+                .contentShape(Rectangle())
+                .onTapGesture { fire("onPress") }
+                .onLongPressGesture(minimumDuration: node.double("longPressDuration") ?? 0.5) {
+                    fire("onLongPress")
+                } onPressingChanged: { isPressing in
+                    withAnimation(.easeOut(duration: 0.12)) { pressing = isPressing }
+                }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { fire("onPress") }
+        } else {
+            button
+        }
+    }
+
+    private func fire(_ event: String) {
+        if node.has(event) { runtime?.fire(node, event) }
+    }
+}

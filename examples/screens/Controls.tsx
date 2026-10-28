@@ -20,6 +20,7 @@ export function ControlsDemo() {
   const [showCompleted, setShowCompleted] = useState(true);
   const [presses, setPresses] = useState(0);
   const [water, setWater] = useState(0);
+  const [taps, setTaps] = useState({ taps: 0, holds: 0 });
   const [first, setFirst] = useState("");
   const [second, setSecond] = useState("");
   const [field, setField] = useState<"first" | "second" | null>(null);
@@ -117,6 +118,18 @@ export function ControlsDemo() {
           {items.map((item) => (
             <NavigationRow key={item} title={item} value="1" onPress={() => setEditing(item)} />
           ))}
+        </Section>
+
+        <Section header="Tap or hold">
+          <Button
+            title={`Taps ${taps.taps} · holds ${taps.holds}`}
+            onPress={() => setTaps((t) => ({ ...t, taps: t.taps + 1 }))}
+            onLongPress={() => {
+              haptic("medium");
+              setTaps((t) => ({ ...t, holds: t.holds + 1 }));
+            }}
+            accessibilityIdentifier="tap-or-hold"
+          />
         </Section>
 
         <Section header="Menu with a custom label" footer="Tap adds one; hold for more.">

@@ -113,7 +113,8 @@ struct GestureModifiers: ViewModifier {
             .modifier(FrameReader(enabled: node.features.contains(.drag), frame: $frame))
             .modifier(Attach(node: node, feature: .doubleTap, enabled: node.has("onDoubleTap"),
                              gesture: TapGesture(count: 2).onEnded { fire("onDoubleTap") }))
-            .modifier(Attach(node: node, feature: .longPress, enabled: node.has("onLongPress"),
+            // Buttons handle their own long press (ButtonHost).
+            .modifier(Attach(node: node, feature: .longPress, enabled: node.has("onLongPress") && node.type != "Button",
                              gesture: LongPressGesture(minimumDuration: node.double("longPressDuration") ?? 0.5)
                                  .onEnded { _ in fire("onLongPress") }))
             .modifier(dragAttachment)

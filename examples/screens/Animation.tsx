@@ -36,6 +36,7 @@ export function AnimationDemo() {
   const [toasts, setToasts] = useState(false);
   const [throughTaps, setThroughTaps] = useState(0);
   const [undone, setUndone] = useState(false);
+  const [taps, setTaps] = useState({ taps: 0, holds: 0 });
 
   const shuffle = () =>
     withAnimation(
@@ -94,6 +95,13 @@ export function AnimationDemo() {
             {`Shuffles finished: ${finished} · tiles exited: ${exited}`}
           </Text>
 
+          <Button
+            title={`Taps ${taps.taps} · holds ${taps.holds}`}
+            buttonStyle="bordered"
+            onPress={() => setTaps((t) => ({ ...t, taps: t.taps + 1 }))}
+            onLongPress={() => setTaps((t) => ({ ...t, holds: t.holds + 1 }))}
+            accessibilityIdentifier="tap-or-hold-scroll"
+          />
           <Text font="headline" padding={{ top: 12 }}>Portal</Text>
           <Button title="Open a sheet" buttonStyle="bordered" onPress={() => setSheet(true)} accessibilityIdentifier="open-portal-sheet" />
           <Sheet isPresented={sheet} onDismiss={() => setSheet(false)}>

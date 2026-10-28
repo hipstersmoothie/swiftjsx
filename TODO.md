@@ -87,8 +87,8 @@ for the record.
 - [ ] Number pads have no return key: a `ToolbarItemGroup placement="keyboard"`.
 - [x] `<MenuLabel>`: a `Menu`'s label as any view (with `onPress`, tap acts and hold
       opens). Buttons take `systemImage` (icons in menus).
-- [ ] A Button-level `onLongPress` that suppresses `onPress`; press/release events on non-Buttons
-      (SwiftUI's `onPressingChanged`; hold-to-pause).
+- [x] Button `onLongPress` (a hold doesn't also fire `onPress`; works in List rows).
+- [ ] Press/release events on non-Buttons (SwiftUI's `onPressingChanged`; hold-to-pause).
 - [ ] `<Tab>` takes no modifiers (accessibility identifier, `measure()`, animated badges).
 - [x] Page TabView dots: `pageIndicator` ("always" / "never" / "backed").
 - [ ] `DatePicker` time-of-day values (`{ hour, minute }`, `minuteInterval`) instead of
