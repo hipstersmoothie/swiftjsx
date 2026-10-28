@@ -121,7 +121,7 @@ struct NativeTests {
             runtime.press("make sorter")
             try await Task.sleep(for: .milliseconds(400))
             runtime.press("sort")
-            #expect(await eventually(timeout: .seconds(3)) { runtime.texts().contains("sorted 1,2,3") })
+            #expect(await eventually { runtime.texts().contains("sorted 1,2,3") })
         }
     }
 

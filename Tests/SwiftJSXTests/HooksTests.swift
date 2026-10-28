@@ -49,7 +49,7 @@ struct HooksTests {
         runtime.dispatch(toggle.id, "onChange", true)
         #expect(toggle.bool("value"))
         // A 1 s interval: give it room when other tests load the CPU.
-        #expect(await eventually(timeout: .seconds(8)) { toggle.string("label") == "Timer: 2s" })
+        #expect(await eventually { toggle.string("label") == "Timer: 2s" })
         runtime.dispatch(toggle.id, "onChange", false)
     }
 }

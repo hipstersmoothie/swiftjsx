@@ -18,8 +18,10 @@ func fixtureSource(_ name: String) throws -> String {
 }
 
 /// Polls `condition` while letting the main queue run (JS commits, timers).
+/// The timeout is generous: shared CI runners are slow and a passing check
+/// returns as soon as it holds.
 @MainActor
-func eventually(timeout: Duration = .seconds(3), _ condition: () -> Bool) async -> Bool {
+func eventually(timeout: Duration = .seconds(15), _ condition: () -> Bool) async -> Bool {
     let deadline = ContinuousClock.now + timeout
     while !condition() {
         if ContinuousClock.now > deadline { return false }
