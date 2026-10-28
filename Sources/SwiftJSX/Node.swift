@@ -112,7 +112,7 @@ public final class Node: Identifiable {
         ("foregroundStyle", .foreground), ("onTapGesture", .tap), ("__ref", .ref),
         ("offset", .transform), ("scale", .transform), ("rotation", .transform),
         ("onDoubleTap", .doubleTap), ("onLongPress", .longPress),
-        ("onDrag", .drag), ("onDragEnd", .drag), ("onMagnify", .magnify), ("onMagnifyEnd", .magnify),
+        ("onDrag", .drag), ("onDragEnd", .drag), ("onDragStart", .drag), ("onMagnify", .magnify), ("onMagnifyEnd", .magnify),
         ("onRotate", .rotate), ("onRotateEnd", .rotate),
         ("accessibilityLabel", .accessibility), ("accessibilityHint", .accessibility),
         ("accessibilityValue", .accessibility), ("accessibilityHidden", .accessibility),

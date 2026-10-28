@@ -157,14 +157,25 @@ export interface Modifiers {
   rotation?: number;
 
   // Gestures. Handlers run on the JS thread; state you set re-renders as usual.
-  onTapGesture?: () => void;
+  /** With where the tap landed, in the view's own coordinates. */
+  onTapGesture?: (location: Point) => void;
   onDoubleTap?: () => void;
   onLongPress?: () => void;
   /** Seconds before `onLongPress` fires (default 0.5). */
   longPressDuration?: number;
   /** While dragging. Inside a ScrollView a drag takes over scrolling. */
   onDrag?: (event: DragEvent) => void;
-  onDragEnd?: (event: DragEvent) => void;
+  /** When the finger lifts; `cancelled` if the system cancelled the drag (positions are the last ones seen). */
+  onDragEnd?: (event: DragEvent & { cancelled?: boolean }) => void;
+  /** "longPress": hold (`longPressDuration`) before dragging; `onDragStart` fires when picked up. */
+  dragActivation?: "immediate" | "longPress";
+  onDragStart?: () => void;
+  /**
+   * How this view's gestures combine with others: "simultaneous" (e.g. a drag
+   * inside a ScrollView that still lets it scroll), "high" (wins over
+   * children's gestures), or "normal" (default).
+   */
+  gesturePriority?: "normal" | "simultaneous" | "high";
   /** Points the finger moves before a drag starts (default 10). */
   dragMinimumDistance?: number;
   /** Pinch; `scale` is relative to the start of the gesture. */

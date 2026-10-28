@@ -96,7 +96,7 @@ struct Modifiers: ViewModifier {
             // Interactions (incl. double tap) inside the single tap, so a view
             // with both waits for the double tap before firing the single one.
             .modifier(Interactions(node: node))
-            .modifier(TapModifier(node: node) { runtime?.fire(node, "onTapGesture") })
+            .modifier(TapModifier(node: node) { runtime?.fire(node, "onTapGesture", ["x": $0.x, "y": $0.y]) })
             .modifier(RefreshModifier(node: node))
             .modifier(AttachedActions(node: node))
             // Last, so the view's own background and border use it too.
@@ -427,13 +427,14 @@ struct ForegroundModifier: ViewModifier {
 /// whole frame tappable, like a div.
 struct TapModifier: ViewModifier {
     let node: Node
-    let action: () -> Void
+    /// Called with where the tap landed, in the view's own coordinates.
+    let action: (CGPoint) -> Void
     func body(content: Content) -> some View {
         if node.features.contains(.tap) {
             let enabled = node.has("onTapGesture")
             content
                 .background { if enabled { Color.clear.contentShape(Rectangle()) } }
-                .gesture(TapGesture().onEnded(action), including: enabled ? .all : .subviews)
+                .gesture(SpatialTapGesture().onEnded { action($0.location) }, including: enabled ? .all : .subviews)
         } else {
             content
         }

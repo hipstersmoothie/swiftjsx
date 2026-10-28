@@ -96,9 +96,10 @@ wanted and couldn't do. Checked items are done and kept for the record.
 
 - [x] Worklets, `withAnimation`, animation specs; `animation` covers the subtree.
 - [x] Drag events with view-local positions and size.
-- [ ] Gesture composition: simultaneous / high-priority options; a cancelled-drag event;
-      long-press-then-drag activation; dragging inside a ScrollView without taking over
-      scrolling (axis); tap locations.
+- [x] `gesturePriority` (simultaneous / high), `dragActivation="longPress"` +
+      `onDragStart`, cancelled drags (`onDragEnd` with `cancelled`), tap locations.
+- [ ] Drag axis locking inside scroll views (a horizontal drag that leaves vertical
+      scrolling alone needs `gesturePriority="simultaneous"` plus your own axis check).
 - [ ] Worklets: measuring and reading layout inside worklets, haptics from worklets,
       animatable shape props (`trim`, `fill`), scroll offsets as shared values.
       Capturing `obj.member` sends all of `obj`; worklets that capture per-render

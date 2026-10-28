@@ -30,6 +30,14 @@ struct GestureModifiers: ViewModifier {
     @Environment(\.jsxRuntime) private var runtime
     /// The view's frame in the window, for drag positions in its own coordinates.
     @State private var frame: CGRect = .zero
+    /// Whether a drag is in progress (reset by SwiftUI on cancel, too)…
+    @GestureState private var dragging = false
+    /// …whether it ended normally, to tell a cancel apart, and the last event
+    /// (a reference, so updating it doesn't re-render).
+    @State private var dragEnded = false
+    @State private var lastDrag = Box()
+
+    final class Box { var event: [String: Any] = [:] }
 
     func body(content: Content) -> some View {
         content
@@ -39,10 +47,13 @@ struct GestureModifiers: ViewModifier {
             .modifier(Attach(node: node, feature: .longPress, enabled: node.has("onLongPress"),
                              gesture: LongPressGesture(minimumDuration: node.double("longPressDuration") ?? 0.5)
                                  .onEnded { _ in fire("onLongPress") }))
-            .modifier(Attach(node: node, feature: .drag, enabled: node.has("onDrag") || node.has("onDragEnd"),
-                             gesture: DragGesture(minimumDistance: node.cgFloat("dragMinimumDistance") ?? 10, coordinateSpace: .global)
-                                 .onChanged { fire("onDrag", drag($0)) }
-                                 .onEnded { fire("onDragEnd", drag($0)) }))
+            .modifier(dragAttachment)
+            // A drag the system cancelled (another gesture won, a sheet appeared…)
+            // never ends normally; report it so drag state doesn't get stuck.
+            .onChange(of: dragging) { _, isDragging in
+                guard !isDragging else { return }
+                if dragEnded { dragEnded = false } else { fire("onDragEnd", lastDrag.event.merging(["cancelled": true]) { $1 }) }
+            }
             .modifier(Attach(node: node, feature: .magnify, enabled: node.has("onMagnify") || node.has("onMagnifyEnd"), simultaneous: true,
                              gesture: MagnifyGesture()
                                  .onChanged { fire("onMagnify", ["scale": $0.magnification]) }
@@ -51,6 +62,34 @@ struct GestureModifiers: ViewModifier {
                              gesture: RotateGesture()
                                  .onChanged { fire("onRotate", ["degrees": $0.rotation.degrees]) }
                                  .onEnded { fire("onRotateEnd", ["degrees": $0.rotation.degrees]) }))
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: node.cgFloat("dragMinimumDistance") ?? 10, coordinateSpace: .global)
+            .updating($dragging) { _, state, _ in state = true }
+            .onChanged { value in
+                let event = drag(value)
+                lastDrag.event = event
+                fire("onDrag", event)
+            }
+            .onEnded { value in
+                dragEnded = true
+                fire("onDragEnd", drag(value))
+            }
+    }
+
+    /// `dragActivation="longPress"`: hold first (`longPressDuration`), then
+    /// drag. Inside a ScrollView, scrolling still works until the hold.
+    private var dragAttachment: some ViewModifier {
+        let enabled = node.has("onDrag") || node.has("onDragEnd")
+        let priority = node.string("gesturePriority")
+        if node.string("dragActivation") == "longPress" {
+            let hold = LongPressGesture(minimumDuration: node.double("longPressDuration") ?? 0.4)
+                .onEnded { _ in fire("onDragStart") }
+            return AnyViewModifier(Attach(node: node, feature: .drag, enabled: enabled, priority: priority,
+                                          gesture: hold.sequenced(before: dragGesture)))
+        }
+        return AnyViewModifier(Attach(node: node, feature: .drag, enabled: enabled, priority: priority, gesture: dragGesture))
     }
 
     private func fire(_ event: String, _ payload: Any? = nil) {
@@ -88,20 +127,26 @@ struct GestureModifiers: ViewModifier {
 
     /// One gesture, attached once its feature is in use and disabled (subviews
     /// keep their gestures) while its handler props are unset.
+    /// `gesturePriority`: "simultaneous" (e.g. a drag inside a ScrollView that
+    /// still lets it scroll), "high" (wins over children's gestures), or normal.
     private struct Attach<G: Gesture>: ViewModifier {
         let node: Node
         let feature: Node.Feature
         let enabled: Bool
         var simultaneous = false
+        var priority: String?
         let gesture: G
 
         func body(content: Content) -> some View {
+            let mask: GestureMask = enabled ? .all : .subviews
             if !node.features.contains(feature) {
                 content
-            } else if simultaneous {
-                content.simultaneousGesture(gesture, including: enabled ? .all : .subviews)
+            } else if simultaneous || priority == "simultaneous" {
+                content.simultaneousGesture(gesture, including: mask)
+            } else if priority == "high" {
+                content.highPriorityGesture(gesture, including: mask)
             } else {
-                content.gesture(gesture, including: enabled ? .all : .subviews)
+                content.gesture(gesture, including: mask)
             }
         }
     }
@@ -181,4 +226,11 @@ private func traits(_ value: Any?) -> AccessibilityTraits {
 
 func cgFloat(_ value: Any?) -> CGFloat? {
     (value as? NSNumber).map { CGFloat($0.doubleValue) }
+}
+
+/// A type-erased view modifier (for choosing between gesture setups).
+struct AnyViewModifier: ViewModifier {
+    private let apply: (Content) -> AnyView
+    init<M: ViewModifier>(_ modifier: M) { apply = { AnyView($0.modifier(modifier)) } }
+    func body(content: Content) -> some View { apply(content) }
 }
