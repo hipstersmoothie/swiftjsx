@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Screen, List, Section, SectionHeader, Text, TextField, TextEditor, DatePicker, ColorPicker, Menu, Button, Divider,
-  NavigationRow, Flow, Grid, GridRow, HStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker,
+  NavigationRow, Flow, Grid, GridRow, HStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle,
   type Color,
 } from "swiftjsx";
 
@@ -17,12 +17,15 @@ export function ControlsDemo() {
   const [items, setItems] = useState(["Milk", "Eggs", "Bread", "Coffee"]);
   const [editing, setEditing] = useState<string | null>(null);
   const [likes, setLikes] = useState(0);
+  const [showCompleted, setShowCompleted] = useState(true);
+  const [presses, setPresses] = useState(0);
 
   return (
     <Screen title="Controls & layout" titleDisplayMode="inline">
       <ToolbarItem placement="primaryAction">
         <Menu systemImage="ellipsis.circle" accessibilityLabel="More">
-          <Picker label="Sort by" value={sort} onChange={setSort} options={[{ value: "date", label: "Date" }, { value: "name", label: "Name" }]} />
+          <Picker label="Sort by" value={sort} onChange={setSort} options={[{ value: "date", label: "Date", systemImage: "calendar" }, { value: "name", label: "Name", systemImage: "textformat" }]} />
+          <Toggle label="Show completed" value={showCompleted} onChange={setShowCompleted} />
           <Menu title="Share" systemImage="square.and.arrow.up">
             <Button title="Copy link" onPress={() => navigator.clipboard.writeText("https://github.com/hipstersmoothie/swiftjsx")} />
             <Button title="Mail" onPress={() => {}} />
@@ -77,6 +80,15 @@ export function ControlsDemo() {
             <Text>Likes: {likes}</Text>
             <Button title="Like" buttonStyle="bordered" onPress={() => { setLikes((n) => n + 1); haptic("light"); }} />
           </HStack>
+          <Button
+            onPress={() => setPresses((n) => n + 1)}
+            pressedScale={0.94}
+            pressedBackground="accent/15"
+            onPressIn={() => haptic("light")}
+            accessibilityIdentifier="pressable"
+          >
+            <Text padding={{ vertical: 6 }} frame={{ maxWidth: "infinity", alignment: "leading" }}>Press and hold me · {presses}</Text>
+          </Button>
           <HStack spacing={16}>
             <Image systemName="cloud.sun.rain.fill" symbolRenderingMode="multicolor" font="title" />
             <Image systemName="person.crop.circle.badge.checkmark" symbolRenderingMode="palette" paletteColors={["green", "gray"]} font="title" />

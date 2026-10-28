@@ -145,6 +145,9 @@ struct NodeView: View {
         case "NavigationStack":
             NavigationStackHost(node: node)
 
+        case "Chart":
+            ChartHost(node: node)
+
         case "NavigationSplitView":
             SplitViewHost(node: node)
 
@@ -238,7 +241,7 @@ struct NodeView: View {
             } label: {
                 if let title = node.string("title") { Text(title) } else { Children(node: node) }
             }
-            .modifier(ButtonStyleModifier(style: node.string("buttonStyle")))
+            .modifier(ButtonStyleModifier(node: node))
 
         case "DatePicker":
             DatePickerHost(node: node)

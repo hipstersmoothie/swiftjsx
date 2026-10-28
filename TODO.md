@@ -10,9 +10,10 @@ wanted and couldn't do. Checked items are done and kept for the record.
 - [x] Shapes (`Circle`, `Capsule`, `RoundedRectangle`, `Ellipse`, `Rectangle`) with fill,
       stroke, dash and trim; `cornerRadius="capsule"` and per-corner radii.
 - [x] Radial and angular gradients, gradient stops.
-- [ ] Charts: a `<Chart>` on Swift Charts (BarMark, LineMark, AreaMark, RuleMark,
-      PointMark, RectangleMark; stacking, axes, scales, `chartXSelection`), which would
-      also bring VoiceOver audio graphs. The Fitness app fakes lines with rotated capsules.
+- [x] Charts: `<Chart>` on Swift Charts (bar, line, area, point, rule, rectangle marks;
+      series, stacking, domains, axes, scrub selection).
+- [ ] Charts: axis value labels/formatting, y selection, range selection, scrolling
+      charts. The Fitness app still draws its charts by hand.
 - [ ] Custom shapes: `<Path d="…">` / polylines (lines, areas), `lineCap` / `lineJoin`,
       angular gradient start/end angles, a line/rule shape.
 - [ ] `Canvas`, maps (MapKit), video (AVKit), web views.
@@ -49,9 +50,9 @@ wanted and couldn't do. Checked items are done and kept for the record.
       autocapitalization, `submitLabel`, `blurOnSubmit`.
 - [ ] Text input: no cursor/selection API, no key events (backspace on an empty field),
       no focus binding shared across fields (moving focus means unmount + `focus()`).
-- [ ] Buttons: no pressed state (`onPressIn` / `onPressOut`, a pressed scale or
-      highlight) or custom button styles; no `controlSize`. The Calculator builds keys
-      from drag gestures.
+- [x] Buttons: `pressedScale`, `pressedOpacity`, `pressedBackground`, `onPressIn` /
+      `onPressOut`.
+- [ ] `controlSize`; the Calculator still builds keys from drag gestures.
 - [ ] `Picker`: `pickerStyle="navigationLink"` and `"wheel"`; infer the value type from
       `options`. `Menu`: checkmark items (Toggle children), colored icons.
 - [ ] `LabeledContent` ("Title … value" rows), `Label` styles.

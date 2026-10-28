@@ -470,15 +470,47 @@ struct TintModifier: ViewModifier {
 }
 
 struct ButtonStyleModifier: ViewModifier {
-    let style: String?
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+
     func body(content: Content) -> some View {
-        switch style {
+        if PressableStyle.applies(to: node) {
+            content.buttonStyle(PressableStyle(node: node, runtime: runtime))
+        } else {
+            switch node.string("buttonStyle") {
         case "bordered": content.buttonStyle(.bordered)
         case "borderedProminent": content.buttonStyle(.borderedProminent)
         case "borderless": content.buttonStyle(.borderless)
         case "plain": content.buttonStyle(.plain)
         default: content
         }
+        }
+    }
+}
+
+/// A Button with `pressedScale`, `pressedOpacity`, `pressedBackground` or
+/// `onPressIn` / `onPressOut`: shows its content as is (like the plain
+/// style) and applies those while the finger is down. Still a real button:
+/// VoiceOver, scrolling cancels the press, the press fires on release.
+struct PressableStyle: ButtonStyle {
+    let node: Node
+    let runtime: JSXRuntime?
+
+    static func applies(to node: Node) -> Bool {
+        ["pressedScale", "pressedOpacity", "pressedBackground", "onPressIn", "onPressOut"].contains(where: node.has)
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        let pressed = configuration.isPressed
+        configuration.label
+            .background { if pressed, let fill = fill(node.prop("pressedBackground")) { Rectangle().fill(fill) } }
+            .scaleEffect(pressed ? node.cgFloat("pressedScale") ?? 1 : 1)
+            .opacity(pressed ? node.double("pressedOpacity") ?? 1 : 1)
+            .animation(.snappy(duration: 0.15), value: pressed)
+            .onChange(of: pressed) { _, isPressed in
+                let event = isPressed ? "onPressIn" : "onPressOut"
+                if node.has(event) { runtime?.dispatch(node.id, event) }
+            }
     }
 }
 

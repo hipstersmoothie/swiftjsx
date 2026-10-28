@@ -325,4 +325,17 @@ final class GalleryTests: XCTestCase {
         sleep(1)
         snapshot("notes-editor")
     }
+
+    func testCharts() {
+        open("Charts")
+        let caption = app.staticTexts["Drag across the chart"]
+        XCTAssert(caption.waitForExistence(timeout: 5))
+        // Scrub across the steps chart (its selection drives the caption).
+        let chart = app.otherElements.containing(.staticText, identifier: "Oct 18").firstMatch
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.38))
+        start.press(forDuration: 0.3, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.38)), withVelocity: .slow, thenHoldForDuration: 0.5)
+        _ = chart
+        snapshot("charts-scrub")
+        XCTAssert(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'steps'")).firstMatch.waitForExistence(timeout: 3))
+    }
 }

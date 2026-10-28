@@ -17980,9 +17980,12 @@ ${error.stack}` : String(error));
   __export(index_exports, {
     Alert: () => Alert,
     AlertHost: () => AlertHost,
+    AreaMark: () => AreaMark,
     Background: () => Background,
+    BarMark: () => BarMark,
     Button: () => Button,
     Capsule: () => Capsule,
+    Chart: () => Chart,
     Circle: () => Circle,
     ColorPicker: () => ColorPicker,
     ConfirmationDialog: () => ConfirmationDialog,
@@ -18003,6 +18006,7 @@ ${error.stack}` : String(error));
     LazyHStack: () => LazyHStack,
     LazyVGrid: () => LazyVGrid,
     LazyVStack: () => LazyVStack,
+    LineMark: () => LineMark,
     List: () => List,
     Menu: () => Menu,
     NavigationPage: () => NavigationPage,
@@ -18013,9 +18017,12 @@ ${error.stack}` : String(error));
     Navigator: () => Navigator,
     Overlay: () => Overlay,
     Picker: () => Picker,
+    PointMark: () => PointMark,
     ProgressView: () => ProgressView,
     Rectangle: () => Rectangle,
+    RectangleMark: () => RectangleMark,
     RoundedRectangle: () => RoundedRectangle,
+    RuleMark: () => RuleMark,
     SafeAreaInset: () => SafeAreaInset,
     Screen: () => Screen,
     ScrollView: () => ScrollView,
@@ -18736,6 +18743,13 @@ ${e.stack}` : String(e);
   var SheetHost = host("Sheet");
   var AlertHost = host("Alert");
   var ConfirmationDialogHost = host("ConfirmationDialog");
+  var Chart = host("Chart");
+  var BarMark = host("BarMark");
+  var LineMark = host("LineMark");
+  var AreaMark = host("AreaMark");
+  var PointMark = host("PointMark");
+  var RuleMark = host("RuleMark");
+  var RectangleMark = host("RectangleMark");
 
   // js/navigation.tsx
   var import_compiler_runtime2 = __toESM(require_compiler_runtime(), 1);

@@ -407,6 +407,16 @@ export const Button = host<
     buttonStyle?: "automatic" | "bordered" | "borderedProminent" | "borderless" | "plain";
     /** Accent color of the button (and its background in `<SwipeActions>`). */
     tint?: ColorValue;
+    /**
+     * While pressed: scale (e.g. 0.95), opacity, or a background behind the
+     * content. Any of these (or onPressIn / onPressOut) replaces `buttonStyle`
+     * with a plain style that shows your content as is.
+     */
+    pressedScale?: number;
+    pressedOpacity?: number;
+    pressedBackground?: Fill;
+    onPressIn?: () => void;
+    onPressOut?: () => void;
   }
 >("Button");
 
@@ -584,3 +594,66 @@ export const SheetHost = host<
 >("Sheet");
 export const AlertHost = host<WithChildren & { isPresented: boolean; onDismiss: () => void; title: string; message?: string }>("Alert");
 export const ConfirmationDialogHost = host<WithChildren & { isPresented: boolean; onDismiss: () => void; title: string; message?: string }>("ConfirmationDialog");
+
+// MARK: Charts (Swift Charts)
+
+type ChartX = string | number | Date;
+
+/**
+ * A chart. Children are marks: `<BarMark>`, `<LineMark>`, `<AreaMark>`,
+ * `<PointMark>`, `<RuleMark>`, `<RectangleMark>`. Give it a `frame` height.
+ */
+export const Chart = host<
+  Modifiers & WithChildren & {
+    /** `[min, max]` for the axes (numbers, or Dates for x). */
+    xDomain?: [number, number] | [Date, Date];
+    yDomain?: [number, number];
+    xAxis?: "automatic" | "hidden";
+    yAxis?: "automatic" | "hidden" | { position?: "leading" | "trailing" };
+    legend?: "automatic" | "hidden";
+    /** Colors for marks with a `series`: `{ Deep: "indigo", REM: "cyan" }`. */
+    seriesColors?: Record<string, ColorValue>;
+    /** Scrubbing: the x value under the finger (null when released). */
+    onXSelectionChange?: (x: string | number | null) => void;
+  }
+>("Chart");
+
+type MarkProps = {
+  /** A category, a number, or a Date. */
+  x?: ChartX;
+  y?: number;
+  /** Names the axes' values for accessibility (VoiceOver audio graphs). */
+  xLabel?: string;
+  yLabel?: string;
+  /** Groups marks: stacked bars per category, one line per series, colored by `seriesColors`. */
+  series?: string;
+  foregroundStyle?: Fill;
+  opacity?: number;
+  /** Text above (or `annotationPosition`) the mark: goal lines, highlights. */
+  annotation?: string;
+  annotationPosition?: "top" | "bottom" | "leading" | "trailing" | "overlay";
+};
+
+type Interpolated = { interpolation?: "linear" | "catmullRom" | "monotone" | "stepStart" | "stepCenter" | "stepEnd" | "cardinal" };
+type Stroked = { lineWidth?: number; dash?: number[] };
+
+export const BarMark = host<
+  MarkProps & {
+    /** A floating bar from yStart to yEnd (ranges) instead of from zero to y. */
+    yStart?: number;
+    yEnd?: number;
+    stacking?: "standard" | "normalized" | "center" | "unstacked";
+    cornerRadius?: number;
+    barWidth?: number;
+    /** Fraction of the available width (0–1). */
+    barWidthRatio?: number;
+  }
+>("BarMark");
+export const LineMark = host<MarkProps & Interpolated & Stroked>("LineMark");
+/** Filled from zero to y, or between yStart and yEnd (a band). */
+export const AreaMark = host<MarkProps & Interpolated & { yStart?: number; yEnd?: number; stacking?: "standard" | "normalized" | "center" | "unstacked" }>("AreaMark");
+export const PointMark = host<MarkProps & { symbolSize?: number }>("PointMark");
+/** A horizontal line at `y` (goals, averages) or a vertical one at `x`. */
+export const RuleMark = host<MarkProps & Stroked>("RuleMark");
+/** A rectangle from xStart to xEnd and yStart to yEnd (timelines, hypnograms). */
+export const RectangleMark = host<MarkProps & { xStart?: ChartX; xEnd?: ChartX; yStart?: number; yEnd?: number }>("RectangleMark");

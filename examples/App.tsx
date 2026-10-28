@@ -24,6 +24,7 @@ import { GesturesDemo } from "./screens/Gestures";
 import { ImagesDemo } from "./screens/Images";
 import { StylesDemo } from "./screens/Styles";
 import { ControlsDemo } from "./screens/Controls";
+import { ChartsDemo } from "./screens/Charts";
 
 type Demo = { title: string; subtitle: string; icon: string; color: any; screen: () => ReactElement };
 
@@ -38,6 +39,7 @@ const demos: Demo[] = [
   { title: "Gestures", subtitle: "drag, pinch, rotate, long press, double tap", icon: "hand.draw", color: "red", screen: () => <GesturesDemo /> },
   { title: "Shapes, colors & fonts", subtitle: "Circle, Capsule, gradients, system colors, styled text", icon: "paintpalette", color: "pink", screen: () => <StylesDemo /> },
   { title: "Controls & layout", subtitle: "Menus, pickers, text input, rows, Flow, Grid, overlays", icon: "slider.horizontal.3", color: "teal", screen: () => <ControlsDemo /> },
+  { title: "Charts", subtitle: "Swift Charts: bars, lines, areas, rules, scrubbing", icon: "chart.bar.xaxis", color: "pink", screen: () => <ChartsDemo /> },
   { title: "Images", subtitle: "Remote images: cached, decoded off main", icon: "photo.on.rectangle", color: "cyan", screen: () => <ImagesDemo /> },
   { title: "Native", subtitle: "Objective-C APIs from JS, onMain()", icon: "cpu", color: "indigo", screen: () => <NativeDemo /> },
 ];
