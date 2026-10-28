@@ -1,0 +1,12 @@
+{
+  // Declarations for the npm package (dist/types): apps typecheck against these.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist/types",
+    "rootDir": "js"
+  },
+  "include": ["js"]
+}

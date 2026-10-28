@@ -1,0 +1,18 @@
+{
+  "name": "__PACKAGE_NAME__",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "swiftjsx dev",
+    "build": "swiftjsx build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "swiftjsx": "__SWIFTJSX_NPM__"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,0 +1,88 @@
+# XcodeGen spec: `xcodegen` here makes __NAME__.xcodeproj.
+name: __NAME__
+
+options:
+  bundleIdPrefix: dev.swiftjsx
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+packages:
+  SwiftJSX:
+    __SWIFTJSX_SWIFT_PACKAGE__
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    # The bundle script writes into the app product.
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CODE_SIGN_STYLE: Automatic
+    # Simulator builds don't need a team; set DEVELOPMENT_TEAM to run on a device.
+    CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]: NO
+
+targets:
+  __NAME__:
+    type: application
+    platform: iOS
+    sources:
+      - path: __NAME__
+    dependencies:
+      - package: SwiftJSX
+        product: SwiftJSX
+    settings:
+      base:
+        PRODUCT_NAME: __NAME__
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_ID__
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: __NAME__/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: __NAME__
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: Loads the app from the SwiftJSX dev server on your Mac while developing.
+    preBuildScripts:
+      - name: Bundle app.js
+        basedOnDependencyAnalysis: false
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/app.js
+        script: |
+          # Release builds get the production bundle; Debug the development one
+          # (the fallback when the dev server isn't running).
+          set -euo pipefail
+          ROOT="${SRCROOT}/.."
+          if [ ! -f "$ROOT/build/app.js" ] || [ "$CONFIGURATION" = "Release" ]; then
+            (cd "$ROOT" && PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" npx swiftjsx build)
+          fi
+          SRC="$ROOT/build/app.js"
+          if [ "$CONFIGURATION" = "Release" ]; then SRC="$ROOT/build/app.production.js"; fi
+          DEST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+          mkdir -p "$DEST"
+          cp -f "$SRC" "$DEST/app.js"
+          # Debug: where `npm run dev` serves the app. Devices reach this Mac by
+          # LAN address or Bonjour name; the simulator by loopback.
+          SERVERS="$DEST/SwiftJSXDevServer.txt"
+          rm -f "$SERVERS"
+          if [ "$CONFIGURATION" = "Debug" ]; then
+            PORT="${SWIFTJSX_PORT:-8081}"
+            if [ "$PLATFORM_NAME" = "iphonesimulator" ]; then
+              echo "http://127.0.0.1:$PORT" > "$SERVERS"
+            else
+              for IF in en0 en1 en2; do
+                IP=$(ipconfig getifaddr "$IF" 2>/dev/null || true)
+                [ -n "$IP" ] && echo "http://$IP:$PORT" >> "$SERVERS"
+              done
+              echo "http://$(scutil --get LocalHostName).local:$PORT" >> "$SERVERS"
+            fi
+          fi
+
+schemes:
+  __NAME__:
+    build:
+      targets:
+        __NAME__: all
+    run:
+      config: Debug
+    archive:
+      config: Release

@@ -261,7 +261,9 @@ for the record.
       the results); it has to be stopped once it prints "Executed N tests".
 - [x] Hot reload on devices: `npm run dev` serves the bundle (long polling, port 8081);
       Debug builds connect over the local network and fall back to the bundled app.js.
-- [ ] Packaging: an npm package and a project template, so apps can live outside this repo.
+- [x] Packaging: the `swiftjsx` npm package (`create`, `dev`, `build`; declarations in
+      dist/types) and a project template; tested from a packed tarball outside the repo.
+- [ ] Publish `swiftjsx` to npm (until then, `npm pack` this repo or use `--swiftjsx <path>`).
 
 ## Docs
 

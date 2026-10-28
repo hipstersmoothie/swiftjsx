@@ -12,3 +12,4 @@ spikes/nativescript/.build/
 spikes/nativescript/ios/build/
 spikes/nativescript/ios/*.xcodeproj/
 .nativescript/
+dist/

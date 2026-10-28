@@ -1,3 +1,8 @@
+// The runtime's globals (timers, console, fetch, WebSocket, URL…), for apps
+// that typecheck against this package.
+/// <reference path="./globals.d.ts" />
+/// <reference path="./web/globals.d.ts" />
+/// <reference path="./web/native.d.ts" />
 export { render, withAnimation, openURL, canOpenURL, HostInstance } from "./renderer";
 export type { Frame, ScrollTarget, ScrollOptions } from "./renderer";
 export * from "./components";

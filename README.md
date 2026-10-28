@@ -24,11 +24,25 @@ function Inbox() {
 }
 ```
 
-## Run it
+## Start an app
+
+```sh
+npx swiftjsx create MyApp    # src/App.tsx, an XcodeGen iOS project, package.json
+cd MyApp && npm install
+npm run dev                  # serves the app to the simulator and devices; keep it running
+open ios/MyApp.xcodeproj     # run it; edits to src/ apply live
+```
+
+`swiftjsx dev` rebuilds on save and serves the bundle on port 8081; `swiftjsx build`
+writes `build/app.js` and `build/app.production.js` (Release builds bundle the latter).
+The Swift side comes from this repo as a Swift package. Needs XcodeGen
+(`brew install xcodegen`) and Node 20+.
+
+## Run this repo
 
 ```sh
 npm install
-npm run dev          # watches; writes build/app.js (+ the runtime and test fixtures)
+npm run dev          # watches; writes build/app.js (+ the runtime and test fixtures), serves it
 npm run build        # one-off; also writes the production runtime and build/app.production.js
 swift run Demo       # macOS window; edits apply live via React Refresh
 swift test           # headless tests driving fixtures through real React
