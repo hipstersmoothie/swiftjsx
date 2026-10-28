@@ -436,6 +436,12 @@ export const Text = host<
     italic?: boolean;
     /** `true`, or the underline's color. */
     underline?: boolean | ColorValue;
+    /** On a nested run (`<Text>` inside `<Text>`): tapping it (an @mention, a hashtag). */
+    onPress?: () => void;
+    /** Links in `markdown` (and tapped runs without onPress) come here instead of the system: in-app links. */
+    onOpenURL?: (url: string) => void;
+    /** With `lineLimit`: whether the text is cut off (show "more"). */
+    onTruncationChange?: (truncated: boolean) => void;
     /** Extra space between characters, in points. */
     kerning?: number;
     tracking?: number;
@@ -479,7 +485,7 @@ type ImageSource =
        * `{ type: "pulse", active }` runs while active.
        */
       symbolEffect?:
-        | { type: "bounce" | "wiggle" | "rotate"; value: unknown }
+        | { type: "bounce" | "wiggle" | "rotate"; value?: unknown; /** Also play when the symbol appears. */ onAppear?: boolean }
         | { type: "pulse" | "variableColor" | "breathe" | "wiggle" | "rotate"; active?: boolean };
     }
   /** An image from the app's asset catalog; resizable. */

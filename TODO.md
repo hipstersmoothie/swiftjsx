@@ -61,11 +61,10 @@ for the record.
       `symbolEffect`, replace transitions.
 - [ ] Custom font files: fonts must be bundled and listed in the app's Info.plist;
       there's no runtime registration.
-- [ ] Runs can't have a background (search highlights) or their own tap handler.
-- [ ] No way to know if `Text` was truncated (an inline "… more"); Markdown links always go
-      to the system, with no `onOpenURL` hook for in-app links (`app://user/x`).
+- [x] Runs take `background` (search highlights) and `onPress` (tappable @mentions).
+- [x] `onTruncationChange` (an inline "more"); `onOpenURL` takes Markdown links in-app.
 - [x] `strikethrough` takes a color, like `underline`.
-- [ ] `symbolEffect` doesn't play on an inserted `Image` (only on value changes).
+- [x] `symbolEffect={{ type, onAppear: true }}` plays when the symbol is inserted.
 - [ ] Giving a `Text` an `animation` switches its default `contentTransition` to
       `numericText`; document it (or only do so when the text changes).
 

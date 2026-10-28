@@ -603,6 +603,25 @@ final class GalleryTests: XCTestCase {
         XCTAssert(card.label.contains("last: right"), "a vertical drag shouldn't swipe the card")
     }
 
+    func testRichText() {
+        open("Controls & layout")
+        let rich = element("rich-text")
+        for _ in 0..<5 where !rich.exists || !rich.isHittable { app.swipeUp() }
+        XCTAssert(rich.waitForExistence(timeout: 5))
+        // A tappable run is a link.
+        app.links["@swiftjsx"].firstMatch.tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'mentions tapped: 1'"), evaluatedWith: rich)], timeout: 3) == .completed, rich.label)
+        // A Markdown link goes to onOpenURL, not the system.
+        app.links["open user 42"].firstMatch.tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'opened app://user/42'"), evaluatedWith: element("link-text"))], timeout: 3) == .completed)
+        // Truncation shows "more"; expanding hides it.
+        let more = element("more")
+        XCTAssert(more.waitForExistence(timeout: 3), "not reported as truncated")
+        snapshot("rich-text")
+        more.tap()
+        XCTAssert(more.waitForNonExistence(timeout: 3))
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

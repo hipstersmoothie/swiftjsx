@@ -130,15 +130,18 @@ struct NodeView: View {
                 .underline(underline != nil && (underline as? Bool) != false, color: color(underline))
                 .kerning(node.cgFloat("kerning") ?? 0)
                 .tracking(node.cgFloat("tracking") ?? 0)
-            Group {
+            let styled = Group {
                 if node.bool("monospacedDigit") { text.monospacedDigit() } else { text }
             }
+            styled
             .lineLimit(node.double("lineLimit").map { Int($0) })
             .lineSpacing(node.cgFloat("lineSpacing") ?? 0)
             .minimumScaleFactor(node.cgFloat("minimumScaleFactor") ?? 1)
             .multilineTextAlignment(textAlignment(node.string("textAlignment")))
             .contentTransition(textTransition(node))
             .modifier(Selectable(enabled: node.bool("selectable")))
+            .modifier(TextLinks(node: node))
+            .modifier(Truncation(node: node, full: styled.lineSpacing(node.cgFloat("lineSpacing") ?? 0)))
 
         case "VStack":
             VStack(alignment: horizontalAlignment(node.string("alignment")), spacing: node.cgFloat("spacing")) {

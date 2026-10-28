@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import {
   Screen, List, Section, SectionHeader, Text, TextField, TextEditor, DatePicker, ColorPicker, Menu, Button, Divider,
-  NavigationRow, Flow, Grid, GridRow, HStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle, MenuLabel, Spacer, type HostInstance,
+  NavigationRow, Flow, Grid, GridRow, HStack, VStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle, MenuLabel, Spacer, type HostInstance,
   type Color,
 } from "swiftjsx";
 
@@ -21,6 +21,11 @@ export function ControlsDemo() {
   const [presses, setPresses] = useState(0);
   const [water, setWater] = useState(0);
   const [taps, setTaps] = useState({ taps: 0, holds: 0 });
+  const [mentions, setMentions] = useState(0);
+  const [opened, setOpened] = useState("nothing");
+  const [truncated, setTruncated] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [checked, setChecked] = useState(false);
   const [first, setFirst] = useState("");
   const [second, setSecond] = useState("");
   const [field, setField] = useState<"first" | "second" | null>(null);
@@ -118,6 +123,30 @@ export function ControlsDemo() {
           {items.map((item) => (
             <NavigationRow key={item} title={item} value="1" onPress={() => setEditing(item)} />
           ))}
+        </Section>
+
+        <Section header="Rich text">
+          <Text accessibilityIdentifier="rich-text">
+            Built by{" "}
+            <Text foregroundStyle="blue" fontWeight="semibold" onPress={() => setMentions((n) => n + 1)}>
+              @swiftjsx
+            </Text>{" "}
+            with a <Text background="yellow/40">highlighted</Text> run · mentions tapped: {mentions}
+          </Text>
+          <Text markdown={`An in-app link: [open user 42](app://user/42) · opened ${opened}`} onOpenURL={setOpened} accessibilityIdentifier="link-text" />
+          <VStack alignment="leading" spacing={4}>
+            <Text lineLimit={expanded ? undefined : 2} onTruncationChange={setTruncated} accessibilityIdentifier="long-text">
+              SwiftJSX renders React components as SwiftUI views. Each host element maps to a view, props become modifiers, and
+              React's reconciler drives updates from a JavaScript thread, so the main thread stays free for scrolling and animation.
+            </Text>
+            {truncated && !expanded ? (
+              <Button title="more" buttonStyle="borderless" onPress={() => setExpanded(true)} accessibilityIdentifier="more" />
+            ) : null}
+          </VStack>
+          <HStack>
+            <Toggle label="Done" value={checked} onChange={setChecked} />
+            {checked ? <Image systemName="checkmark.circle.fill" foregroundStyle="green" font="title2" symbolEffect={{ type: "bounce", onAppear: true }} /> : null}
+          </HStack>
         </Section>
 
         <Section header="Tap or hold">

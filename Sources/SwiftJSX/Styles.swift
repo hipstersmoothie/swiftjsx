@@ -479,12 +479,25 @@ struct SymbolModifier: ViewModifier {
 
     private struct Effect: ViewModifier {
         let spec: [String: Any]?
+        /// `onAppear: true`: play once when the symbol appears (an inserted
+        /// checkmark), not only when `value` changes.
+        @State private var appeared = 0
 
         func body(content: Content) -> some View {
             let type = spec?["type"] as? String
             let active = spec?["active"] as? Bool ?? true
             // Any value works as the trigger; compare its description.
-            let trigger = spec?["value"].map { "\($0)" } ?? ""
+            let trigger = (spec?["value"].map { "\($0)" } ?? "") + "#\(appeared)"
+            effect(content, type: type, active: active, trigger: trigger)
+                .task {
+                    guard spec?["onAppear"] as? Bool == true, appeared == 0 else { return }
+                    // A frame after insertion, or the effect doesn't play.
+                    try? await Task.sleep(for: .milliseconds(60))
+                    appeared += 1
+                }
+        }
+
+        @ViewBuilder private func effect(_ content: Content, type: String?, active: Bool, trigger: String) -> some View {
             switch type {
             case "bounce": content.symbolEffect(.bounce, value: trigger)
             case "wiggle" where spec?["value"] != nil: content.symbolEffect(.wiggle, value: trigger)
@@ -522,6 +535,9 @@ struct Selectable: ViewModifier {
     }
 }
 
+/// Links from tappable runs (`onPress` on a nested `<Text>`): "swiftjsx-run://<node id>".
+let runLinkScheme = "swiftjsx-run"
+
 func markdownText(_ markdown: String) -> Text {
     let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
     return Text((try? AttributedString(markdown: markdown, options: options)) ?? AttributedString(markdown))
@@ -551,6 +567,19 @@ private func run(_ node: Node, inheritedCase: String?) -> Text {
     var text = styledText(node)
     if inheritedCase != nil, node.string("textCase") == nil {
         text = Text(verbatim: cased(node.textContent, inheritedCase))
+    }
+    // `background` (a highlight) and `onPress` (a tappable run: a link the
+    // Text's openURL handler routes back to it) need an attributed run.
+    let highlight = node.has("background") ? color(node.prop("background")) : nil
+    if highlight != nil || node.has("onPress") {
+        var attributed = AttributedString(cased(node.textContent, node.string("textCase") ?? inheritedCase))
+        if let highlight { attributed.backgroundColor = highlight }
+        if node.has("onPress") {
+            attributed.link = URL(string: "\(runLinkScheme)://\(node.id)")
+            // A link takes the tint; keep the run's own color if it has one.
+            if let own = color(node.prop("foregroundStyle")) { attributed.foregroundColor = own }
+        }
+        text = Text(attributed)
     }
     if let f = font(node.prop("font")) { text = text.font(f) }
     if let w = node.string("fontWeight").flatMap(fontWeight) { text = text.fontWeight(w) }
@@ -584,5 +613,62 @@ private func cased(_ string: String, _ textCase: String?) -> String {
     case "uppercase": string.uppercased()
     case "lowercase": string.lowercased()
     default: string
+    }
+}
+
+/// Links in a `<Text>`: tappable runs go to their `onPress`; other links (in
+/// `markdown`) to `onOpenURL` when it's set (in-app links like
+/// `app://user/42`), else the system.
+struct TextLinks: ViewModifier {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+
+    func body(content: Content) -> some View {
+        content.environment(\.openURL, OpenURLAction { url in
+            if url.scheme == runLinkScheme, let id = url.host.flatMap(Int.init) {
+                runtime?.dispatch(id, "onPress")
+                return .handled
+            }
+            if node.has("onOpenURL") {
+                runtime?.dispatch(node.id, "onOpenURL", url.absoluteString)
+                return .handled
+            }
+            return .systemAction
+        })
+    }
+}
+
+/// `onTruncationChange(truncated)`: whether `lineLimit` cuts the text off
+/// (show a "more" button). Compares the text's height with its full height.
+struct Truncation<Full: View>: ViewModifier {
+    let node: Node
+    /// The same text without its line limit.
+    let full: Full
+    @Environment(\.jsxRuntime) private var runtime
+    @State private var shown: CGFloat = 0
+    @State private var fullHeight: CGFloat = 0
+    @State private var reported: Bool?
+
+    func body(content: Content) -> some View {
+        if node.has("onTruncationChange") {
+            content
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { shown = $0; report() }
+                .background {
+                    full
+                        .fixedSize(horizontal: false, vertical: true)
+                        .hidden()
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fullHeight = $0; report() }
+                }
+        } else {
+            content
+        }
+    }
+
+    private func report() {
+        guard shown > 0, fullHeight > 0 else { return }
+        let truncated = fullHeight > shown + 1
+        guard truncated != reported else { return }
+        reported = truncated
+        runtime?.dispatch(node.id, "onTruncationChange", truncated)
     }
 }
