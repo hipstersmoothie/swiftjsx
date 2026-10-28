@@ -56,9 +56,10 @@ wanted and couldn't do. Checked items are done and kept for the record.
 - [ ] `controlSize`; the Calculator still builds keys from drag gestures.
 - [ ] `Picker`: `pickerStyle="navigationLink"` and `"wheel"`; infer the value type from
       `options`. `Menu`: checkmark items (Toggle children), colored icons.
-- [ ] `LabeledContent` ("Title … value" rows), `Label` styles.
-- [ ] `<Image src>`: placeholder and error content (today a gray box / "photo" symbol).
-- [ ] `redacted(.placeholder)` for skeleton loading.
+- [x] `LabeledContent`.
+- [ ] `Label` styles.
+- [x] `<Image src>` placeholder/error content (its children, or `placeholder="none"`);
+      `redacted` for skeleton loading.
 - [ ] Accessibility actions (custom VoiceOver actions, adjustable increments for charts
       and cards).
 - [ ] Share sheet (`share({ text, url })`), file export.

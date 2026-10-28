@@ -33,9 +33,14 @@ struct RemoteImage: View {
                 } else {
                     platformImage(image).resizable().scaledToFit()
                 }
+            } else if node.children.contains(where: { !$0.isAttachment }) {
+                // Your own placeholder / error content: the Image's children.
+                ZStack { Children(node: node) }
             } else if url != nil, failed == url {
                 Image(systemName: "photo")
                     .foregroundStyle(.secondary)
+            } else if node.string("placeholder") == "none" {
+                Color.clear
             } else {
                 Color.secondary.opacity(0.12)
             }

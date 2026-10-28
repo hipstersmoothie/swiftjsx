@@ -216,6 +216,13 @@ struct NodeView: View {
         case "Rectangle", "RoundedRectangle", "Circle", "Ellipse", "Capsule", "Path", "Polyline":
             ShapeView(node: node)
 
+        case "LabeledContent":
+            LabeledContent {
+                Children(node: node)
+            } label: {
+                Text(node.string("label") ?? "")
+            }
+
         case "Spacer":
             Spacer(minLength: node.cgFloat("minLength"))
 

@@ -100,6 +100,7 @@ struct Modifiers: ViewModifier {
             .modifier(RefreshModifier(node: node))
             .modifier(AttachedActions(node: node))
             .modifier(Tag(value: node.string("tag")))
+            .redacted(reason: node.bool("redacted") ? .placeholder : [])
             // Last, so the view's own background and border use it too.
             .transformEnvironment(\.colorScheme) { scheme in
                 if let forced = colorScheme(node.string("colorScheme")) { scheme = forced }

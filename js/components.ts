@@ -135,6 +135,8 @@ export interface Modifiers {
   badge?: number | string;
   /** This row's value for `<List selection>`. */
   tag?: string;
+  /** Show as gray placeholder shapes (skeleton loading) instead of the real text and images. */
+  redacted?: boolean;
   opacity?: number;
   disabled?: boolean;
   /** Animate every change to this view (and its children's insertions/removals). */
@@ -386,6 +388,8 @@ type ImageSource =
   | {
       src: string;
       contentMode?: "fit" | "fill";
+      /** "none": show nothing while loading. Or give the Image children: they show while loading and after an error. */
+      placeholder?: "gray" | "none";
       onLoad?: (size: { width: number; height: number }) => void;
       onError?: (error: { message: string }) => void;
     };
@@ -423,6 +427,9 @@ export const RoundedRectangle = host<ShapeProps & { cornerRadius?: CornerRadius 
 export const Circle = host<ShapeProps>("Circle");
 export const Ellipse = host<ShapeProps>("Ellipse");
 export const Capsule = host<ShapeProps>("Capsule");
+
+/** A label and a value on one row ("Version … 1.0"), aligned the way Forms and Lists do it. */
+export const LabeledContent = host<Modifiers & WithChildren & { label: string }>("LabeledContent");
 
 export const Spacer = host<Modifiers & { minLength?: number }>("Spacer");
 export const Divider = host<Modifiers>("Divider");

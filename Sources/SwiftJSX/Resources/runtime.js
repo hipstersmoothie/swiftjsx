@@ -18007,6 +18007,7 @@ ${error.stack}` : String(error));
     HostInstance: () => HostInstance,
     Image: () => Image,
     Label: () => Label,
+    LabeledContent: () => LabeledContent,
     LazyHStack: () => LazyHStack,
     LazyVGrid: () => LazyVGrid,
     LazyVStack: () => LazyVStack,
@@ -18726,6 +18727,7 @@ ${e.stack}` : String(e);
   var Circle = host("Circle");
   var Ellipse = host("Ellipse");
   var Capsule = host("Capsule");
+  var LabeledContent = host("LabeledContent");
   var Spacer = host("Spacer");
   var Divider = host("Divider");
   var ProgressView = host("ProgressView");
