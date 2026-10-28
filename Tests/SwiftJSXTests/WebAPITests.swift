@@ -38,8 +38,10 @@ final class MockServer: URLProtocol {
             // Three chunks, 50 ms apart (server-sent events, AI tokens).
             let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/event-stream"])!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            // One serial queue: URLProtocol's client mustn't be called from two threads at once.
+            let queue = DispatchQueue(label: "MockServer.stream")
             for (i, part) in ["one ", "two ", "three"].enumerated() {
-                DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(50 * (i + 1))) { [weak self] in
+                queue.asyncAfter(deadline: .now() + .milliseconds(50 * (i + 1))) { [weak self] in
                     guard let self, !self.stopped else { return }
                     self.client?.urlProtocol(self, didLoad: Data(part.utf8))
                     if i == 2 { self.client?.urlProtocolDidFinishLoading(self) }
