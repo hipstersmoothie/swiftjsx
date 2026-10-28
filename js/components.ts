@@ -713,6 +713,29 @@ export const ConfirmationDialogHost = host<WithChildren & { isPresented: boolean
 type ChartX = string | number | Date;
 
 /**
+ * An axis: where it sits, which values get marks, and how they read.
+ * `format` for numbers: "integer", "decimal", "percent" (0.5 → 50%),
+ * "compact" (1.2K), "currency:USD", a "+" prefix for signs ("+integer"), or a
+ * template ("{} km"). For dates: "weekday", "weekdayNarrow", "day", "month",
+ * "monthNarrow", "monthDay", "hour", "time", "year".
+ */
+export type ChartAxis = {
+  position?: "leading" | "trailing" | "top" | "bottom";
+  /** Marks at exactly these values (numbers, Dates or categories). */
+  values?: (number | Date | string)[];
+  /** A mark every `stride` (numbers), or every `count` `unit`s (dates). */
+  stride?: number | { unit: CalendarUnit; count?: number };
+  /** About how many marks (automatic placement). */
+  count?: number;
+  format?: string;
+  /** Default true. */
+  gridlines?: boolean;
+  ticks?: boolean;
+  labels?: boolean;
+};
+export type CalendarUnit = "minute" | "hour" | "day" | "week" | "weekOfYear" | "month" | "quarter" | "year";
+
+/**
  * A chart. Children are marks: `<BarMark>`, `<LineMark>`, `<AreaMark>`,
  * `<PointMark>`, `<RuleMark>`, `<RectangleMark>`. Give it a `frame` height.
  */
@@ -721,12 +744,12 @@ export const Chart = host<
     /** `[min, max]` for the axes (numbers, or Dates for x). */
     xDomain?: [number, number] | [Date, Date];
     yDomain?: [number, number];
-    xAxis?: "automatic" | "hidden";
-    yAxis?: "automatic" | "hidden" | { position?: "leading" | "trailing" };
+    xAxis?: "automatic" | "hidden" | ChartAxis;
+    yAxis?: "automatic" | "hidden" | ChartAxis;
     legend?: "automatic" | "hidden";
     /** Colors for marks with a `series`: `{ Deep: "indigo", REM: "cyan" }`. */
     seriesColors?: Record<string, ColorValue>;
-    /** Scrubbing: the x value under the finger (null when released). */
+    /** Scrubbing: the x value under the finger (null when released). Dates come as ms since 1970. */
     onXSelectionChange?: (x: string | number | null) => void;
   }
 >("Chart");
@@ -734,6 +757,8 @@ export const Chart = host<
 type MarkProps = {
   /** A category, a number, or a Date. */
   x?: ChartX;
+  /** Date `x`: the whole day / week / month it stands for (bars span it, axes align to it). */
+  xUnit?: CalendarUnit;
   y?: number;
   /** Names the axes' values for accessibility (VoiceOver audio graphs). */
   xLabel?: string;
@@ -769,4 +794,4 @@ export const PointMark = host<MarkProps & { symbolSize?: number }>("PointMark");
 /** A horizontal line at `y` (goals, averages) or a vertical one at `x`. */
 export const RuleMark = host<MarkProps & Stroked>("RuleMark");
 /** A rectangle from xStart to xEnd and yStart to yEnd (timelines, hypnograms). */
-export const RectangleMark = host<MarkProps & { xStart?: ChartX; xEnd?: ChartX; yStart?: number; yEnd?: number }>("RectangleMark");
+export const RectangleMark = host<MarkProps & { xStart?: ChartX; xEnd?: ChartX; yStart?: number; yEnd?: number; cornerRadius?: number }>("RectangleMark");

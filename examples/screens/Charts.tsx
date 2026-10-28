@@ -26,10 +26,15 @@ export function ChartsDemo() {
               {day ? `${day.date.toDateString()}: ${day.steps.toLocaleString()} steps` : "Drag across the chart"}
             </Text>
             <Picker pickerStyle="segmented" value={kind} onChange={setKind} options={[{ value: "bars", label: "Bars" }, { value: "line", label: "Line" }]} />
-            <Chart frame={{ height: 200 }} onXSelectionChange={(x) => typeof x === "number" && setSelected(x)} animation="smooth">
+            <Chart
+              frame={{ height: 200 }}
+              onXSelectionChange={(x) => typeof x === "number" && setSelected(x)}
+              xAxis={{ stride: { unit: "day", count: 2 }, format: "monthDay", gridlines: false }}
+              yAxis={{ values: [0, 5000, 10000], format: "compact" }}
+            >
               {days.map((d) =>
                 kind === "bars" ? (
-                  <BarMark key={+d.date} x={d.date} y={d.steps} cornerRadius={4} foregroundStyle={day && +day.date === +d.date ? "orange" : "pink"} />
+                  <BarMark key={+d.date} x={d.date} xUnit="day" y={d.steps} cornerRadius={4} foregroundStyle={day && +day.date === +d.date ? "orange" : "pink"} />
                 ) : (
                   <LineMark key={+d.date} x={d.date} y={d.steps} interpolation="catmullRom" foregroundStyle="pink" lineWidth={3} />
                 ),
@@ -40,7 +45,7 @@ export function ChartsDemo() {
 
           <VStack alignment="leading" spacing={8}>
             <Text font="headline">Sleep stages</Text>
-            <Chart frame={{ height: 180 }} seriesColors={{ Deep: "indigo", Core: "blue", REM: "cyan", Awake: "orange" }}>
+            <Chart frame={{ height: 180 }} seriesColors={{ Deep: "indigo", Core: "blue", REM: "cyan", Awake: "orange" }} yAxis={{ stride: 2, format: "{} h" }}>
               {sleep.flatMap((d) =>
                 Object.entries(d.stages).map(([stage, hours]) => <BarMark key={d.day + stage} x={d.day} y={hours} series={stage} cornerRadius={2} />),
               )}
@@ -49,7 +54,7 @@ export function ChartsDemo() {
 
           <VStack alignment="leading" spacing={8}>
             <Text font="headline">Resting heart rate</Text>
-            <Chart frame={{ height: 160 }} yDomain={[45, 70]}>
+            <Chart frame={{ height: 160 }} yDomain={[45, 70]} xAxis={{ format: "weekday" }} yAxis={{ position: "leading", values: [50, 60, 70], format: "{} bpm" }}>
               {days.map((d) => (
                 <AreaMark key={`band${+d.date}`} x={d.date} yStart={d.resting - 4} yEnd={d.resting + 4} foregroundStyle="red/15" interpolation="catmullRom" />
               ))}

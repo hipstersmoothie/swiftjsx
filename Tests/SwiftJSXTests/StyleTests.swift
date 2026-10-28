@@ -64,6 +64,16 @@ import Testing
     }
 }
 
+@MainActor
+@Suite struct ChartTests {
+    @Test func markPropsUpdate() throws {
+        let runtime = try fixture("ChartUpdate")
+        runtime.press("pick")
+        let colors = runtime.findAll("BarMark").map { $0.string("foregroundStyle") ?? "-" }
+        #expect(colors == ["pink", "orange", "pink"])
+    }
+}
+
 @Suite struct PathTests {
     @Test func parsesSVGPathData() {
         #expect(SVGPath.parse("M10 10 L90 10 L90 90 Z").boundingRect == CGRect(x: 10, y: 10, width: 80, height: 80))

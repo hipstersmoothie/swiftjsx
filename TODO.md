@@ -13,12 +13,16 @@ for the record.
 - [x] Radial and angular gradients, gradient stops.
 - [x] Charts: `<Chart>` on Swift Charts (bar, line, area, point, rule, rectangle marks;
       series, stacking, domains, axes, scrub selection).
-- [ ] Charts: axis value labels/formatting, y selection, range selection, scrolling
-      charts. The Fitness app still draws its charts by hand.
-- [ ] Charts: Date `x` values with a `unit` (bars spanning a week), category `y` values,
-      `cornerRadius` on `RectangleMark`, styled or view annotations, continuous color
-      scales (heatmaps), axis `position` / `gridlines` (the Charts.swift comment promises
-      them). `onXSelectionChange` sends Dates as ms; document it.
+- [ ] Charts: y selection, range selection, scrolling charts. The Fitness app still draws
+      its charts by hand.
+- [x] Charts axes: `position`, explicit `values`, `stride` (numbers or `{ unit, count }`),
+      `count`, `format` (compact, percent, currency, "{} h", weekday, monthDay…),
+      `gridlines` / `ticks` / `labels`. Date `x` with `xUnit` (bars span the day/week).
+      `cornerRadius` on every mark. A mark's changed props now redraw the chart (Charts
+      skipped marks whose inputs looked unchanged).
+- [ ] Charts: under a chart `animation`, a mark's color change doesn't show (values and
+      inserts do); category `y` values, styled or view annotations, continuous color
+      scales (heatmaps).
 - [x] `<Path d>` (SVG path data) and `<Polyline points>` in a `viewBox`; `lineCap` /
       `lineJoin`.
 - [ ] Angular gradient start/end angles; animating between paths (morphing).
