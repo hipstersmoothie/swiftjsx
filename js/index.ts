@@ -18,8 +18,8 @@ export {
 } from "./worklets";
 export { Sheet, Alert, ConfirmationDialog } from "./presentations";
 export { AnimatePresence, type AnimatePresenceProps } from "./presence";
-export { DatePicker, NavigationRow } from "./controls";
-export { haptic, prefetchImage } from "./platform";
+export { DatePicker, NavigationRow, Picker } from "./controls";
+export { haptic, prefetchImage, share } from "./platform";
 export {
   notifications, useNotificationListener, speech, keepAwake, useKeepAwake,
   type NotificationContent, type NotificationResponse, type NotificationRequest, type SpeakOptions,

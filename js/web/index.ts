@@ -123,6 +123,47 @@ function structuredClone<T>(value: T, seen = new Map<unknown, unknown>()): T {
   return copy;
 }
 
+// MARK: requestAnimationFrame
+
+// Frames at 60 Hz on the JS thread: every callback for a frame runs together
+// with the same timestamp, like a browser. (Not tied to the display's vsync;
+// for main-thread smoothness use the `animation` prop or worklets.)
+const FRAME = 1000 / 60;
+let frameCallbacks = new Map<number, (time: number) => void>();
+let nextFrameId = 1;
+let frameScheduled = false;
+
+function requestAnimationFrame(callback: (time: number) => void): number {
+  const id = nextFrameId++;
+  frameCallbacks.set(id, callback);
+  if (!frameScheduled) {
+    frameScheduled = true;
+    const now = performance.now();
+    setTimeout(runFrame, Math.max(0, FRAME - (now % FRAME)));
+  }
+  return id;
+}
+
+function cancelAnimationFrame(id: number) {
+  frameCallbacks.delete(id);
+}
+
+function runFrame() {
+  frameScheduled = false;
+  const callbacks = frameCallbacks;
+  frameCallbacks = new Map();
+  const time = performance.now();
+  for (const callback of callbacks.values()) {
+    try {
+      callback(time);
+    } catch (error) {
+      setTimeout(() => {
+        throw error;
+      });
+    }
+  }
+}
+
 // MARK: Install
 
 const globals: Record<string, unknown> = {
@@ -133,6 +174,8 @@ const globals: Record<string, unknown> = {
   WebSocket, MessageEvent, CloseEvent,
   crypto, localStorage, sessionStorage,
   structuredClone: (value: unknown) => structuredClone(value),
+  requestAnimationFrame,
+  cancelAnimationFrame,
   navigator: {
     userAgent: __web.userAgent,
     language: __web.languages[0] ?? "en-US",

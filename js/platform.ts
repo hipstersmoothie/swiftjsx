@@ -12,6 +12,11 @@ export function haptic(kind: "light" | "medium" | "heavy" | "soft" | "rigid" | "
  * without a placeholder when it appears (the next carousel page or story).
  * Resolves to whether it loaded.
  */
+/** The system share sheet; resolves true if the user shared (or copied, saved…), false if they cancelled. */
+export async function share(content: { text?: string; url?: string }): Promise<boolean> {
+  return (await nativeCall("share", content)) === true;
+}
+
 export function prefetchImage(url: string): Promise<boolean> {
   return nativeCall("prefetchImage", { url }) as Promise<boolean>;
 }

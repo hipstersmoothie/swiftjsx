@@ -119,7 +119,8 @@ public final class Node: Identifiable {
         ("accessibilityLabel", .accessibility), ("accessibilityHint", .accessibility),
         ("accessibilityValue", .accessibility), ("accessibilityHidden", .accessibility),
         ("accessibilityIdentifier", .accessibility), ("accessibilityTraits", .accessibility),
-        ("accessibilitySortPriority", .accessibility),
+        ("accessibilitySortPriority", .accessibility), ("accessibilityActions", .accessibility),
+        ("onAccessibilityIncrement", .accessibility), ("onAccessibilityDecrement", .accessibility),
         ("accessibilityElement", .accessibility), ("accessibilityElement", .accessibilityElement),
         ("onRefresh", .refresh),
         ("contentShape", .contentShape), ("onLayout", .layout),
@@ -133,6 +134,7 @@ public final class Node: Identifiable {
         "cornerRadius", "border", "shadow", "opacity", "disabled", "transition", "onAppear",
         "onTapGesture", "hidden", "onDisappear", "colorScheme", "zIndex", "layoutPriority", "gridColumns",
         "fixedSize", "allowsHitTesting", "preferredColorScheme", "tag", "redacted", "ignoresSafeArea", "interactiveDismissDisabled", "position",
+        "controlSize", "labelStyle", "statusBarHidden", "persistentSystemOverlays",
     ]).union(featureKeys.map(\.0)).subtracting(["__ref"])
 
     /// Views with state of their own get the wrapper from the start, so even

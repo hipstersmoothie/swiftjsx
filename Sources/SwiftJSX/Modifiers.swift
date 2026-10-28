@@ -106,6 +106,12 @@ struct Modifiers: ViewModifier {
             .modifier(Tag(value: node.string("tag")))
             .redacted(reason: node.bool("redacted") ? .placeholder : [])
             .modifier(DismissLock(node: node))
+            // Environment only when set: a default here would override a parent's.
+            .transformEnvironment(\.controlSize) { size in
+                if let wanted = controlSize(node.string("controlSize")) { size = wanted }
+            }
+            .modifier(LabelStyleModifier(style: node.string("labelStyle")))
+            .modifier(SystemOverlays(node: node))
             // Last, so the view's own background and border use it too.
             .transformEnvironment(\.colorScheme) { scheme in
                 if let forced = colorScheme(node.string("colorScheme")) { scheme = forced }
@@ -595,6 +601,11 @@ struct PickerStyleModifier: ViewModifier {
         case "segmented": content.pickerStyle(.segmented)
         case "menu": content.pickerStyle(.menu)
         case "inline": content.pickerStyle(.inline)
+        case "palette": content.pickerStyle(.palette)
+        #if os(iOS)
+        case "navigationLink": content.pickerStyle(.navigationLink)
+        case "wheel": content.pickerStyle(.wheel)
+        #endif
         default: content
         }
     }
@@ -746,6 +757,59 @@ private func edge(_ name: String) -> Edge? {
     case "leading": .leading
     case "trailing": .trailing
     default: nil
+    }
+}
+
+func controlSize(_ name: String?) -> ControlSize? {
+    switch name {
+    case "mini": .mini
+    case "small": .small
+    case "regular": .regular
+    case "large": .large
+    case "extraLarge": .extraLarge
+    default: nil
+    }
+}
+
+/// `labelStyle`: "iconOnly", "titleOnly", "titleAndIcon" for the Labels
+/// inside (buttons, menus, toolbars).
+struct LabelStyleModifier: ViewModifier {
+    let style: String?
+    func body(content: Content) -> some View {
+        switch style {
+        case "iconOnly": content.labelStyle(.iconOnly)
+        case "titleOnly": content.labelStyle(.titleOnly)
+        case "titleAndIcon": content.labelStyle(.titleAndIcon)
+        default: content
+        }
+    }
+}
+
+/// `statusBarHidden` and `persistentSystemOverlays` ("hidden": the home
+/// indicator fades while watching full-screen media) on a screen.
+struct SystemOverlays: ViewModifier {
+    let node: Node
+    func body(content: Content) -> some View {
+        content
+            #if os(iOS)
+            .modifier(Optional(node.has("statusBarHidden") ? node.bool("statusBarHidden") : nil) { $0.statusBarHidden($1) })
+            #endif
+            .modifier(Optional(node.string("persistentSystemOverlays")) { view, value in
+                view.persistentSystemOverlays(value == "hidden" ? .hidden : value == "visible" ? .visible : .automatic)
+            })
+    }
+
+    /// Applies `transform` when `value` is non-nil.
+    private struct Optional<Value>: ViewModifier {
+        let value: Value?
+        let transform: (Content, Value) -> AnyView
+        init<V: View>(_ value: Value?, _ transform: @escaping (Content, Value) -> V) {
+            self.value = value
+            self.transform = { AnyView(transform($0, $1)) }
+        }
+        func body(content: Content) -> some View {
+            if let value { transform(content, value) } else { content }
+        }
     }
 }
 

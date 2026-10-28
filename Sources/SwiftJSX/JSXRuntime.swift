@@ -59,7 +59,10 @@ public final class JSXRuntime {
         tree.worklets = worklets
         // Not named `engine`: Swift 6.3 binds the callbacks' `engine` (above) to it.
         let jsEngine = engine!
-        appEvents = AppEvents { type in jsEngine.call("__swiftjsx_windowEvent", [type]) }
+        appEvents = AppEvents(
+            send: { type in jsEngine.call("__swiftjsx_windowEvent", [type]) },
+            afterJS: { done in jsEngine.perform { _ in done() } }
+        )
         // Early, so a notification tap that launched the app isn't missed.
         NotificationHub.shared.install()
     }
@@ -195,6 +198,11 @@ public final class JSXRuntime {
             worklets.handle(args)
         case "eventDone":
             if let callback = (args["callback"] as? NSNumber)?.intValue { waiting.removeValue(forKey: callback)?.resume() }
+        case "share":
+            let url = (args["url"] as? String).flatMap(URL.init(string:))
+            shareItems(text: args["text"] as? String, url: url) { [engine] shared in
+                engine?.resolve(callback: callback, value: shared)
+            }
         case "prefetchImage":
             guard let url = (args["url"] as? String).flatMap(URL.init(string:)) else {
                 return engine.resolve(callback: callback, value: false)

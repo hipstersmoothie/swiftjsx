@@ -245,6 +245,20 @@ export interface Modifiers {
     height?: number | `${number}%`;
     anchor?: "topLeading" | "top" | "topTrailing" | "leading" | "center" | "trailing" | "bottomLeading" | "bottom" | "bottomTrailing";
   };
+  /** The size of controls inside (buttons, pickers, steppers, toggles). */
+  controlSize?: "mini" | "small" | "regular" | "large" | "extraLarge";
+  /** How Labels inside show: icon only (toolbars), title only, or both. */
+  labelStyle?: "iconOnly" | "titleOnly" | "titleAndIcon";
+  /** Hide the status bar while this screen is up (full-screen media). */
+  statusBarHidden?: boolean;
+  /** "hidden": the home indicator fades (video, games). */
+  persistentSystemOverlays?: "automatic" | "hidden" | "visible";
+  /** VoiceOver actions (the actions rotor), reported to onAccessibilityAction. */
+  accessibilityActions?: string[];
+  onAccessibilityAction?: (name: string) => void;
+  /** Make it adjustable for VoiceOver (swipe up / down): sliders, steppers, chart scrubbers. */
+  onAccessibilityIncrement?: () => void;
+  onAccessibilityDecrement?: () => void;
   /** Extend into the safe area (under the status bar and home indicator): true, or some edges. */
   ignoresSafeArea?: boolean | SafeAreaEdge | SafeAreaEdge[];
   /**
@@ -654,7 +668,12 @@ export const Slider = host<
 >("Slider");
 /** The label is `label`, or the children; with neither, just the −/+ control. */
 export const Stepper = host<Modifiers & WithChildren & { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; label?: string; tint?: ColorValue }>("Stepper");
-export const Picker = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string; systemImage?: string }[]; label?: string; pickerStyle?: "menu" | "segmented" | "inline"; tint?: ColorValue }>("Picker");
+/** The native Picker (string values). Use `Picker` (controls.tsx), which also takes numbers. */
+export const PickerHost = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string; systemImage?: string }[]; label?: string; pickerStyle?: PickerStyle; tint?: ColorValue }>("Picker");
+export type PickerStyle = "menu" | "segmented" | "inline" | "palette" | "wheel" | "navigationLink";
+
+/** A button that opens the share sheet for `url` or `text`; children are its label (default: "Share"). */
+export const ShareLink = host<Modifiers & WithChildren & { url?: string; text?: string; subject?: string; message?: string }>("ShareLink");
 
 // MARK: Lazy containers. SwiftUI only builds the views that are on screen, but
 // React still renders every child; for thousands of rows use <VirtualList>.

@@ -75,6 +75,21 @@ const checks: Checks = {
     eq(echo.body.includes('name="note"\r\n\r\nhello'), true);
     eq(echo.body.includes('filename="me.png"\r\nContent-Type: image/png\r\n\r\nPNGDATA'), true);
   },
+  async "requestAnimationFrame"() {
+    const times: number[] = [];
+    const frame = new Promise<void>((resolve) => {
+      requestAnimationFrame((t) => times.push(t));
+      const cancelled = requestAnimationFrame(() => times.push(-1));
+      cancelAnimationFrame(cancelled);
+      requestAnimationFrame((t) => {
+        times.push(t);
+        resolve();
+      });
+    });
+    await frame;
+    eq(times.length, 2);
+    eq(times[0], times[1]);
+  },
   async "fetch data: url"() {
     eq(await (await fetch("data:text/plain;base64,aGVsbG8=")).text(), "hello");
   },

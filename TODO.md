@@ -43,7 +43,7 @@ for the record.
       or "25%"): placement is layout, so transitions scale around a child's own frame and
       moves animate; no measuring for fractional boards.
 - [x] Window size and safe-area insets in `useEnvironment()`; an `ignoresSafeArea` prop.
-- [ ] `statusBarHidden`, `persistentSystemOverlays`.
+- [x] `statusBarHidden`, `persistentSystemOverlays`.
 - [ ] On a material background, `cornerRadius` rounds the background but doesn't clip
       the content: a rounded clip over a material turns off vibrancy, and hierarchical
       text and dividers on it vanish.
@@ -65,11 +65,7 @@ for the record.
 - [x] `onTruncationChange` (an inline "more"); `onOpenURL` takes Markdown links in-app.
 - [x] `strikethrough` takes a color, like `underline`.
 - [x] `symbolEffect={{ type, onAppear: true }}` plays when the symbol is inserted.
-- [ ] Giving a `Text` an `animation` switches its default `contentTransition` to
-      `numericText`; document it (or only do so when the text changes).
-
-## Components
-
+- [x] A `Text` with an `animation` rolls digits by default: documented (README Gotchas).
 - [x] `Menu`, `DatePicker`, `ColorPicker`, `TextEditor`, `NavigationRow`, `EditButton`.
 - [x] `TextField` styles, vertical growth, autofocus, keyboard and content types,
       autocapitalization, `submitLabel`, `blurOnSubmit`.
@@ -80,7 +76,7 @@ for the record.
       in an empty field (OTP boxes step back); UIKit's deleteBackward, swizzled once.
 - [x] Buttons: `pressedScale`, `pressedOpacity`, `pressedBackground`, `onPressIn` /
       `onPressOut`.
-- [ ] `controlSize`; the Calculator still builds keys from drag gestures.
+- [x] `controlSize`, `labelStyle`.
 - [x] `Stepper` with no label is just the −/+ control. `TextField` `textAlignment`. More
       `textContentType`s (card expiry, security code and name; address lines, state).
 - [ ] Number pads have no return key: a `ToolbarItemGroup placement="keyboard"`.
@@ -93,15 +89,14 @@ for the record.
 - [ ] `DatePicker` time-of-day values (`{ hour, minute }`, `minuteInterval`) instead of
       full Dates; `ColorPicker` returns a hex for the current scheme (no `{light, dark}`).
 - [ ] `LabeledContent` label as a view (font, icon).
-- [ ] `Picker`: `pickerStyle="navigationLink"` and `"wheel"`; infer the value type from
-      `options`. `Menu`: checkmark items (Toggle children), colored icons.
+- [x] `Picker`: wheel, navigationLink and palette styles; number values.
+- [ ] `Menu`: checkmark items (Toggle children), colored icons.
 - [x] `LabeledContent`.
-- [ ] `Label` styles.
 - [x] `<Image src>` placeholder/error content (its children, or `placeholder="none"`);
       `redacted` for skeleton loading.
-- [ ] Accessibility actions (custom VoiceOver actions, adjustable increments for charts
-      and cards).
-- [ ] Share sheet (`share({ text, url })`), file export.
+- [x] `accessibilityActions` + `onAccessibilityAction` (the actions rotor);
+      `onAccessibilityIncrement` / `Decrement` (adjustable).
+- [x] `share({ text, url })` and `<ShareLink>`. (File export still open.)
 - [x] `prefetchImage(url)` warms `<Image>`'s cache (next carousel page, next story).
 
 ## Lists and scrolling
@@ -189,7 +184,7 @@ for the record.
       anchor, `offset`, `blur`, `identity`, and a transition's own `animation`.
 - [x] `keyframes={{ trigger, steps, repeat }}` (SwiftUI's phase animator): pops, shakes,
       looping wiggles.
-- [ ] No `requestAnimationFrame`.
+- [x] `requestAnimationFrame` (60 Hz on the JS thread, one timestamp per frame).
 - [ ] Drag and drop between containers (drop targets) outside `List`.
 
 ## Rendering
@@ -221,8 +216,8 @@ for the record.
 - [ ] An async storage API for larger data (IndexedDB-like, or a key-value file store).
 - [ ] `URL` parsing goes through Foundation, which is more lenient than WHATWG
       (percent-encodes spaces instead of failing).
-- [ ] App lifecycle: no `pagehide` / background-task time for last-chance saves; no
-      `document.visibilityState`.
+- [x] `pagehide` / `pageshow` window events, with background time for saves in pagehide
+      handlers. (No `document`, by design.)
 - [x] `useEnvironment().locale` (identifier, language, region, `weekStartsOn`, `hourCycle`,
       time zone, calendar) and a window "timechange" event (midnight, time zone, clock).
 - [x] First-party `notifications` (SwiftJSX owns the delegate: banners in the foreground,
@@ -280,20 +275,10 @@ for the record.
 
 ## Docs
 
-- [ ] React Compiler: a closure's dependencies are read eagerly, so `a!.b` inside a
-      callback crashes when `a` is null (the Kanban app hit this). Use `a?.b`.
-- [ ] A `role="destructive"` swipe action removes the row immediately (SwiftUI), before
-      any confirmation: use `tint="red"` when you confirm first.
-- [ ] Several default-style Buttons in one List row all fire on a tap (SwiftUI); give
-      inner buttons a `buttonStyle`.
-- [ ] Inside a tinted Button, `secondary` is relative to the tint; use `secondaryLabel`.
-- [ ] `accessibilityIdentifier` on a container is copied to its children unless it has
-      `accessibilityElement="contain"`.
-- [ ] Effects' cleanups run on Fast Refresh; zustand v5 selectors that return new
-      arrays loop (select raw state, or `useShallow`).
-- [ ] `Intl` works (currency, dates, plural rules). JavaScriptCore has no JIT on iOS: keep
-      date-fns `format()` out of hot loops. A `ref` adds `.id(node.id)` to the view.
-      `withTiming`'s `delay` stands in for `withDelay`. Native `onMain` calls run in order.
+- [x] Gotchas written up in the README (React Compiler eager closures, Fast Refresh effects,
+      zustand selectors, List-row buttons, destructive swipes, tinted buttons, identifier
+      inheritance, refs and identity, numeric text, `Intl` and the missing JIT, worklet
+      delays, native ordering and weak delegates).
 
 ## Project
 

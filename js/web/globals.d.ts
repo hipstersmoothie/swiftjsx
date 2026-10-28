@@ -38,6 +38,8 @@ declare global {
   var TextDecoder: typeof Encoding.TextDecoder;
   type TextDecoder = Encoding.TextDecoder;
   function atob(data: string): string;
+  function requestAnimationFrame(callback: (time: number) => void): number;
+  function cancelAnimationFrame(id: number): void;
   function btoa(data: string): string;
 
   var URL: typeof Urls.URL;

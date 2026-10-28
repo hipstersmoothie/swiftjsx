@@ -158,6 +158,9 @@ struct NodeView: View {
         case "ZStack":
             ZStack(alignment: alignment(node.string("alignment")) ?? .center) { Children(node: node) }
 
+        case "ShareLink":
+            ShareLinkHost(node: node)
+
         case "Portal":
             PortalHost(node: node)
 

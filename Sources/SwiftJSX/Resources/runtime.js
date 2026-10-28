@@ -34195,6 +34195,38 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     seen.set(value, copy);
     return copy;
   }
+  var FRAME = 1e3 / 60;
+  var frameCallbacks = /* @__PURE__ */ new Map();
+  var nextFrameId = 1;
+  var frameScheduled = false;
+  function requestAnimationFrame2(callback) {
+    const id = nextFrameId++;
+    frameCallbacks.set(id, callback);
+    if (!frameScheduled) {
+      frameScheduled = true;
+      const now = performance.now();
+      setTimeout(runFrame, Math.max(0, FRAME - now % FRAME));
+    }
+    return id;
+  }
+  function cancelAnimationFrame2(id) {
+    frameCallbacks.delete(id);
+  }
+  function runFrame() {
+    frameScheduled = false;
+    const callbacks2 = frameCallbacks;
+    frameCallbacks = /* @__PURE__ */ new Map();
+    const time = performance.now();
+    for (const callback of callbacks2.values()) {
+      try {
+        callback(time);
+      } catch (error) {
+        setTimeout(() => {
+          throw error;
+        });
+      }
+    }
+  }
   var globals = {
     Event,
     CustomEvent,
@@ -34224,6 +34256,8 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     localStorage: localStorage2,
     sessionStorage: sessionStorage2,
     structuredClone: (value) => structuredClone(value),
+    requestAnimationFrame: requestAnimationFrame2,
+    cancelAnimationFrame: cancelAnimationFrame2,
     navigator: {
       userAgent: __web.userAgent,
       language: __web.languages[0] ?? "en-US",
@@ -34331,6 +34365,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     Overlay: () => Overlay,
     Path: () => Path,
     Picker: () => Picker,
+    PickerHost: () => PickerHost,
     PointMark: () => PointMark,
     Polyline: () => Polyline,
     Portal: () => Portal,
@@ -34345,6 +34380,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     Section: () => Section,
     SectionFooter: () => SectionFooter,
     SectionHeader: () => SectionHeader,
+    ShareLink: () => ShareLink,
     Sheet: () => Sheet,
     SheetHost: () => SheetHost,
     Slider: () => Slider,
@@ -34380,6 +34416,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     prefetchImage: () => prefetchImage,
     render: () => render,
     runOnJS: () => runOnJS,
+    share: () => share,
     speech: () => speech,
     toJS: () => toJS,
     useAnimatedStyle: () => useAnimatedStyle,
@@ -35084,7 +35121,8 @@ ${e.stack}` : String(e);
   var Toggle = host("Toggle");
   var Slider = host("Slider");
   var Stepper = host("Stepper");
-  var Picker = host("Picker");
+  var PickerHost = host("Picker");
+  var ShareLink = host("ShareLink");
   var LazyVStack = host("LazyVStack");
   var LazyHStack = host("LazyHStack");
   var LazyVGrid = host("LazyVGrid");
@@ -36022,11 +36060,11 @@ ${e.stack}` : String(e);
   var DatePickerHost = "DatePicker";
   function DatePicker(t0) {
     const $ = (0, import_compiler_runtime6.c)(21);
-    if ($[0] !== "5bb48dff4ad9acac634bf02a1f5e24f9b04b0c3e915365450bc633c64016b294") {
+    if ($[0] !== "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40") {
       for (let $i = 0; $i < 21; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "5bb48dff4ad9acac634bf02a1f5e24f9b04b0c3e915365450bc633c64016b294";
+      $[0] = "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40";
     }
     let max;
     let min;
@@ -36106,11 +36144,11 @@ ${e.stack}` : String(e);
   }
   function NavigationRow(t0) {
     const $ = (0, import_compiler_runtime6.c)(33);
-    if ($[0] !== "5bb48dff4ad9acac634bf02a1f5e24f9b04b0c3e915365450bc633c64016b294") {
+    if ($[0] !== "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40") {
       for (let $i = 0; $i < 33; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "5bb48dff4ad9acac634bf02a1f5e24f9b04b0c3e915365450bc633c64016b294";
+      $[0] = "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40";
     }
     let badge;
     let children;
@@ -36243,12 +36281,87 @@ ${e.stack}` : String(e);
     }
     return t9;
   }
+  function Picker(t0) {
+    const $ = (0, import_compiler_runtime6.c)(16);
+    if ($[0] !== "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40") {
+      for (let $i = 0; $i < 16; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40";
+    }
+    let onChange;
+    let options;
+    let props;
+    let value;
+    if ($[1] !== t0) {
+      ({
+        value,
+        onChange,
+        options,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = onChange;
+      $[3] = options;
+      $[4] = props;
+      $[5] = value;
+    } else {
+      onChange = $[2];
+      options = $[3];
+      props = $[4];
+      value = $[5];
+    }
+    const t1 = String(value);
+    let t2;
+    if ($[6] !== onChange || $[7] !== options) {
+      t2 = (text) => {
+        const option = options.find((o) => String(o.value) === text);
+        if (option) {
+          onChange(option.value);
+        }
+      };
+      $[6] = onChange;
+      $[7] = options;
+      $[8] = t2;
+    } else {
+      t2 = $[8];
+    }
+    let t3;
+    if ($[9] !== options) {
+      t3 = options.map(_temp22);
+      $[9] = options;
+      $[10] = t3;
+    } else {
+      t3 = $[10];
+    }
+    let t4;
+    if ($[11] !== props || $[12] !== t1 || $[13] !== t2 || $[14] !== t3) {
+      t4 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PickerHost, { ...props, value: t1, onChange: t2, options: t3 });
+      $[11] = props;
+      $[12] = t1;
+      $[13] = t2;
+      $[14] = t3;
+      $[15] = t4;
+    } else {
+      t4 = $[15];
+    }
+    return t4;
+  }
+  function _temp22(o_0) {
+    return {
+      ...o_0,
+      value: String(o_0.value)
+    };
+  }
 
   // js/platform.ts
   function haptic(kind = "medium") {
     void nativeCall("haptic", {
       kind
     });
+  }
+  async function share(content) {
+    return await nativeCall("share", content) === true;
   }
   function prefetchImage(url) {
     return nativeCall("prefetchImage", {

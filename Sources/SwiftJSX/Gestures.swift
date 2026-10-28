@@ -251,6 +251,7 @@ struct GestureModifiers: ViewModifier {
 /// exposed: "combine" | "ignore" | "contain").
 struct AccessibilityModifier: ViewModifier {
     let node: Node
+    @Environment(\.jsxRuntime) private var runtime
 
     func body(content: Content) -> some View {
         if node.features.contains(.accessibility) {
@@ -267,8 +268,42 @@ struct AccessibilityModifier: ViewModifier {
                 .accessibilityHidden(node.bool("accessibilityHidden"), isEnabled: node.has("accessibilityHidden"))
                 .accessibilityAddTraits(traits(node.prop("accessibilityTraits")))
                 .accessibilitySortPriority(node.double("accessibilitySortPriority") ?? 0)
+                .modifier(Actions(node: node, runtime: runtime))
         } else {
             content
+        }
+    }
+
+    /// `accessibilityActions={["Archive", "Delete"]}` + `onAccessibilityAction(name)`:
+    /// VoiceOver's actions rotor. `onAccessibilityIncrement` / `Decrement`: an
+    /// adjustable element (swipe up / down), for sliders, steppers, charts.
+    private struct Actions: ViewModifier {
+        let node: Node
+        let runtime: JSXRuntime?
+        func body(content: Content) -> some View {
+            let names = node.prop("accessibilityActions") as? [String] ?? []
+            let adjustable = node.has("onAccessibilityIncrement") || node.has("onAccessibilityDecrement")
+            content
+                .accessibilityActions {
+                    ForEach(names, id: \.self) { name in
+                        Button(name) { runtime?.dispatch(node.id, "onAccessibilityAction", name) }
+                    }
+                }
+                .modifier(Adjustable(enabled: adjustable) { direction in
+                    switch direction {
+                    case .increment: runtime?.dispatch(node.id, "onAccessibilityIncrement")
+                    case .decrement: runtime?.dispatch(node.id, "onAccessibilityDecrement")
+                    @unknown default: break
+                    }
+                })
+        }
+
+        private struct Adjustable: ViewModifier {
+            let enabled: Bool
+            let action: (AccessibilityAdjustmentDirection) -> Void
+            func body(content: Content) -> some View {
+                if enabled { content.accessibilityAdjustableAction(action) } else { content }
+            }
         }
     }
 

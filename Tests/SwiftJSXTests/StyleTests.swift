@@ -66,6 +66,17 @@ import Testing
 }
 
 @MainActor
+@Suite struct PickerTests {
+    @Test func numberValuesComeBackAsNumbers() async throws {
+        let runtime = try fixture("PickerValues")
+        let picker = try #require(runtime.find("Picker"))
+        #expect(picker.string("value") == "1")
+        runtime.dispatch(picker.id, "onChange", "2", seq: 1)
+        #expect(await eventually { runtime.texts() == ["size number 2"] })
+    }
+}
+
+@MainActor
 @Suite struct ChartTests {
     @Test func markPropsUpdate() throws {
         let runtime = try fixture("ChartUpdate")

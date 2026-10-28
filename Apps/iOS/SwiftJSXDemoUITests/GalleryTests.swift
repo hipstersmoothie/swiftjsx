@@ -689,6 +689,24 @@ final class GalleryTests: XCTestCase {
         XCTAssertEqual(app.textFields["code-0"].value as? String, "1")
     }
 
+    func testMoreControls() {
+        open("Controls & layout")
+        let servings = element("servings")
+        for _ in 0..<5 where !servings.exists || !servings.isHittable { app.swipeUp() }
+        XCTAssert(servings.waitForExistence(timeout: 5))
+        // Wheel picker with number values.
+        app.pickerWheels.firstMatch.adjust(toPickerWheelValue: "4 servings")
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'servings is a number: 4'"), evaluatedWith: servings)], timeout: 3) == .completed,
+                  servings.label)
+        snapshot("more-controls")
+        // ShareLink opens the share sheet.
+        element("share-link").tap()
+        let close = app.buttons["Close"]
+        XCTAssert(close.waitForExistence(timeout: 5) || app.otherElements["ActivityListView"].waitForExistence(timeout: 1), "no share sheet")
+        snapshot("share-sheet")
+        if close.exists { close.tap() }
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

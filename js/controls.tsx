@@ -1,8 +1,8 @@
 // Components built from the host components: date pickers that take Dates,
 // and iOS-style navigation rows.
 
-import type { ReactNode } from "react";
-import { Button, HStack, VStack, Image, Text, Spacer, type Modifiers, type ColorValue } from "./components";
+import type { ComponentProps, ReactNode } from "react";
+import { Button, HStack, VStack, Image, Text, Spacer, PickerHost, type Modifiers, type ColorValue } from "./components";
 
 const DatePickerHost = "DatePicker" as unknown as (props: any) => ReactNode;
 
@@ -64,5 +64,34 @@ export function NavigationRow({ title, subtitle, systemImage, iconColor = "gray"
         <Image systemName="chevron.right" font="footnote" fontWeight="semibold" foregroundStyle="tertiary" />
       </HStack>
     </Button>
+  );
+}
+
+type PickerOption<T> = { value: T; label: string; systemImage?: string };
+
+/**
+ * A picker of `options`; values can be strings or numbers (onChange gets
+ * the option's own value back).
+ */
+export function Picker<T extends string | number>({
+  value,
+  onChange,
+  options,
+  ...props
+}: Omit<ComponentProps<typeof PickerHost>, "value" | "onChange" | "options"> & {
+  value: T;
+  onChange: (value: T) => void;
+  options: PickerOption<T>[];
+}) {
+  return (
+    <PickerHost
+      {...props}
+      value={String(value)}
+      onChange={(text) => {
+        const option = options.find((o) => String(o.value) === text);
+        if (option) onChange(option.value);
+      }}
+      options={options.map((o) => ({ ...o, value: String(o.value) }))}
+    />
   );
 }

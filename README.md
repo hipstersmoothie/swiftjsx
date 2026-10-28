@@ -270,6 +270,36 @@ function Battery() {
 
 Adding a component = one `case` in `NodeView.swift` + one line in `components.ts`.
 
+## Gotchas
+
+Things that behave differently from React on the web, or from what you'd guess:
+
+- **React Compiler reads a closure's dependencies eagerly.** `onPress={() => a!.b}` crashes
+  while `a` is null, before anyone taps: write `a?.b`.
+- **Effects re-run on Fast Refresh** (their cleanups run first), like React Native. Keep
+  module-level state in `hot.data`.
+- **zustand v5:** a selector that returns a new array or object every time loops; select
+  the raw state or use `useShallow`.
+- **The React Compiler skips** a component that calls `useStore.getState()` while
+  rendering, or whose worklet captures a function that reads a ref; it says so in the
+  build log and the app's console.
+- **Buttons in a List row:** several default-style buttons in one row all fire on a tap
+  (SwiftUI); give the inner ones a `buttonStyle`.
+- **`role="destructive"` swipe actions** remove the row right away (SwiftUI) before any
+  confirmation: use `tint="red"` when you ask first.
+- **Inside a tinted Button,** `secondary` is relative to the tint; use `secondaryLabel`.
+- **`accessibilityIdentifier` on a container** is copied to its children unless it has
+  `accessibilityElement="contain"` (UI tests).
+- **A ref changes a view's identity** (it adds `.id`): add refs from the start rather than
+  later. The same goes for the props that attach gestures, transforms or accessibility.
+- **`Text` with an `animation`** rolls its digits (`contentTransition="numericText"`) unless
+  you set `contentTransition="identity"`.
+- **`Intl` works** (currency, dates, plural rules, `getWeekInfo`). JavaScriptCore has no JIT
+  on iOS, so keep heavy work, like date-fns `format()` per row, out of hot loops.
+- **Worklets:** `withTiming`'s `delay` stands in for `withDelay`.
+- **Native backend:** `onMain` calls run in the order they're made; `delegate` properties
+  are weak (`keepAlive`).
+
 ## Known gaps
 
 See [TODO.md](TODO.md).

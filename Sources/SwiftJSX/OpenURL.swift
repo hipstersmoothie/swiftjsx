@@ -80,3 +80,24 @@ private func topViewController() -> UIViewController? {
     return top
 }
 #endif
+
+/// `share({ text, url })`: the system share sheet. `done(true)` when the
+/// user shared (or copied, saved…), false when they cancelled.
+@MainActor
+func shareItems(text: String?, url: URL?, done: @escaping (Bool) -> Void) {
+    #if canImport(UIKit)
+    let items: [Any] = [text as Any?, url as Any?].compactMap { $0 }
+    guard !items.isEmpty, let presenter = topViewController() else { return done(false) }
+    let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
+    sheet.completionWithItemsHandler = { _, completed, _, _ in done(completed) }
+    // iPad: a popover from the middle of the screen.
+    if let popover = sheet.popoverPresentationController {
+        popover.sourceView = presenter.view
+        popover.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 0, height: 0)
+        popover.permittedArrowDirections = []
+    }
+    presenter.present(sheet, animated: true)
+    #else
+    done(false)
+    #endif
+}

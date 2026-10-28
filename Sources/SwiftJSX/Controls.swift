@@ -456,3 +456,29 @@ extension UIView {
     }
 }
 #endif
+
+/// `<ShareLink url | text, subject, message>`: a button that opens the share
+/// sheet; its children are the label (default: "Share" with the icon).
+struct ShareLinkHost: View {
+    let node: Node
+
+    var body: some View {
+        let subject = node.string("subject").map { Text($0) }
+        let message = node.string("message").map { Text($0) }
+        let hasLabel = node.children.contains { !$0.isAttachment }
+        if let url = node.string("url").flatMap(URL.init(string:)) {
+            if hasLabel {
+                ShareLink(item: url, subject: subject, message: message) { Children(node: node) }
+            } else {
+                ShareLink(item: url, subject: subject, message: message)
+            }
+        } else {
+            let text = node.string("text") ?? ""
+            if hasLabel {
+                ShareLink(item: text, subject: subject, message: message) { Children(node: node) }
+            } else {
+                ShareLink(item: text, subject: subject, message: message)
+            }
+        }
+    }
+}

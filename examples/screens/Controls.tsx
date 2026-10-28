@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import {
   Screen, List, Section, SectionHeader, Text, TextField, TextEditor, DatePicker, ColorPicker, Menu, Button, Divider,
-  NavigationRow, Flow, Grid, GridRow, HStack, VStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle, MenuLabel, Spacer, type HostInstance,
+  NavigationRow, Flow, Grid, GridRow, HStack, VStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle, MenuLabel, Spacer, Label, ShareLink, type HostInstance,
   type Color,
 } from "swiftjsx";
 
@@ -27,6 +27,8 @@ export function ControlsDemo() {
   const [expanded, setExpanded] = useState(false);
   const [checked, setChecked] = useState(false);
   const [code, setCode] = useState(["", "", "", ""]);
+  const [servings, setServings] = useState(2);
+  const [archived, setArchived] = useState(0);
   const [codeFocus, setCodeFocus] = useState<number | null>(null);
   const [first, setFirst] = useState("");
   const [second, setSecond] = useState("");
@@ -125,6 +127,28 @@ export function ControlsDemo() {
           {items.map((item) => (
             <NavigationRow key={item} title={item} value="1" onPress={() => setEditing(item)} />
           ))}
+        </Section>
+
+        <Section header="More controls">
+          <Picker label="Servings" pickerStyle="wheel" value={servings} onChange={setServings} options={[1, 2, 3, 4, 6, 8].map((n) => ({ value: n, label: `${n} servings` }))} frame={{ height: 120 }} />
+          <Text font="footnote" foregroundStyle="secondary" accessibilityIdentifier="servings">{`servings is a ${typeof servings}: ${servings}`}</Text>
+          <HStack spacing={10} controlSize="large">
+            <Button title="Large" buttonStyle="borderedProminent" onPress={() => {}} />
+            <Button title="Also large" buttonStyle="bordered" onPress={() => {}} />
+          </HStack>
+          <HStack spacing={16} labelStyle="iconOnly">
+            <Button onPress={() => {}} accessibilityLabel="Favorite"><Label title="Favorite" systemImage="star" /></Button>
+            <Button onPress={() => {}} accessibilityLabel="Reply"><Label title="Reply" systemImage="arrowshape.turn.up.left" /></Button>
+            <Spacer />
+            <ShareLink url="https://github.com/hipstersmoothie/swiftjsx" subject="SwiftJSX" accessibilityIdentifier="share-link" />
+          </HStack>
+          <Text
+            accessibilityActions={["Archive"]}
+            onAccessibilityAction={(name) => name === "Archive" && setArchived((n) => n + 1)}
+            accessibilityIdentifier="actions-row"
+          >
+            {`VoiceOver actions rotor: Archive (${archived})`}
+          </Text>
         </Section>
 
         <Section header="Code entry" footer={`Code: ${code.join("") || "–"}`}>
