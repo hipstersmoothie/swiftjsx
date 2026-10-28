@@ -15,7 +15,8 @@ struct NativeTests {
     func makeRuntime() async throws -> JSXRuntime {
         let runtime = JSXRuntime(threading: .background, native: NativeOptions(addonURL: macAddon))
         runtime.load(app: try fixtureSource("Native"))
-        #expect(await eventually { runtime.texts().contains("available true") })
+        // NativeScript's start-up (metadata, a sibling context) slows under parallel tests.
+        #expect(await eventually(timeout: .seconds(10)) { runtime.texts().contains("available true") })
         return runtime
     }
 

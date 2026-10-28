@@ -182,7 +182,11 @@ public final class JSXRuntime {
             speaker.control(name)
             engine.resolve(callback: callback, value: NSNull())
         case "speechVoices":
-            engine.resolve(callback: callback, value: Speaker.voices())
+            // Listing voices can take seconds the first time: not on main.
+            Task.detached { [engine] in
+                let voices = UncheckedSendable(Speaker.voices())
+                await MainActor.run { engine?.resolve(callback: callback, value: voices.value) }
+            }
         case "haptic":
             playHaptic(args["kind"] as? String)
             engine.resolve(callback: callback, value: NSNull())
