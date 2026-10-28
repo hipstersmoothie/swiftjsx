@@ -67,11 +67,11 @@ struct ScreenHost: View {
     }
 }
 
-/// A named ToolbarContent: inline in `.toolbar { }`, Swift 6.3 (Xcode 26)
-/// couldn't pick between its View and ToolbarContent overloads.
+/// The screen's `<ToolbarItem>`s, each at its placement.
 private struct ScreenToolbar: ToolbarContent {
     let items: [Node]
 
+    #if os(iOS)
     var body: some ToolbarContent {
         ForEach(items) { item in
             ToolbarItem(placement: toolbarPlacement(item.string("placement"))) {
@@ -79,6 +79,29 @@ private struct ScreenToolbar: ToolbarContent {
             }
         }
     }
+    #else
+    // Xcode 26's macOS SDK has no ForEach of toolbar content before macOS 26:
+    // one group per placement, each a plain ForEach of views.
+    var body: some ToolbarContent {
+        group("primaryAction")
+        group("cancellationAction")
+        group("confirmationAction")
+        group("principal")
+        group("navigation")
+        group(nil)
+    }
+
+    private func group(_ placement: String?) -> some ToolbarContent {
+        let known = ["primaryAction", "cancellationAction", "confirmationAction", "principal", "navigation"]
+        let matching = items.filter { item in
+            let name = item.string("placement")
+            return placement.map { name == $0 } ?? !known.contains(name ?? "")
+        }
+        return ToolbarItemGroup(placement: toolbarPlacement(placement)) {
+            ForEach(matching) { item in HStack { Children(node: item) } }
+        }
+    }
+    #endif
 }
 
 /// `toolbarBackground` (a fill, or "hidden") and `toolbarColorScheme` on a
