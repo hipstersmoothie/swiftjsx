@@ -63,11 +63,19 @@ struct ScreenHost: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(titleDisplayMode(node.string("titleDisplayMode")))
         #endif
-        .toolbar {
-            ForEach(items) { item in
-                ToolbarItem(placement: toolbarPlacement(item.string("placement"))) {
-                    HStack { Children(node: item) }
-                }
+        .toolbar { ScreenToolbar(items: items) }
+    }
+}
+
+/// A named ToolbarContent: inline in `.toolbar { }`, Swift 6.3 (Xcode 26)
+/// couldn't pick between its View and ToolbarContent overloads.
+private struct ScreenToolbar: ToolbarContent {
+    let items: [Node]
+
+    var body: some ToolbarContent {
+        ForEach(items) { item in
+            ToolbarItem(placement: toolbarPlacement(item.string("placement"))) {
+                HStack { Children(node: item) }
             }
         }
     }
