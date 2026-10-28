@@ -1,93 +1,113 @@
 # TODO
 
-Known gaps and ideas, roughly by area. Nothing here is scheduled. Many items come from
-building the toy apps in `examples/apps/` (Hacker News, Todos, Weather, Pokédex, Chat,
-Flashcards): what each one wanted and couldn't do.
+Known gaps and ideas, roughly by area. Nothing here is scheduled. Most items come from
+building the twelve toy apps in `examples/apps/` (Hacker News, Todos, Weather, Pokédex,
+Chat, Flashcards, Settings, Calculator, Kanban, Fitness, Music, Notes): what each one
+wanted and couldn't do. Checked items are done and kept for the record.
 
-## Layout and drawing
+## Drawing and charts
 
 - [x] Shapes (`Circle`, `Capsule`, `RoundedRectangle`, `Ellipse`, `Rectangle`) with fill,
       stroke, dash and trim; `cornerRadius="capsule"` and per-corner radii.
 - [x] Radial and angular gradients, gradient stops.
-- [ ] Proportional layout: `GeometryReader` / `containerRelativeFrame`, `layoutPriority`,
-      a non-lazy `Grid`, and a wrapping (flow) layout for chips. Bars and gauges are
-      fixed-width with point math.
-- [ ] `overlay` prop (badges), `zIndex`, `contentShape` (full-row taps on plain buttons).
-- [ ] Custom `Path` shapes.
+- [ ] Charts: a `<Chart>` on Swift Charts (BarMark, LineMark, AreaMark, RuleMark,
+      PointMark, RectangleMark; stacking, axes, scales, `chartXSelection`), which would
+      also bring VoiceOver audio graphs. The Fitness app fakes lines with rotated capsules.
+- [ ] Custom shapes: `<Path d="…">` / polylines (lines, areas), `lineCap` / `lineJoin`,
+      angular gradient start/end angles, a line/rule shape.
+- [ ] `Canvas`, maps (MapKit), video (AVKit), web views.
+
+## Layout
+
+- [x] `<Overlay>` / `<Background>` / `<SafeAreaInset>` attachments, `zIndex`,
+      `layoutPriority`, `contentShape`, `aspectRatio`, `fixedSize`, `allowsHitTesting`.
+- [x] `onLayout`, `relativeWidth` / `relativeHeight`, `Grid` / `GridRow`, `Flow`.
+- [ ] Sizes relative to the parent (not the nearest scroll view or screen);
+      `onLayout` arrives a frame late on the JS thread, so first frames use guesses.
 - [ ] On a material background, `cornerRadius` rounds the background but doesn't clip
       the content: a rounded clip over a material turns off vibrancy, and hierarchical
       text and dividers on it vanish.
+- [ ] A screen-level layer (draw above scroll views that clip, e.g. a dragged card) and
+      coordinate spaces for `measure()` and drag events.
 
 ## Text, color, symbols
 
-- [x] Fonts: numeric size and weight, width, custom fonts scaled with Dynamic Type,
-      `minimumScaleFactor`, `textCase`, kerning, `lineSpacing`, `underline`.
-- [x] Styled runs (nested `<Text>`) and inline `<Image systemName>`.
-- [x] Colors: opacity (`"blue/20"`), semantic system colors, `{ light, dark }` pairs,
-      hierarchical `secondary`…`quinary`; `colorScheme`; toolbar background and color
-      scheme on `Screen`.
+- [x] Fonts (sizes, weights, widths, custom fonts with Dynamic Type), `Text` styling,
+      styled runs, inline symbols, `markdown`, `selectable`, `contentTransition`.
+- [x] Colors: opacity, semantic colors, `{ light, dark }`, hierarchical levels;
+      `colorScheme`, `preferredColorScheme`; any element's `tint`.
+- [x] SF Symbols: rendering modes, palette colors, variants, `variableValue`,
+      `symbolEffect`, replace transitions.
 - [ ] Custom font files: fonts must be bundled and listed in the app's Info.plist;
       there's no runtime registration.
-- [ ] SF Symbols: rendering modes (multicolor, hierarchical, palette), `symbolEffect`,
-      symbol content transitions.
+- [ ] Runs can't have a background (search highlights) or their own tap handler.
 
 ## Components
 
-- [ ] `Menu` (toolbar menus, submenus in context menus), `DatePicker`, `ColorPicker`.
-- [ ] `TextField`: styles (plain vs rounded border), multi-line growth / `TextEditor`,
-      autofocus, `submitLabel`, keyboard type, autocapitalization, keep focus on submit,
-      clear button.
-- [ ] `Picker`: infer the value type from `options`; options with images or colors.
+- [x] `Menu`, `DatePicker`, `ColorPicker`, `TextEditor`, `NavigationRow`, `EditButton`.
+- [x] `TextField` styles, vertical growth, autofocus, keyboard and content types,
+      autocapitalization, `submitLabel`, `blurOnSubmit`.
+- [ ] Text input: no cursor/selection API, no key events (backspace on an empty field),
+      no focus binding shared across fields (moving focus means unmount + `focus()`).
+- [ ] Buttons: no pressed state (`onPressIn` / `onPressOut`, a pressed scale or
+      highlight) or custom button styles; no `controlSize`. The Calculator builds keys
+      from drag gestures.
+- [ ] `Picker`: `pickerStyle="navigationLink"` and `"wheel"`; infer the value type from
+      `options`. `Menu`: checkmark items (Toggle children), colored icons.
+- [ ] `LabeledContent` ("Title … value" rows), `Label` styles.
 - [ ] `<Image src>`: placeholder and error content (today a gray box / "photo" symbol).
-- [ ] `Section` headers and footers as views, not just strings.
-- [ ] `Button`: `controlSize`; `Label`: `labelStyle`, separate icon color.
 - [ ] `redacted(.placeholder)` for skeleton loading.
-- [ ] Platform APIs: clipboard (`navigator.clipboard`), haptics (`sensoryFeedback`),
-      accessibility actions (custom VoiceOver actions).
-- [ ] `Canvas`, maps (MapKit), video (AVKit), web views.
-- [ ] Keyboard toolbar and keyboard events.
+- [ ] Accessibility actions (custom VoiceOver actions, adjustable increments for charts
+      and cards).
+- [ ] Share sheet (`share({ text, url })`), file export.
 
 ## Lists and scrolling
 
-- [ ] `List` styling: `listStyle` (plain…), row background / insets / separators, row
-      `badge`, NavigationLink-style rows (chevron, full-width tap), `onDelete` / `onMove`
-      / edit mode.
-- [ ] Swipe actions on the UIKit-backed `VirtualList listStyle="list"`.
-- [ ] `VirtualList` grid mode: React still renders every child of a `LazyVGrid`, so big
-      grids need a virtualized grid (the Pokédex enables per-card queries on `onAppear`).
-- [ ] ScrollView: `showsIndicators`, paging / scroll target behavior, content margins,
-      `defaultScrollAnchor="bottom"` (chat), `onScroll` (is the user at the bottom?).
+- [x] `listStyle`, row background / insets / separator / badge, `onDelete` / `onMove`,
+      section header/footer views; ScrollView indicators, paging, anchor, margins,
+      `onScroll`; `VirtualList` grids (`columns`).
+- [ ] `List` selection (iPad sidebars).
+- [ ] Swipe actions and context menus outside `List` (a `ScrollView` of rows), and on the
+      UIKit-backed `VirtualList listStyle="list"`.
 - [ ] Over the UIKit list, a large navigation title doesn't collapse into the inline
       title (SwiftUI only tracks its own scroll views); use `titleDisplayMode="inline"`.
       Off iOS, `listStyle="list"` is still SwiftUI's `List`.
 - [ ] Without `itemHeight`, `VirtualList.scrollTo(index)` lands on an estimate
       (`estimatedItemHeight`) when rows vary in height.
+- [ ] `scrollTo` by offset (`{ x, y }`), and scroll positions readable from worklets.
 
 ## Navigation and presentation
 
-- [ ] Item-based presentations (`sheet(item:)`, `alert(item:)`): today you keep the item
-      and the flag in separate state so content doesn't change while dismissing.
-- [ ] Sheet content that resets between openings (today: bump a `key`).
-- [ ] `Navigator.replace`, a `Screen` subtitle, toolbar `bottomBar` placement.
+- [x] Item-based presentations that start fresh each time; sheet dismiss control,
+      drag indicator, corner radius, background; toolbar placements; `searchPlacement`.
+- [ ] Pushed screens are element snapshots: `nav.push(<X value={v} />)` keeps the props
+      it was pushed with. Read changing data from state/stores inside the screen.
+- [ ] A navigation ref usable outside a `<Navigator>` (react-navigation's
+      `createNavigationContainerRef`), `Navigator.replace`, a `Screen` subtitle.
+- [ ] `NavigationSplitView` `columnVisibility`.
+- [ ] Sheets: an "attempted to dismiss" callback (to ask before discarding changes).
 - [ ] Search: `isSearching`, dismiss from code, submit / cancel events, scopes,
-      suggestions, placement.
-- [ ] Zoom navigation transitions / matched geometry (grid → detail).
+      suggestions.
+- [ ] iOS 26 `tabViewBottomAccessory` (mini players); zoom transitions / matched geometry.
 
 ## Gestures and animation
 
-- [x] Worklets: gesture handlers and animated styles on the main thread
-      (`useSharedValue`, `useAnimatedStyle`, `withSpring`, `withTiming`, `runOnJS`).
-- [x] `withAnimation` from JS, and SwiftUI animation specs for the `animation` prop.
-- [ ] Worklet animations are SwiftUI animations: a worklet can't read a value
-      mid-animation; styles map end states that SwiftUI interpolates (a non-linear
-      mapping can look wrong mid-flight); no completion callbacks, `withDecay`,
-      `withRepeat` or `withSequence`.
-- [ ] No `useDerivedValue` / `useAnimatedReaction`; only gesture handlers can be
-      worklets; no screen size inside worklets.
-- [ ] Spring animations started from a gesture don't take the finger's velocity.
-- [ ] Transforms: `rotation3DEffect` (card flips), x/y scale, rotation/scale anchors.
-- [ ] Value-keyed animations (animate one property when one value changes) and an
-      "animate on appear" option.
+- [x] Worklets, `withAnimation`, animation specs; `animation` covers the subtree.
+- [x] Drag events with view-local positions and size.
+- [ ] Gesture composition: simultaneous / high-priority options; a cancelled-drag event;
+      long-press-then-drag activation; dragging inside a ScrollView without taking over
+      scrolling (axis); tap locations.
+- [ ] Worklets: measuring and reading layout inside worklets, haptics from worklets,
+      animatable shape props (`trim`, `fill`), scroll offsets as shared values.
+      Capturing `obj.member` sends all of `obj`; worklets that capture per-render
+      closures are re-sent each render (needs stable `runOnJS` targets).
+- [ ] Worklet animations are SwiftUI animations: no reading values mid-animation, no
+      completion callbacks, `withDecay`, `withRepeat` or `withSequence`; no
+      `useDerivedValue` / `useAnimatedReaction`; springs don't take the finger's velocity.
+- [ ] Transforms: `rotation3DEffect` (card flips), x/y scale, anchors.
+- [ ] Value-keyed animations and "animate on appear" (a state change in a mount effect can
+      land in the same frame as the mount and not animate).
+- [ ] Drag and drop between containers (drop targets) outside `List`.
 
 ## Rendering
 
@@ -101,45 +121,67 @@ Flashcards): what each one wanted and couldn't do.
       headers black.
 - [ ] Modifier props on a `Section` silently stop it being a section (it gets wrapped).
 
-## Web APIs
+## Web APIs and platform
 
+- [x] `fetch`, `WebSocket`, `URL`, encoding, crypto, storage, events, clipboard,
+      `haptic()`, `openURL` / `canOpenURL`, `useEnvironment()`.
 - [ ] Streams: no `ReadableStream`; `fetch` bodies are buffered (no streaming responses
       or upload progress). No `FormData` bodies, no `XMLHttpRequest`.
-- [ ] `TextDecoder` is UTF-8 only and has no streaming mode.
-- [ ] WebSocket: no extensions or ping control.
-- [ ] No `document`: libraries that need a DOM won't work (by design).
+- [ ] `localStorage` is one UserDefaults dictionary rewritten on every `setItem`, all in
+      memory, with no quota error. Wants per-key files or an async storage API.
+- [ ] `URL` parsing goes through Foundation, which is more lenient than WHATWG
+      (percent-encodes spaces instead of failing).
+- [ ] App lifecycle: no `pagehide` / background-task time for last-chance saves; no
+      `document.visibilityState`.
+- [ ] Fast Refresh re-runs whole modules: module-level state resets and native objects
+      created there leak. Wants an `import.meta.hot.dispose`-style hook.
+- [ ] `TextDecoder` is UTF-8 only and has no streaming mode; WebSocket has no
+      extensions or ping control; no `document` (by design).
+
+## Native backend (NativeScript)
+
+- [ ] Types declare SDK classes as globals, so `AVPlayer.new()` typechecks without
+      `native.` and fails at runtime.
+- [ ] No helper to hop from a native callback (on main) back to the JS thread
+      (`onJS(fn)`); every callback hand-rolls `setTimeout`.
+- [ ] No KVO observing (AVPlayer status, outputVolume…); apps poll.
+- [ ] Generated types: inconsistent enum member names, nullable values typed non-null,
+      no inline helpers (`CGRectMake`), no instance type aliases, clumsy NSError
+      out-parameters. Which frameworks need main isn't documented beyond UIKit/AppKit.
+- [ ] Native UIViews can't be embedded (MPVolumeView, AVRoutePickerView); `<Image>`'s
+      cache isn't shared with native code.
+- [ ] Apps can't declare capabilities or Info.plist keys (background audio).
+- [ ] NativeScript's Node-API runtime is an alpha; its metadata generator (LLVM 17)
+      misses some declarations in current SDKs. Long synchronous JS still delays
+      main-thread native callbacks. The six patches in `nativescript/patches/` haven't
+      been sent upstream.
 
 ## Build and tooling
 
-- [ ] Surface React Compiler bail-outs in development (console or red box), not just
-      in the build log; they're easy to miss.
+- [x] React Compiler bail-outs are console warnings in development builds.
 - [ ] The React Compiler runs on Babel 7: `babel-plugin-react-compiler` 1.0 is built
-      against Babel 7's AST, and under Babel 8 it rejects some valid code (e.g.
-      destructuring defaults). It also hit an internal error on one function in the
-      Weather app (left unmemoized).
-- [ ] React DevTools support.
-- [ ] CI: `swift test` on macOS, plus the XCUITest suite in `Apps/iOS` on a simulator.
+      against Babel 7's AST, and under Babel 8 it rejects some valid code. It also hit an
+      internal error on one function in the Weather app (left unmemoized).
+- [ ] React DevTools support. CI for `swift test` and the XCUITest suite.
 - [ ] `xcodebuild test` hangs after the UI tests finish (an Xcode quirk while writing
-      the results); it has to be stopped by hand once it prints "Executed N tests".
+      the results); it has to be stopped once it prints "Executed N tests".
 - [ ] Hot reload only works in the simulator (it reads `build/app.js` from the host).
       Serve the bundle over the network for devices.
 - [ ] Packaging: an npm package and a project template, so apps can live outside this repo.
 
-## Native backend (NativeScript)
-
-- [ ] NativeScript's Node-API runtime is an alpha.
-- [ ] Its metadata generator (LLVM 17) misses some declarations in current SDKs, e.g.
-      `NSProcessInfo.lowPowerModeEnabled` on macOS.
-- [ ] Long synchronous JS still delays main-thread native callbacks; keep work sliced.
-      The JS thread must never block on main.
-- [ ] The six patches in `nativescript/patches/` haven't been sent upstream.
-
 ## Docs
 
+- [ ] React Compiler: a closure's dependencies are read eagerly, so `a!.b` inside a
+      callback crashes when `a` is null (the Kanban app hit this). Use `a?.b`.
 - [ ] A `role="destructive"` swipe action removes the row immediately (SwiftUI), before
       any confirmation: use `tint="red"` when you confirm first.
-- [ ] zustand v5: selectors that return new arrays/objects loop; select raw state (or
-      use `useShallow`).
+- [ ] Several default-style Buttons in one List row all fire on a tap (SwiftUI); give
+      inner buttons a `buttonStyle`.
+- [ ] Inside a tinted Button, `secondary` is relative to the tint; use `secondaryLabel`.
+- [ ] `accessibilityIdentifier` on a container is copied to its children unless it has
+      `accessibilityElement="contain"`.
+- [ ] Effects' cleanups run on Fast Refresh; zustand v5 selectors that return new
+      arrays loop (select raw state, or `useShallow`).
 
 ## Project
 
