@@ -27,7 +27,10 @@ for the record.
 - [x] `<Path d>` (SVG path data) and `<Polyline points>` in a `viewBox`; `lineCap` /
       `lineJoin`.
 - [ ] Angular gradient start/end angles; animating between paths (morphing).
-- [ ] `Canvas`, maps (MapKit), video (AVKit), web views.
+- [x] `<Video>` (AVKit; controls or just the picture, loop, time updates), `<WebView>`
+      (URL or HTML, messages from the page, injected JS), `<MapView>` (region, markers,
+      annotations with any views, taps, region changes).
+- [ ] `Canvas` (immediate-mode drawing); map overlays (polylines), user location.
 
 ## Layout
 

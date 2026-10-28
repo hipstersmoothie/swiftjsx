@@ -707,6 +707,25 @@ final class GalleryTests: XCTestCase {
         if close.exists { close.tap() }
     }
 
+    func testMedia() {
+        open("Media")
+        // The video loads (Apple's sample stream).
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label BEGINSWITH 'ready'"), evaluatedWith: element("video-status"))], timeout: 20) == .completed,
+                  element("video-status").label)
+        // The web page loads and its button posts a message to React.
+        let message = element("web-message")
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label BEGINSWITH 'loaded'"), evaluatedWith: message)], timeout: 10) == .completed)
+        app.webViews.buttons["Send a message"].tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'clicked'"), evaluatedWith: message)], timeout: 5) == .completed, message.label)
+        snapshot("media")
+        // A tap on the map moves it, and onRegionChange reports where.
+        let map = element("map")
+        for _ in 0..<3 where !map.isHittable { app.swipeUp() }
+        map.tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label BEGINSWITH 'Centered on'"), evaluatedWith: element("map-center"))], timeout: 10) == .completed)
+        snapshot("media-map")
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

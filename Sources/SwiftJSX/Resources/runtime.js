@@ -34354,6 +34354,9 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     LazyVStack: () => LazyVStack,
     LineMark: () => LineMark,
     List: () => List,
+    MapAnnotation: () => MapAnnotation,
+    MapView: () => MapView,
+    Marker: () => Marker,
     Menu: () => Menu,
     MenuLabel: () => MenuLabel,
     NavigationPage: () => NavigationPage,
@@ -34396,7 +34399,9 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     Toggle: () => Toggle,
     ToolbarItem: () => ToolbarItem,
     VStack: () => VStack,
+    Video: () => Video,
     VirtualList: () => VirtualList,
+    WebView: () => WebView,
     ZStack: () => ZStack,
     canOpenURL: () => canOpenURL,
     createNavigationRef: () => createNavigationRef,
@@ -35122,6 +35127,11 @@ ${e.stack}` : String(e);
   var Slider = host("Slider");
   var Stepper = host("Stepper");
   var PickerHost = host("Picker");
+  var Video = host("Video");
+  var WebView = host("WebView");
+  var MapView = host("Map");
+  var Marker = host("Marker");
+  var MapAnnotation = host("MapAnnotation");
   var ShareLink = host("ShareLink");
   var LazyVStack = host("LazyVStack");
   var LazyHStack = host("LazyHStack");

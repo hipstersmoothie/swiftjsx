@@ -672,6 +672,62 @@ export const Stepper = host<Modifiers & WithChildren & { value: number; onChange
 export const PickerHost = host<Modifiers & { value: string; onChange: (value: string) => void; options: { value: string; label: string; systemImage?: string }[]; label?: string; pickerStyle?: PickerStyle; tint?: ColorValue }>("Picker");
 export type PickerStyle = "menu" | "segmented" | "inline" | "palette" | "wheel" | "navigationLink";
 
+// MARK: Media
+
+/** A video (AVKit). `controls={false}` shows just the picture (a looping background). */
+export const Video = host<
+  Modifiers & {
+    src: string;
+    autoPlay?: boolean;
+    /** Controlled: true pauses, false plays. */
+    paused?: boolean;
+    muted?: boolean;
+    loop?: boolean;
+    controls?: boolean;
+    contentMode?: "fit" | "fill";
+    onReady?: (info: { duration: number }) => void;
+    /** About twice a second while playing. */
+    onTimeUpdate?: (time: { currentTime: number; duration: number }) => void;
+    onEnd?: () => void;
+  }
+>("Video");
+
+/** A web page (WKWebView): a URL, or HTML. Give it a frame. */
+export const WebView = host<
+  Modifiers & {
+    url?: string;
+    html?: string;
+    /** Resolves relative links in `html`. */
+    baseURL?: string;
+    /** Run in each page when it finishes loading. */
+    injectedJavaScript?: string;
+    scrollEnabled?: boolean;
+    onLoad?: (page: { url: string; title: string }) => void;
+    onError?: (message: string) => void;
+    /** From the page: `window.webkit.messageHandlers.swiftjsx.postMessage(data)`. */
+    onMessage?: (data: unknown) => void;
+  }
+>("WebView");
+
+export type MapRegion = { latitude: number; longitude: number; latitudeDelta?: number; longitudeDelta?: number };
+
+/** A map (MapKit) with `<Marker>` and `<MapAnnotation>` children. (Not `Map`: that would shadow JS's Map.) */
+export const MapView = host<
+  Modifiers & WithChildren & {
+    /** Where the camera is; changing it moves the map. */
+    region?: MapRegion;
+    /** When the user stops panning or zooming. */
+    onRegionChange?: (region: Required<MapRegion>) => void;
+    /** A tap on the map, at this coordinate. */
+    onPress?: (coordinate: { latitude: number; longitude: number }) => void;
+    mapStyle?: "standard" | "imagery" | "hybrid";
+  }
+>("Map");
+/** A balloon marker on a `<MapView>`. */
+export const Marker = host<{ latitude: number; longitude: number; title?: string; systemImage?: string; tint?: ColorValue }>("Marker");
+/** Any views on a `<MapView>`, centered on the coordinate. */
+export const MapAnnotation = host<WithChildren & { latitude: number; longitude: number; title?: string }>("MapAnnotation");
+
 /** A button that opens the share sheet for `url` or `text`; children are its label (default: "Share"). */
 export const ShareLink = host<Modifiers & WithChildren & { url?: string; text?: string; subject?: string; message?: string }>("ShareLink");
 

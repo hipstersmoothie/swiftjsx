@@ -31,6 +31,7 @@ import { StylesDemo } from "./screens/Styles";
 import { ControlsDemo } from "./screens/Controls";
 import { ChartsDemo } from "./screens/Charts";
 import { AnimationDemo } from "./screens/Animation";
+import { MediaDemo } from "./screens/Media";
 
 type Demo = { title: string; subtitle: string; icon: string; color: any; screen: () => ReactElement };
 
@@ -46,6 +47,7 @@ const demos: Demo[] = [
   { title: "Shapes, colors & fonts", subtitle: "Circle, Capsule, gradients, system colors, styled text", icon: "paintpalette", color: "pink", screen: () => <StylesDemo /> },
   { title: "Controls & layout", subtitle: "Menus, pickers, text input, rows, Flow, Grid, overlays", icon: "slider.horizontal.3", color: "teal", screen: () => <ControlsDemo /> },
   { title: "Animation", subtitle: "AbsoluteStack, transitions, exit animations, completions", icon: "wand.and.stars", color: "purple", screen: () => <AnimationDemo /> },
+  { title: "Media", subtitle: "Video, web views, maps", icon: "play.rectangle.on.rectangle", color: "red", screen: () => <MediaDemo /> },
   { title: "Charts", subtitle: "Swift Charts: bars, lines, areas, rules, scrubbing", icon: "chart.bar.xaxis", color: "pink", screen: () => <ChartsDemo /> },
   { title: "Images", subtitle: "Remote images: cached, decoded off main", icon: "photo.on.rectangle", color: "cyan", screen: () => <ImagesDemo /> },
   { title: "Native", subtitle: "Objective-C APIs from JS, onMain()", icon: "cpu", color: "indigo", screen: () => <NativeDemo /> },
