@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Screen, ScrollView, VStack, HStack, Text, Button, AbsoluteStack, AnimatePresence, withAnimation, haptic } from "swiftjsx";
+import {
+  Screen, ScrollView, VStack, HStack, Text, Button, AbsoluteStack, AnimatePresence, Portal, Sheet, Spacer, withAnimation, haptic,
+} from "swiftjsx";
 
 const COLORS = ["orange", "pink", "indigo", "teal", "green", "red", "blue", "purple", "yellow"] as const;
 const SLOTS = 9; // A 3×3 board.
@@ -30,6 +32,10 @@ export function AnimationDemo() {
   const [flipped, setFlipped] = useState(false);
   const [pops, setPops] = useState(0);
   const [shakes, setShakes] = useState(0);
+  const [sheet, setSheet] = useState(false);
+  const [toasts, setToasts] = useState(false);
+  const [throughTaps, setThroughTaps] = useState(0);
+  const [undone, setUndone] = useState(false);
 
   const shuffle = () =>
     withAnimation(
@@ -87,6 +93,35 @@ export function AnimationDemo() {
           <Text font="footnote" monospacedDigit foregroundStyle="secondary" accessibilityIdentifier="animation-status">
             {`Shuffles finished: ${finished} · tiles exited: ${exited}`}
           </Text>
+
+          <Text font="headline" padding={{ top: 12 }}>Portal</Text>
+          <Button title="Open a sheet" buttonStyle="bordered" onPress={() => setSheet(true)} accessibilityIdentifier="open-portal-sheet" />
+          <Sheet isPresented={sheet} onDismiss={() => setSheet(false)}>
+            <VStack spacing={20} padding={24} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
+              <Text font="title2" fontWeight="bold">A sheet</Text>
+              <Button title="Show toasts" buttonStyle="borderedProminent" onPress={() => withAnimation("snappy", () => setToasts(true))} accessibilityIdentifier="show-toasts" />
+              <Spacer />
+              {/* Under the non-interactive toast: taps reach it. */}
+              <Button title={`Tapped through ${throughTaps}`} buttonStyle="bordered" onPress={() => setThroughTaps((n) => n + 1)} accessibilityIdentifier="tap-through" />
+              <Spacer />
+              <Text accessibilityIdentifier="undo-state">{undone ? "Undone" : "Not undone"}</Text>
+            </VStack>
+          </Sheet>
+          {toasts ? (
+            <>
+              <Portal alignment="center">
+                <Text font="headline" foregroundStyle="white" padding={{ horizontal: 28, vertical: 18 }} background="black/70" cornerRadius={16} transition="scale" accessibilityIdentifier="center-toast">
+                  Saved (drawn over the sheet)
+                </Text>
+              </Portal>
+              <Portal alignment="bottom" interactive>
+                <HStack spacing={12} padding={16} background="regularMaterial" cornerRadius="capsule" transition="move">
+                  <Text>Item deleted</Text>
+                  <Button title="Undo" onPress={() => { setUndone(true); withAnimation("snappy", () => setToasts(false)); }} accessibilityIdentifier="toast-undo" />
+                </HStack>
+              </Portal>
+            </>
+          ) : null}
 
           <Text font="headline" padding={{ top: 12 }}>3D, keyframes</Text>
           <HStack spacing={16}>

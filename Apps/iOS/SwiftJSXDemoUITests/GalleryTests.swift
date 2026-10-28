@@ -535,6 +535,28 @@ final class GalleryTests: XCTestCase {
         XCTAssert(app.segmentedControls.buttons["Done"].waitForExistence(timeout: 3), "no scopes")
     }
 
+    func testPortal() {
+        open("Animation")
+        let openSheet = element("open-portal-sheet")
+        for _ in 0..<4 where !openSheet.isHittable { app.swipeUp() }
+        openSheet.tap()
+        XCTAssert(element("show-toasts").waitForExistence(timeout: 5))
+        element("show-toasts").tap()
+        // Drawn above the presented sheet.
+        XCTAssert(element("center-toast").waitForExistence(timeout: 3), "toast not shown")
+        sleep(1)
+        snapshot("portal-over-sheet")
+        // The non-interactive toast lets taps through to the sheet's button.
+        let through = element("tap-through")
+        through.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'through 1'"), evaluatedWith: through)], timeout: 3) == .completed,
+                  "tap didn't reach the sheet: \(through.label)")
+        // The interactive one takes its own taps.
+        element("toast-undo").tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label == 'Undone'"), evaluatedWith: element("undo-state"))], timeout: 3) == .completed)
+        XCTAssert(element("center-toast").waitForNonExistence(timeout: 3))
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

@@ -34013,6 +34013,7 @@ ${error.stack}` : String(error));
     Picker: () => Picker,
     PointMark: () => PointMark,
     Polyline: () => Polyline,
+    Portal: () => Portal,
     ProgressView: () => ProgressView,
     Rectangle: () => Rectangle,
     RectangleMark: () => RectangleMark,
@@ -34725,6 +34726,7 @@ ${e.stack}` : String(e);
   var VStack = host("VStack");
   var HStack = host("HStack");
   var ZStack = host("ZStack");
+  var Portal = host("Portal");
   var AbsoluteStack = host("AbsoluteStack");
   var ScrollView = host("ScrollView");
   var List = host("List");

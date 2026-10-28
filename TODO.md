@@ -47,10 +47,9 @@ for the record.
 - [ ] On a material background, `cornerRadius` rounds the background but doesn't clip
       the content: a rounded clip over a material turns off vibrancy, and hierarchical
       text and dividers on it vanish.
-- [ ] A screen-level layer (draw above scroll views that clip, e.g. a dragged card) and
-      coordinate spaces for `measure()` and drag events. A root `<Overlay>` sits under the
-      navigation and tab bars and under presented sheets (fly-to-cart, toasts), so this
-      needs a window-level portal.
+- [x] `<Portal alignment interactive>`: a window above everything (sheets, bars) for toasts
+      and flying thumbnails; touches pass through unless `interactive`.
+- [ ] Coordinate spaces for `measure()` and drag events (all window coordinates today).
 
 ## Text, color, symbols
 

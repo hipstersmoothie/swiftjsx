@@ -330,6 +330,13 @@ export const VStack = host<Modifiers & WithChildren & { spacing?: number; alignm
 export const HStack = host<Modifiers & WithChildren & { spacing?: number; alignment?: "top" | "center" | "bottom" | "firstTextBaseline" }>("HStack");
 export const ZStack = host<Modifiers & WithChildren & { alignment?: Alignment }>("ZStack");
 /**
+ * Draws its children in a window above everything (presented sheets, the
+ * navigation and tab bars): toasts, a thumbnail flying to the cart. They're
+ * placed in the screen by `alignment`. Touches pass through to the app unless
+ * `interactive`, in which case the children themselves take them.
+ */
+export const Portal = host<WithChildren & { alignment?: Alignment; interactive?: boolean }>("Portal");
+/**
  * Children placed by their `position` prop (`{ x, y, width, height }` in
  * points or "25%" of the stack), as layout rather than an offset: a
  * `transition` scales a child around its own frame, and a changed position
