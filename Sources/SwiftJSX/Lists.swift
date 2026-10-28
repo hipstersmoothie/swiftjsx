@@ -21,6 +21,8 @@ struct ScrollViewHost: View {
                     Color.clear.frame(width: 1, height: 1).id(ScrollEdge.end)
                 }
             }
+            // Rows in here aren't List rows, even inside one (a carousel in a row).
+            .environment(\.inList, false)
             .modifier(ScrollOptions(node: node))
             .modifier(Position(node: node, horizontal: horizontal))
             .onChange(of: node.scrollRequest) { _, request in scroll(proxy, request) }
@@ -163,6 +165,7 @@ struct SelectableList: View {
                 List { EditableChildren(node: node) }
             }
         }
+        .environment(\.inList, true)
         .modifier(ListStyleModifier(style: node.string("listStyle")))
         .scrollContentBackground(node.string("scrollContentBackground") == "hidden" ? .hidden : .automatic)
         .onChange(of: node.string("selection")) { picked = nil }
@@ -491,3 +494,128 @@ private func scroll(_ proxy: ScrollViewProxy, _ request: ScrollRequest?) {
     }
     if request.animated { withAnimation(.default, go) } else { go() }
 }
+
+#if os(iOS)
+/// `<SwipeActions>` on a row that isn't in a List (a ScrollView or
+/// VirtualList stack of rows): the row slides over its actions. A sideways
+/// drag reveals them (vertical drags still scroll), past half they stay
+/// open, a full swipe (`allowsFullSwipe`) runs the first one, and tapping
+/// the open row closes it. One row is open at a time.
+struct SwipeRow<Content: View>: View {
+    let node: Node
+    @ViewBuilder let content: Content
+    @Environment(\.jsxRuntime) private var runtime
+    @State private var offset: CGFloat = 0
+    @State private var settled: CGFloat = 0
+    @State private var width: CGFloat = 0
+    private let buttonWidth: CGFloat = 76
+
+    var body: some View {
+        let sets = node.children.filter { $0.type == "SwipeActions" }
+        let leadingSet = sets.first { $0.string("edge") == "leading" }
+        let trailingSet = sets.first { $0.string("edge") != "leading" }
+        let leading = buttons(leadingSet), trailing = buttons(trailingSet)
+        ZStack {
+            HStack(spacing: 0) {
+                ForEach(leading) { action($0) }
+                Spacer(minLength: 0)
+                ForEach(trailing) { action($0) }
+            }
+            .opacity(offset == 0 ? 0 : 1)
+            content
+                .offset(x: offset)
+                .overlay {
+                    // While open, a tap on the row closes it (instead of opening it).
+                    if settled != 0 { Color.clear.contentShape(Rectangle()).onTapGesture { close() } }
+                }
+                .gesture(AxisPan(horizontal: true) { state, event in
+                    drag(state, event, leading: CGFloat(leading.count) * buttonWidth, trailing: CGFloat(trailing.count) * buttonWidth,
+                         leadingSet: leadingSet, trailingSet: trailingSet)
+                })
+        }
+        .clipped()
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .onChange(of: SwipeRows.shared.open) { _, open in if open != node.id, settled != 0 { close() } }
+    }
+
+    private func buttons(_ set: Node?) -> [Node] {
+        set?.children.filter { $0.type == "Button" } ?? []
+    }
+
+    private func action(_ button: Node) -> some View {
+        let fill = color(button.prop("tint")) ?? (button.string("role") == "destructive" ? Color.red : Color.gray)
+        return Button {
+            run(button)
+        } label: {
+            Group {
+                if let title = button.string("title") { Text(title) } else { VStack(spacing: 4) { Children(node: button) } }
+            }
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.white)
+            .frame(width: buttonWidth)
+            .frame(maxHeight: .infinity)
+            .background(fill)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(button.string("accessibilityIdentifier") ?? "")
+    }
+
+    private func run(_ button: Node) {
+        if button.has("onPress") { runtime?.fire(button, "onPress") }
+        close()
+    }
+
+    private func drag(_ state: UIGestureRecognizer.State, _ event: [String: Any], leading: CGFloat, trailing: CGFloat,
+                      leadingSet: Node?, trailingSet: Node?) {
+        let dx = ((event["translation"] as? [String: Double])?["x"]).map { CGFloat($0) } ?? 0
+        let vx = ((event["velocity"] as? [String: Double])?["x"]).map { CGFloat($0) } ?? 0
+        let fullLeading = leadingSet?.bool("allowsFullSwipe") == true, fullTrailing = trailingSet?.bool("allowsFullSwipe") == true
+        switch state {
+        case .began, .changed:
+            if state == .began { SwipeRows.shared.open = node.id }
+            var x = settled + dx
+            // No actions that way: stay put; past them: resist (unless a full swipe can happen).
+            x = min(x, leading == 0 ? 0 : (fullLeading ? width : leading + (x - leading) / 4))
+            x = max(x, trailing == 0 ? 0 : (fullTrailing ? -width : -trailing + (x + trailing) / 4))
+            offset = x
+        default:
+            let x = offset
+            if fullTrailing, x < -width * 0.6, let first = trailingSet.flatMap({ buttons($0).first }) {
+                withAnimation(.easeOut(duration: 0.2)) { offset = -width }
+                run(first)
+            } else if fullLeading, x > width * 0.6, let first = leadingSet.flatMap({ buttons($0).first }) {
+                withAnimation(.easeOut(duration: 0.2)) { offset = width }
+                run(first)
+            } else if trailing > 0, x < -trailing / 2 || (x < 0 && vx < -600) {
+                settle(-trailing)
+            } else if leading > 0, x > leading / 2 || (x > 0 && vx > 600) {
+                settle(leading)
+            } else {
+                close()
+            }
+        }
+    }
+
+    private func settle(_ x: CGFloat) {
+        SwipeRows.shared.open = node.id
+        withAnimation(.spring(duration: 0.3, bounce: 0.15)) {
+            settled = x
+            offset = x
+        }
+    }
+
+    private func close() {
+        withAnimation(.spring(duration: 0.3, bounce: 0.1)) {
+            settled = 0
+            offset = 0
+        }
+    }
+}
+
+/// Which swipe row is open (opening one closes the others).
+@MainActor @Observable
+final class SwipeRows {
+    static let shared = SwipeRows()
+    var open: Int?
+}
+#endif

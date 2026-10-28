@@ -410,7 +410,22 @@ struct AttachedActions: ViewModifier {
 
     private struct Swipe: ViewModifier {
         let node: Node
+        @Environment(\.inList) private var inList
+
         func body(content: Content) -> some View {
+            #if os(iOS)
+            if node.features.contains(.swipeActions), !inList {
+                // Not a List row: SwiftUI's swipeActions do nothing there.
+                SwipeRow(node: node) { content }
+            } else {
+                system(content)
+            }
+            #else
+            system(content)
+            #endif
+        }
+
+        @ViewBuilder private func system(_ content: Content) -> some View {
             if node.features.contains(.swipeActions) {
                 let sets = node.children.filter { $0.type == "SwipeActions" }
                 let leading = sets.first { $0.string("edge") == "leading" }

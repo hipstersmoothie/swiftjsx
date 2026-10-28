@@ -470,7 +470,7 @@ private struct AxisDrag: ViewModifier {
     }
 }
 
-private struct AxisPan: UIGestureRecognizerRepresentable {
+struct AxisPan: UIGestureRecognizerRepresentable {
     let horizontal: Bool
     let onEvent: (UIGestureRecognizer.State, [String: Any]) -> Void
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Screen, ScrollView, VStack, HStack, Text, Button, AbsoluteStack, AnimatePresence, Portal, Sheet, Spacer, withAnimation, haptic,
+  SwipeActions, Label, Image, Divider,
 } from "swiftjsx";
 
 const COLORS = ["orange", "pink", "indigo", "teal", "green", "red", "blue", "purple", "yellow"] as const;
@@ -39,6 +40,12 @@ export function AnimationDemo() {
   const [taps, setTaps] = useState({ taps: 0, holds: 0 });
   const [swipeX, setSwipeX] = useState(0);
   const [swiped, setSwiped] = useState("none");
+  const [rows, setRows] = useState([
+    { id: 1, title: "Groceries", flagged: false, pinned: false },
+    { id: 2, title: "Dentist at 3", flagged: false, pinned: false },
+    { id: 3, title: "Call the bank", flagged: false, pinned: false },
+  ]);
+  const update = (id: number, change: Partial<(typeof rows)[number]>) => setRows((list) => list.map((r) => (r.id === id ? { ...r, ...change } : r)));
 
   const shuffle = () =>
     withAnimation(
@@ -60,6 +67,34 @@ export function AnimationDemo() {
     <Screen title="Animation" titleDisplayMode="inline">
       <ScrollView>
         <VStack alignment="leading" spacing={16} padding={20}>
+          <Text font="headline">Swipe actions outside a List</Text>
+          <VStack spacing={0} background="secondarySystemBackground" cornerRadius={14}>
+            {rows.map((row, i) => (
+              <VStack key={row.id} spacing={0} animation="snappy" transition="opacity">
+                <HStack padding={14} frame={{ maxWidth: "infinity" }} background="secondarySystemBackground" accessibilityElement="combine" accessibilityIdentifier={`swipe-row-${row.id}`}>
+                  {row.pinned ? <Image systemName="pin.fill" foregroundStyle="yellow" /> : null}
+                  <Text>{row.title}</Text>
+                  <Spacer />
+                  {row.flagged ? <Image systemName="flag.fill" foregroundStyle="orange" /> : null}
+                  <SwipeActions edge="trailing" allowsFullSwipe>
+                    <Button role="destructive" onPress={() => withAnimation("snappy", () => setRows((list) => list.filter((r) => r.id !== row.id)))} accessibilityIdentifier={`delete-${row.id}`}>
+                      <Label title="Delete" systemImage="trash" />
+                    </Button>
+                    <Button tint="orange" onPress={() => update(row.id, { flagged: !row.flagged })} accessibilityIdentifier={`flag-${row.id}`}>
+                      <Label title="Flag" systemImage="flag" />
+                    </Button>
+                  </SwipeActions>
+                  <SwipeActions edge="leading">
+                    <Button tint="yellow" onPress={() => update(row.id, { pinned: !row.pinned })} accessibilityIdentifier={`pin-${row.id}`}>
+                      <Label title="Pin" systemImage="pin" />
+                    </Button>
+                  </SwipeActions>
+                </HStack>
+                {i < rows.length - 1 ? <Divider padding={{ leading: 14 }} /> : null}
+              </VStack>
+            ))}
+          </VStack>
+
           {/* dragAxis: sideways drags swipe the card; vertical ones scroll the page. */}
           <HStack
             padding={16}

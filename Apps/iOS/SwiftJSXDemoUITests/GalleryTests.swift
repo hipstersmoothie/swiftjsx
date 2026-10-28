@@ -622,6 +622,31 @@ final class GalleryTests: XCTestCase {
         XCTAssert(more.waitForNonExistence(timeout: 3))
     }
 
+    func testSwipeActionsOutsideList() {
+        open("Animation")
+        let row = element("swipe-row-2")
+        XCTAssert(row.waitForExistence(timeout: 5))
+        // Swipe left: Flag and Delete appear; Flag flags it and closes.
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.5)))
+        let flag = element("flag-2")
+        XCTAssert(flag.waitForExistence(timeout: 3) && flag.isHittable, "actions not revealed")
+        snapshot("swipe-open")
+        flag.tap()
+        sleep(1)
+        // Swipe right: Pin.
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.5)))
+        XCTAssert(element("pin-2").waitForExistence(timeout: 3))
+        element("pin-2").tap()
+        sleep(1)
+        // A full swipe deletes.
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.5)), withVelocity: .fast, thenHoldForDuration: 0)
+        XCTAssert(row.waitForNonExistence(timeout: 3), "full swipe didn't delete")
+        snapshot("swipe-deleted")
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

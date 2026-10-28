@@ -2,6 +2,8 @@ import SwiftUI
 
 extension EnvironmentValues {
     @Entry var jsxRuntime: JSXRuntime? = nil
+    /// Inside a List or Form row (SwiftUI's swipe actions work there).
+    @Entry var inList = false
 }
 
 /// Mounts a `JSXRuntime`'s React tree as SwiftUI.
@@ -204,6 +206,7 @@ struct NodeView: View {
 
         case "Form":
             Form { Children(node: node) }
+                .environment(\.inList, true)
                 .scrollContentBackground(node.string("scrollContentBackground") == "hidden" ? .hidden : .automatic)
                 .modifier(ScrollRequests(node: node))
 
