@@ -14,15 +14,17 @@ jobs:
     name: Build and test
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
 
-      - name: Toolchain
+      - name: Toolchain (newest Xcode on the runner)
         run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
           xcodebuild -version
           swift --version
 
@@ -60,11 +62,15 @@ jobs:
     name: iOS demo builds
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+      - name: Toolchain (newest Xcode on the runner)
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          xcodebuild -version
       - run: npm ci && npm run build
       - run: brew install xcodegen
       - name: Build for the simulator
