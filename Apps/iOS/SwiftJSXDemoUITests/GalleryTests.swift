@@ -15,7 +15,10 @@ final class GalleryTests: XCTestCase {
     private func open(_ demo: String) {
         let row = app.buttons.containing(.staticText, identifier: demo).firstMatch
         var swiped = false
-        for _ in 0..<6 where !row.isHittable {
+        // Hittable isn't enough: a row half under the home indicator misses
+        // the tap. Scroll until it's clear of the bottom edge.
+        let bottom = app.windows.firstMatch.frame.maxY - 100
+        for _ in 0..<8 where !row.isHittable || row.frame.maxY > bottom {
             app.swipeUp()
             swiped = true
         }
