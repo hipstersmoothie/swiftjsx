@@ -18294,8 +18294,9 @@ ${error.stack}` : String(error));
       __native.command(this.id, "blur", null, 0);
     }
     /**
-     * Scroll a ScrollView / VirtualList. `target` is a ref to a descendant, a
-     * row index (VirtualList), or "top" / "end".
+     * Scroll a ScrollView, VirtualList, List or Form. `target` is a ref to a
+     * descendant (in a List or Form, its row), a child or row index, or
+     * "top" / "end".
      */
     scrollTo(target, options = {}) {
       const resolved = target instanceof _HostInstance ? {
@@ -18998,13 +18999,14 @@ ${e.stack}` : String(e);
   var VirtualListHost = "VirtualList";
   var VirtualRow = "VirtualRow";
   function VirtualList(t0) {
-    const $ = (0, import_compiler_runtime3.c)(29);
-    if ($[0] !== "853c322c512d454760c4a2dbebaa6de638c67fa93840186be58b77e07837eead") {
-      for (let $i = 0; $i < 29; $i += 1) {
+    const $ = (0, import_compiler_runtime3.c)(31);
+    if ($[0] !== "e1c8701ddca048db1054ea4176c00a5859678ab7beb8e7d36b6287f480198761") {
+      for (let $i = 0; $i < 31; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "853c322c512d454760c4a2dbebaa6de638c67fa93840186be58b77e07837eead";
+      $[0] = "e1c8701ddca048db1054ea4176c00a5859678ab7beb8e7d36b6287f480198761";
     }
+    let children;
     let data;
     let keyExtractor;
     let onEndReached;
@@ -19022,47 +19024,50 @@ ${e.stack}` : String(e);
         overscan: t2,
         onEndReached,
         onEndReachedThreshold: t3,
+        children,
         ...rest
       } = t0);
       $[1] = t0;
-      $[2] = data;
-      $[3] = keyExtractor;
-      $[4] = onEndReached;
-      $[5] = renderItem;
-      $[6] = rest;
-      $[7] = t1;
-      $[8] = t2;
-      $[9] = t3;
+      $[2] = children;
+      $[3] = data;
+      $[4] = keyExtractor;
+      $[5] = onEndReached;
+      $[6] = renderItem;
+      $[7] = rest;
+      $[8] = t1;
+      $[9] = t2;
+      $[10] = t3;
     } else {
-      data = $[2];
-      keyExtractor = $[3];
-      onEndReached = $[4];
-      renderItem = $[5];
-      rest = $[6];
-      t1 = $[7];
-      t2 = $[8];
-      t3 = $[9];
+      children = $[2];
+      data = $[3];
+      keyExtractor = $[4];
+      onEndReached = $[5];
+      renderItem = $[6];
+      rest = $[7];
+      t1 = $[8];
+      t2 = $[9];
+      t3 = $[10];
     }
     const estimatedItemHeight = t1 === void 0 ? 44 : t1;
     const overscan = t2 === void 0 ? 10 : t2;
     const onEndReachedThreshold = t3 === void 0 ? 10 : t3;
     const t4 = Math.min(data.length, overscan * 4);
     let t5;
-    if ($[10] !== t4) {
+    if ($[11] !== t4) {
       t5 = {
         start: 0,
         end: t4
       };
-      $[10] = t4;
-      $[11] = t5;
+      $[11] = t4;
+      $[12] = t5;
     } else {
-      t5 = $[11];
+      t5 = $[12];
     }
     const [range, setRange] = (0, import_react4.useState)(t5);
     const previousFirst = (0, import_react4.useRef)(0);
     const endReachedAt = (0, import_react4.useRef)(-1);
     let t6;
-    if ($[12] !== data.length || $[13] !== onEndReached || $[14] !== onEndReachedThreshold || $[15] !== overscan) {
+    if ($[13] !== data.length || $[14] !== onEndReached || $[15] !== onEndReachedThreshold || $[16] !== overscan) {
       t6 = (t72) => {
         const {
           first,
@@ -19093,42 +19098,46 @@ ${e.stack}` : String(e);
           };
         });
       };
-      $[12] = data.length;
-      $[13] = onEndReached;
-      $[14] = onEndReachedThreshold;
-      $[15] = overscan;
-      $[16] = t6;
+      $[13] = data.length;
+      $[14] = onEndReached;
+      $[15] = onEndReachedThreshold;
+      $[16] = overscan;
+      $[17] = t6;
     } else {
-      t6 = $[16];
+      t6 = $[17];
     }
     const onRangeChange = t6;
     let rows;
-    if ($[17] !== data || $[18] !== keyExtractor || $[19] !== range.end || $[20] !== range.start || $[21] !== renderItem) {
+    if ($[18] !== data || $[19] !== keyExtractor || $[20] !== range.end || $[21] !== range.start || $[22] !== renderItem) {
       rows = [];
       const end = Math.min(range.end, data.length);
       for (let i = range.start; i < end; i++) {
         rows.push(/* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VirtualRow, { index: i, children: renderItem(data[i], i) }, keyExtractor ? keyExtractor(data[i], i) : i));
       }
-      $[17] = data;
-      $[18] = keyExtractor;
-      $[19] = range.end;
-      $[20] = range.start;
-      $[21] = renderItem;
-      $[22] = rows;
+      $[18] = data;
+      $[19] = keyExtractor;
+      $[20] = range.end;
+      $[21] = range.start;
+      $[22] = renderItem;
+      $[23] = rows;
     } else {
-      rows = $[22];
+      rows = $[23];
     }
     let t7;
-    if ($[23] !== data.length || $[24] !== estimatedItemHeight || $[25] !== onRangeChange || $[26] !== rest || $[27] !== rows) {
-      t7 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, children: rows });
-      $[23] = data.length;
-      $[24] = estimatedItemHeight;
-      $[25] = onRangeChange;
-      $[26] = rest;
-      $[27] = rows;
-      $[28] = t7;
+    if ($[24] !== children || $[25] !== data.length || $[26] !== estimatedItemHeight || $[27] !== onRangeChange || $[28] !== rest || $[29] !== rows) {
+      t7 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, children: [
+        children,
+        rows
+      ] });
+      $[24] = children;
+      $[25] = data.length;
+      $[26] = estimatedItemHeight;
+      $[27] = onRangeChange;
+      $[28] = rest;
+      $[29] = rows;
+      $[30] = t7;
     } else {
-      t7 = $[28];
+      t7 = $[30];
     }
     return t7;
   }

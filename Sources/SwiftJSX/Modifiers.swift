@@ -60,6 +60,8 @@ struct Modifiers: ViewModifier {
             .modifier(ForegroundModifier(node: node))
             .padding(padding)
             .modifier(FrameModifier(frame: node.dict("frame")))
+            // Sizing next to the frame, so backgrounds and corners follow it.
+            .modifier(Sizing(node: node))
             // The background is drawn in the corner shape. A material's content
             // isn't clipped: a rounded clip over a material turns off vibrancy,
             // and hierarchical text ("secondary") and dividers on it vanish.
@@ -208,16 +210,25 @@ struct ViewAttachments: ViewModifier {
 
         func body(content: Content) -> some View {
             if node.features.contains(feature) {
+                // Each layer fills the view and aligns itself, so a corner
+                // badge and a centered icon can share it.
                 let layers = node.children.filter { $0.type == type }
-                let alignment = SwiftJSX.alignment(layers.first?.string("alignment")) ?? .center
                 if front {
-                    content.overlay(alignment: alignment) { ForEach(layers) { LayerContent(node: $0) } }
+                    content.overlay { ForEach(layers) { AlignedLayer(node: $0) } }
                 } else {
-                    content.background(alignment: alignment) { ForEach(layers) { LayerContent(node: $0) } }
+                    content.background { ForEach(layers) { AlignedLayer(node: $0) } }
                 }
             } else {
                 content
             }
+        }
+    }
+
+    private struct AlignedLayer: View {
+        let node: Node
+        var body: some View {
+            LayerContent(node: node)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment(node.string("alignment")) ?? .center)
         }
     }
 
@@ -230,39 +241,15 @@ struct ViewAttachments: ViewModifier {
     }
 }
 
-/// `contentShape` ("rectangle" | "capsule" | "circle": the whole shape is
-/// tappable), `onLayout({ width, height })`, and `relativeWidth` /
-/// `relativeHeight` (a fraction of the nearest container: scroll view or
-/// screen). Each is attached on first use.
-struct LayoutExtras: ViewModifier {
+/// `aspectRatio` and `relativeWidth` / `relativeHeight` (a fraction of the
+/// nearest container: scroll view or screen). Each is attached on first use.
+struct Sizing: ViewModifier {
     let node: Node
-    @Environment(\.jsxRuntime) private var runtime
 
     func body(content: Content) -> some View {
         content
-            .modifier(Shape(node: node))
             .modifier(Ratio(node: node))
             .modifier(Relative(node: node))
-            .modifier(Layout(node: node, runtime: runtime))
-            .modifier(ListRow(node: node))
-    }
-
-    private struct Shape: ViewModifier {
-        let node: Node
-        func body(content: Content) -> some View {
-            if node.features.contains(.contentShape) {
-                content.contentShape(shape(node.string("contentShape")))
-            } else {
-                content
-            }
-        }
-        private func shape(_ name: String?) -> AnyShape {
-            switch name {
-            case "capsule": AnyShape(Capsule())
-            case "circle": AnyShape(Circle())
-            default: AnyShape(Rectangle())
-            }
-        }
     }
 
     /// `aspectRatio`: a number (width / height, fits the space offered), or
@@ -285,12 +272,54 @@ struct LayoutExtras: ViewModifier {
         let node: Node
         func body(content: Content) -> some View {
             if node.features.contains(.relativeFrame) {
+                // Only the axes that are set: `relativeWidth` alone keeps the
+                // view's own height.
                 let width = node.cgFloat("relativeWidth"), height = node.cgFloat("relativeHeight")
-                content
-                    .containerRelativeFrame(.horizontal) { length, _ in width.map { length * $0 } ?? length }
-                    .containerRelativeFrame(.vertical) { length, _ in height.map { length * $0 } ?? length }
+                content.containerRelativeFrame(axes(width, height)) { length, axis in
+                    length * ((axis == .horizontal ? width : height) ?? 1)
+                }
             } else {
                 content
+            }
+        }
+
+        private func axes(_ width: CGFloat?, _ height: CGFloat?) -> Axis.Set {
+            var axes: Axis.Set = []
+            if width != nil { axes.insert(.horizontal) }
+            if height != nil { axes.insert(.vertical) }
+            return axes
+        }
+    }
+}
+
+/// `contentShape` ("rectangle" | "capsule" | "circle": the whole shape is
+/// tappable), `onLayout({ width, height })` and list row props. Each is
+/// attached on first use.
+struct LayoutExtras: ViewModifier {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+
+    func body(content: Content) -> some View {
+        content
+            .modifier(Shape(node: node))
+            .modifier(Layout(node: node, runtime: runtime))
+            .modifier(ListRow(node: node))
+    }
+
+    private struct Shape: ViewModifier {
+        let node: Node
+        func body(content: Content) -> some View {
+            if node.features.contains(.contentShape) {
+                content.contentShape(shape(node.string("contentShape")))
+            } else {
+                content
+            }
+        }
+        private func shape(_ name: String?) -> AnyShape {
+            switch name {
+            case "capsule": AnyShape(Capsule())
+            case "circle": AnyShape(Circle())
+            default: AnyShape(Rectangle())
             }
         }
     }

@@ -115,10 +115,21 @@ struct RefTests {
         #expect(scroller.scrollRequest?.target == AnyHashable(box.id))
         #expect(scroller.scrollRequest?.animated == true)
 
+        // An index is the n-th child, not a node id.
+        runtime.press("scroll to index")
+        #expect(scroller.scrollRequest?.target == AnyHashable(box.id))
+
         runtime.press("scroll to end")
         #expect(scroller.scrollRequest?.target == AnyHashable(ScrollEdge.end))
         #expect(scroller.scrollRequest?.animated == false)
         #expect(scroller.scrollRequest?.anchor == .bottom)
+    }
+
+    @Test func listScrollsToTheRowHoldingAView() throws {
+        let list = try #require(runtime.find("List"))
+        let row = try #require(runtime.find("VStack") { $0.parent?.type == "Section" })
+        runtime.press("scroll list to deep")
+        #expect(list.scrollRequest?.target == AnyHashable(row.id))
     }
 
     @Test func measureResolvesAPromise() async throws {

@@ -162,10 +162,11 @@ public final class JSXRuntime {
         case "focus", "blur":
             node.focusRequest = FocusRequest(seq: node.focusRequest.seq + 1, focused: name == "focus")
         case "scrollTo":
-            let target: AnyHashable =
+            var target: AnyHashable =
                 (args["node"] as? NSNumber).map { AnyHashable($0.intValue) }
                 ?? (args["index"] as? NSNumber).map { AnyHashable($0.intValue) }
                 ?? AnyHashable(args["edge"] as? String == "end" ? ScrollEdge.end : ScrollEdge.top)
+            if node.type != "VirtualList", let id = scrollTarget(in: node, args) { target = AnyHashable(id) }
             node.scrollRequest = ScrollRequest(
                 seq: (node.scrollRequest?.seq ?? 0) + 1,
                 target: target,
@@ -179,6 +180,27 @@ public final class JSXRuntime {
         default:
             print("[swiftjsx] unknown command \(name)")
         }
+    }
+
+    /// The id to scroll to in a ScrollView, List or Form (VirtualList rows are
+    /// found by index instead). An index is the n-th child; in a List or Form,
+    /// a ref to a view inside a row scrolls to that row, since lists only
+    /// know their rows' ids.
+    private func scrollTarget(in container: Node, _ args: [String: Any]) -> Int? {
+        if let index = (args["index"] as? NSNumber)?.intValue {
+            let children = container.children.filter { !$0.isAttachment }
+            return children.indices.contains(index) ? children[index].id : nil
+        }
+        guard container.type == "List" || container.type == "Form" else { return nil }
+        if let edge = args["edge"] as? String {
+            let children = container.children.filter { !$0.isAttachment }
+            return (edge == "end" ? children.last : children.first)?.id
+        }
+        guard var row = (args["node"] as? NSNumber).flatMap({ tree.node($0.intValue) }) else { return nil }
+        while let parent = row.parent, parent !== container, parent.type != "Section" {
+            row = parent
+        }
+        return row.id
     }
 
     private func report(_ message: String) {

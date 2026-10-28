@@ -99,6 +99,19 @@ struct SelectableList: View {
         .modifier(ListStyleModifier(style: node.string("listStyle")))
         .scrollContentBackground(node.string("scrollContentBackground") == "hidden" ? .hidden : .automatic)
         .onChange(of: node.string("selection")) { picked = nil }
+        .modifier(ScrollRequests(node: node))
+    }
+}
+
+/// `ref.current.scrollTo(…)` on a List or Form: to a row (or the row holding
+/// a view), an index, or an edge.
+struct ScrollRequests: ViewModifier {
+    let node: Node
+
+    func body(content: Content) -> some View {
+        ScrollViewReader { proxy in
+            content.onChange(of: node.scrollRequest) { _, request in scroll(proxy, request) }
+        }
     }
 }
 

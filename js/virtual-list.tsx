@@ -43,6 +43,8 @@ export type VirtualListProps<T> = Omit<Modifiers, "ref"> & ScrollProps & {
   onEndReachedThreshold?: number;
   /** `ref.current.scrollTo(index)` scrolls to a row, even one not rendered yet. */
   ref?: Ref<HostInstance>;
+  /** Attachments (`<Overlay>`, `<SafeAreaInset>`, `<Sheet>`…); rows come from `data`. */
+  children?: ReactNode;
 };
 
 type Range = { start: number; end: number };
@@ -63,6 +65,7 @@ export function VirtualList<T>({
   overscan = 10,
   onEndReached,
   onEndReachedThreshold = 10,
+  children,
   ...rest
 }: VirtualListProps<T>) {
   const [range, setRange] = useState<Range>({ start: 0, end: Math.min(data.length, overscan * 4) });
@@ -107,6 +110,7 @@ export function VirtualList<T>({
 
   return (
     <VirtualListHost {...rest} count={data.length} estimatedItemHeight={estimatedItemHeight} onRangeChange={onRangeChange}>
+      {children}
       {rows}
     </VirtualListHost>
   );

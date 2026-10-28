@@ -163,6 +163,7 @@ struct NodeView: View {
         case "Form":
             Form { Children(node: node) }
                 .scrollContentBackground(node.string("scrollContentBackground") == "hidden" ? .hidden : .automatic)
+                .modifier(ScrollRequests(node: node))
 
         case "Section":
             // Header and footer: a string prop, or <SectionHeader> / <SectionFooter> children.

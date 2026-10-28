@@ -67,8 +67,9 @@ export class HostInstance {
     __native.command(this.id, "blur", null, 0);
   }
   /**
-   * Scroll a ScrollView / VirtualList. `target` is a ref to a descendant, a
-   * row index (VirtualList), or "top" / "end".
+   * Scroll a ScrollView, VirtualList, List or Form. `target` is a ref to a
+   * descendant (in a List or Form, its row), a child or row index, or
+   * "top" / "end".
    */
   scrollTo(target: ScrollTarget, options: ScrollOptions = {}) {
     const resolved = target instanceof HostInstance ? { node: target.id } : typeof target === "number" ? { index: target } : { edge: target };
