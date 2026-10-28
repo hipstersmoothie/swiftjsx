@@ -99,6 +99,9 @@ struct TextFieldHost: View {
             focused = true
         }
         .modifier(FieldKeys(node: node))
+        #if os(iOS)
+        .modifier(DeleteBackward(node: node, focused: focused))
+        #endif
         .onChange(of: focused) { _, isFocused in
             runtime?.dispatch(node.id, isFocused ? "onFocus" : "onBlur")
         }
@@ -398,3 +401,58 @@ struct ButtonHost: View {
         if node.has(event) { runtime?.fire(node, event) }
     }
 }
+
+#if os(iOS)
+/// `onDeleteBackward({ empty })`: the delete key, from the software keyboard
+/// too, including in an empty field (where the text doesn't change, so
+/// onChange can't tell): OTP boxes and chip inputs step back on it. SwiftUI
+/// has no hook; UIKit's text views' deleteBackward is swizzled once.
+private struct DeleteBackward: ViewModifier {
+    let node: Node
+    let focused: Bool
+    @Environment(\.jsxRuntime) private var runtime
+
+    func body(content: Content) -> some View {
+        if node.has("onDeleteBackward") {
+            content
+                .onAppear { DeleteBackwardHook.install() }
+                .onReceive(NotificationCenter.default.publisher(for: DeleteBackwardHook.notification)) { note in
+                    // The focused field is the one being typed in.
+                    guard focused else { return }
+                    runtime?.dispatch(node.id, "onDeleteBackward", ["empty": note.userInfo?["empty"] as? Bool ?? false])
+                }
+        } else {
+            content
+        }
+    }
+}
+
+@MainActor
+enum DeleteBackwardHook {
+    static let notification = Notification.Name("SwiftJSXDeleteBackward")
+    private static var installed = false
+
+    static func install() {
+        guard !installed else { return }
+        installed = true
+        for type in [UITextField.self, UITextView.self] as [AnyClass] {
+            guard let original = class_getInstanceMethod(type, #selector(UIKeyInput.deleteBackward)),
+                  let replacement = class_getInstanceMethod(type, #selector(UIView.swiftjsx_deleteBackward)) else { continue }
+            // Our implementation on this class, then swap it with the original.
+            class_addMethod(type, #selector(UIView.swiftjsx_deleteBackward), method_getImplementation(replacement), method_getTypeEncoding(replacement))
+            guard let added = class_getInstanceMethod(type, #selector(UIView.swiftjsx_deleteBackward)) else { continue }
+            method_exchangeImplementations(original, added)
+        }
+    }
+}
+
+extension UIView {
+    /// Swapped with UITextField / UITextView deleteBackward: calling it here
+    /// runs the original.
+    @objc func swiftjsx_deleteBackward() {
+        let text = (self as? UITextField)?.text ?? (self as? UITextView)?.text ?? ""
+        swiftjsx_deleteBackward()
+        NotificationCenter.default.post(name: DeleteBackwardHook.notification, object: self, userInfo: ["empty": text.isEmpty])
+    }
+}
+#endif

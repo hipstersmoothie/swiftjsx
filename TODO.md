@@ -76,8 +76,8 @@ for the record.
 - [x] Text input: controlled `focused` (move focus between fields with state),
       `selection` / `onSelectionChange` and `ref.setSelection()` (UTF-16 offsets; insert
       at the cursor), hardware-keyboard `onKeyPress` on fields.
-- [ ] Backspace on an empty field from the software keyboard (OTP inputs): SwiftUI has no
-      hook for it; needs UIKit's `deleteBackward`.
+- [x] `onDeleteBackward({ empty })` on fields: the delete key from the software keyboard too,
+      in an empty field (OTP boxes step back); UIKit's deleteBackward, swizzled once.
 - [x] Buttons: `pressedScale`, `pressedOpacity`, `pressedBackground`, `onPressIn` /
       `onPressOut`.
 - [ ] `controlSize`; the Calculator still builds keys from drag gestures.

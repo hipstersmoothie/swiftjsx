@@ -602,6 +602,8 @@ type TextInputProps = {
   focused?: boolean;
   /** Set the cursor or selection (UTF-16 offsets, like JS string indices); applied when it changes. */
   selection?: { start: number; end?: number };
+  /** The delete key (software keyboard too); `empty` when the field was already empty (OTP boxes step back). */
+  onDeleteBackward?: (event: { empty: boolean }) => void;
   /** The cursor or selection as the user moves it (insert at the cursor: `text.slice(0, start) + x + text.slice(end)`). */
   onSelectionChange?: (selection: { start: number; end: number }) => void;
 };

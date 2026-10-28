@@ -670,6 +670,25 @@ final class GalleryTests: XCTestCase {
         if app.buttons["Unsave"].waitForExistence(timeout: 3) { app.buttons["Unsave"].tap() }
     }
 
+    func testCodeEntryDeleteBackward() {
+        open("Controls & layout")
+        let first = app.textFields["code-0"]
+        for _ in 0..<5 where !first.exists || !first.isHittable { app.swipeUp() }
+        XCTAssert(first.waitForExistence(timeout: 5))
+        first.tap()
+        // A digit at a time (focus moves to the next box in between).
+        for (digit, next) in [("1", "code-1"), ("2", "code-2")] {
+            app.typeText(digit)
+            XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "hasKeyboardFocus == true"), evaluatedWith: app.textFields[next])], timeout: 3) == .completed,
+                      "typing should advance to \(next)")
+        }
+        // Delete in the empty third box: back to the second, clearing it.
+        app.keys["Delete"].tap()
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "value == '' OR value == nil"), evaluatedWith: app.textFields["code-1"])], timeout: 3) == .completed,
+                  "got \(app.textFields["code-1"].value ?? "nil")")
+        XCTAssertEqual(app.textFields["code-0"].value as? String, "1")
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]

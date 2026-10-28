@@ -26,6 +26,8 @@ export function ControlsDemo() {
   const [truncated, setTruncated] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [code, setCode] = useState(["", "", "", ""]);
+  const [codeFocus, setCodeFocus] = useState<number | null>(null);
   const [first, setFirst] = useState("");
   const [second, setSecond] = useState("");
   const [field, setField] = useState<"first" | "second" | null>(null);
@@ -123,6 +125,36 @@ export function ControlsDemo() {
           {items.map((item) => (
             <NavigationRow key={item} title={item} value="1" onPress={() => setEditing(item)} />
           ))}
+        </Section>
+
+        <Section header="Code entry" footer={`Code: ${code.join("") || "–"}`}>
+          <HStack spacing={10}>
+            {code.map((digit, i) => (
+              <TextField
+                key={i}
+                value={digit}
+                onChange={(text) => {
+                  const d = text.replace(/\D/g, "").slice(-1);
+                  setCode((c) => c.map((x, j) => (j === i ? d : x)));
+                  if (d && i < 3) setCodeFocus(i + 1);
+                }}
+                // Delete in an empty box steps back and clears the previous one.
+                onDeleteBackward={({ empty }) => {
+                  if (!empty || i === 0) return;
+                  setCode((c) => c.map((x, j) => (j === i - 1 ? "" : x)));
+                  setCodeFocus(i - 1);
+                }}
+                focused={codeFocus === i}
+                onFocus={() => setCodeFocus(i)}
+                keyboardType="number"
+                textAlignment="center"
+                font={{ size: 24, weight: "semibold", design: "monospaced" }}
+                frame={{ width: 48, height: 56 }}
+                textFieldStyle="roundedBorder"
+                accessibilityIdentifier={`code-${i}`}
+              />
+            ))}
+          </HStack>
         </Section>
 
         <Section header="Rich text">
