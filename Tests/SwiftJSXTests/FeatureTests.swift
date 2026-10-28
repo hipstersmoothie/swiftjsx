@@ -250,6 +250,15 @@ struct CompilerTests {
         #expect(await eventually { runtime.texts().contains("finished animated") })
     }
 
+    @Test func insertUsesTheAnimationItsCommitSets() throws {
+        let runtime = try fixture("Animation")
+        let before = SwiftJSXDiagnostics.animatedOps
+        runtime.press("Show badge")
+        #expect(runtime.texts().contains("badge"))
+        // The ZStack's update, and the insert under its new animation.
+        #expect(SwiftJSXDiagnostics.animatedOps == before + 2)
+    }
+
     @Test func parsesAnimationSpecs() {
         #expect(parseAnimation("spring") != nil)
         #expect(parseAnimation(["type": "easeInOut", "duration": 0.6, "delay": 0.1]) != nil)

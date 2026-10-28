@@ -201,6 +201,8 @@ enum ScrollEdge: Hashable { case top, end }
 public final class NodeTree {
     public let root = Node(id: 0, type: "#root")
     private var nodes: [Int: Node] = [:]
+    /// `animation` values set by update ops later in the batch being applied.
+    private var upcomingAnimations: [Int: Any] = [:]
     /// Runs `animatedStyle` worklets for nodes that have one.
     var worklets: WorkletRuntime?
 
@@ -217,6 +219,18 @@ public final class NodeTree {
         SwiftJSXDiagnostics.commits += 1
         SwiftJSXDiagnostics.ops += ops.count
         defer { SwiftJSXDiagnostics.countRenderedRows(in: root) }
+        // React applies a commit's child insertions and removals before the
+        // parent's own prop update, so `<ZStack animation={show ? A : B}>{show
+        // && <X/>}` would insert X under the old B. Look ahead: structural ops
+        // use the `animation` this commit is about to set.
+        upcomingAnimations = [:]
+        for op in ops where op["op"] as? String == "update" {
+            if let id = (op["id"] as? NSNumber)?.intValue, let changes = op["props"] as? [String: Any],
+               let animation = changes["animation"], upcomingAnimations[id] == nil {
+                upcomingAnimations[id] = animation
+            }
+        }
+        defer { upcomingAnimations = [:] }
         for op in ops {
             let kind = op["op"] as? String
             let id = (op["id"] as? NSNumber)?.intValue ?? -1
@@ -260,6 +274,7 @@ public final class NodeTree {
                         node.props[key] = value is NSNull ? nil : value
                     }
                 }
+                upcomingAnimations[id] = nil
                 if changes.keys.contains("animatedStyle") { worklets?.setStyle(node, node.props["animatedStyle"]) }
                 node.updateDecorated()
             case "setText":
@@ -282,8 +297,9 @@ public final class NodeTree {
     /// Mutations to a node that has an `animation` prop (or whose parent does)
     /// run inside `withAnimation`, so `transition` and implicit animations work.
     private func animating(_ node: Node, _ override: Any?? = nil, _ body: () -> Void) {
-        let spec = override ?? node.props["animation"] ?? inheritedAnimation(node.parent)
+        let spec = override ?? animation(of: node) ?? inheritedAnimation(node.parent)
         if let animation = parseAnimation(spec) {
+            SwiftJSXDiagnostics.animatedOps += 1
             withAnimation(animation, body)
         } else {
             body()
@@ -295,10 +311,17 @@ public final class NodeTree {
     private func inheritedAnimation(_ node: Node?) -> Any? {
         var current = node
         while let n = current {
-            if let animation = n.props["animation"] { return animation }
+            if let animation = animation(of: n) { return animation }
             current = n.parent
         }
         return nil
+    }
+
+    /// A node's `animation`, or the one this commit is about to give it
+    /// (nil when it's being removed).
+    private func animation(of node: Node) -> Any? {
+        if let upcoming = upcomingAnimations[node.id] { return upcoming is NSNull ? nil : upcoming }
+        return node.props["animation"]
     }
 
     private func int(_ v: Any?) -> Int { (v as? NSNumber)?.intValue ?? -1 }

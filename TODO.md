@@ -169,9 +169,9 @@ for the record.
 - [x] `withAnimation(spec, fn, completion)`: runs when the animation is logically complete.
 - [ ] Exit animations: a removed view can't animate its props first (AnimatePresence);
       apps keep "ghosts" in state and drop them later.
-- [ ] Insertion/removal animations come from the parent's `animation`, never the child's
-      own; changing the parent's `animation` in the same commit as the insert has no
-      effect (React applies child ops before the parent's update).
+- [x] A transition can carry its own `animation`; an insert or removal in the same commit
+      that changes the parent's `animation` uses the new one (React applies child ops
+      before the parent's update, so the tree looks ahead).
 - [x] Transitions: `{ insert, remove }`, `move` / `push` edges, a starting scale and
       anchor, `offset`, `blur`, `identity`, and a transition's own `animation`.
 - [ ] Keyframes / phases for React props (`keyframeAnimator`): a 1 → 1.2 → 1 pop, a shake.

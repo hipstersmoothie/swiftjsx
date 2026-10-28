@@ -22,6 +22,8 @@ public enum SwiftJSXDiagnostics {
     public internal(set) static var ops = 0
     /// Commits that ran inside a JS `withAnimation`.
     public internal(set) static var animatedCommits = 0
+    /// Ops applied under a node's `animation` prop (inserts, removals, updates).
+    public internal(set) static var animatedOps = 0
 
     static func countRenderedRows(in root: Node) {
         func find(_ node: Node) -> Node? {
