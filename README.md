@@ -171,7 +171,8 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   `onLoad`/`onError`.
 - **Platform services.** `haptic()`, `navigator.clipboard`, `openURL`; local
   `notifications` (permission, `schedule({ title, at | seconds, data })`, cancel, badge,
-  and tap/arrival listeners, including the tap that launched the app); `speech.speak(text,
+  action buttons via `setCategories` (text replies too), attachments, time-sensitive
+  delivery, and tap/arrival listeners, including the tap that launched the app); `speech.speak(text,
   { onWord })` (text-to-speech with word ranges); `useKeepAwake()`. No native backend needed.
 - **Accessibility.** `accessibilityLabel`, `Hint`, `Value`, `Hidden`, `Identifier` (for UI
   tests, like `testID`), `Traits`, `SortPriority`, and `accessibilityElement="combine"`.

@@ -13,8 +13,10 @@ for the record.
 - [x] Radial and angular gradients, gradient stops.
 - [x] Charts: `<Chart>` on Swift Charts (bar, line, area, point, rule, rectangle marks;
       series, stacking, domains, axes, scrub selection).
-- [ ] Charts: y selection, range selection, scrolling charts. The Fitness app still draws
-      its charts by hand.
+- [x] Charts: `onYSelectionChange`, `onXRangeSelectionChange` (two fingers), scrolling
+      charts (`xVisibleDomain`, `xScrollPosition`, `onXScrollPositionChange`,
+      `xScrollAlignment` snapping to numbers or calendar units).
+- [ ] The Fitness app still draws its charts by hand (rewrite on `<Chart>`).
 - [x] Charts axes: `position`, explicit `values`, `stride` (numbers or `{ unit, count }`),
       `count`, `format` (compact, percent, currency, "{} h", weekday, monthDay…),
       `gridlines` / `ticks` / `labels`. Date `x` with `xUnit` (bars span the day/week).
@@ -26,7 +28,9 @@ for the record.
       scales (heatmaps).
 - [x] `<Path d>` (SVG path data) and `<Polyline points>` in a `viewBox`; `lineCap` /
       `lineJoin`.
-- [ ] Angular gradient start/end angles; animating between paths (morphing).
+- [x] Angular gradient `startAngle` / `endAngle` (arcs, gauges); gradient points as unit
+      points (`{ x, y }`) as well as alignments.
+- [ ] Animating between paths (morphing).
 - [x] `<Video>` (AVKit; controls or just the picture, loop, time updates), `<WebView>`
       (URL or HTML, messages from the page, injected JS), `<MapView>` (region, markers,
       annotations with any views, taps, region changes).
@@ -81,16 +85,20 @@ for the record.
 - [x] `controlSize`, `labelStyle`.
 - [x] `Stepper` with no label is just the −/+ control. `TextField` `textAlignment`. More
       `textContentType`s (card expiry, security code and name; address lines, state).
-- [ ] Number pads have no return key: a `ToolbarItemGroup placement="keyboard"`.
+- [x] Number pads have no return key: a `<ToolbarItem placement="keyboard">`'s children
+      (and `bottomBar`'s) are a group's items, so a `<Spacer />` spans the bar.
 - [x] `<MenuLabel>`: a `Menu`'s label as any view (with `onPress`, tap acts and hold
       opens). Buttons take `systemImage` (icons in menus).
 - [x] Button `onLongPress` (a hold doesn't also fire `onPress`; works in List rows).
-- [ ] Press/release events on non-Buttons (SwiftUI's `onPressingChanged`; hold-to-pause).
+- [x] `onPressIn` / `onPressOut({ cancelled })`, `pressedScale` / `pressedOpacity` on any
+      view (a UIKit recognizer alongside other gestures and scrolling; moving cancels).
 - [ ] `<Tab>` takes no modifiers (accessibility identifier, `measure()`, animated badges).
 - [x] Page TabView dots: `pageIndicator` ("always" / "never" / "backed").
-- [ ] `DatePicker` time-of-day values (`{ hour, minute }`, `minuteInterval`) instead of
-      full Dates; `ColorPicker` returns a hex for the current scheme (no `{light, dark}`).
-- [ ] `LabeledContent` label as a view (font, icon).
+- [x] `<TimePicker>` with `{ hour, minute }` values (and `min` / `max`); `minuteInterval`
+      snaps the value.
+- [ ] `TimePicker`'s wheel still lists every minute (SwiftUI has no minute interval);
+      `ColorPicker` returns a hex for the current scheme (no `{light, dark}`).
+- [x] `<LabeledContentLabel>`: a `LabeledContent` label as any view (icon, font).
 - [x] `Picker`: wheel, navigationLink and palette styles; number values.
 - [x] `Menu` checkmark items: `<Toggle>` children. (Menus draw icons monochrome, as on iOS.)
 - [x] `LabeledContent`.
@@ -198,7 +206,8 @@ for the record.
       no-op form: `.foregroundStyle(.foreground)` and the three-level
       `.foregroundStyle(.primary, .secondary, .tertiary)` both turn a List's gray
       headers black.
-- [ ] Modifier props on a `Section` silently stop it being a section (it gets wrapped).
+- [x] Modifier props on a `Section` style each of its rows (`tint`, `listRowBackground`,
+      `font`…) instead of wrapping it (which stopped it being a section).
 - [ ] The React Compiler skips a component whose worklet captures a function that reads a
       ref ("Cannot access refs during render"), or that calls `useStore.getState()` in
       render. Hide worklet captures from the compiler; document the zustand idiom.
@@ -225,11 +234,16 @@ for the record.
       taps as events, a launch tap held until someone listens), badge, `speech` (with word
       ranges, ducking other audio) and `useKeepAwake`. Recipes uses them instead of its
       NativeScript code.
-- [ ] Notification actions and categories, attachments, time-sensitive interruption level.
+- [x] Notification categories with action buttons (destructive, foreground, text input
+      replies as `text`, icons, a "dismiss" response), `attachments` (downloaded first),
+      `interruptionLevel` (passive / time-sensitive / critical), `relevance`. Recipes'
+      timers have "Remind Me in 1 Minute".
 - [x] `hot.data` / `hot.dispose()` for module-level state and cleanup across Fast Refresh
       updates (bundle-wide, not per module).
-- [ ] `TextDecoder` is UTF-8 only and has no streaming mode; WebSocket has no
-      extensions or ping control; no `document` (by design).
+- [x] `TextDecoder`: streaming (`{ stream: true }` keeps split characters), UTF-16 LE / BE,
+      windows-1252 (and the Latin-1 / ASCII labels, as browsers do).
+- [ ] No `TextDecoderStream` / `TransformStream`; WebSocket has no extensions or ping
+      control; no `document` (by design).
 
 ## Native backend (NativeScript)
 

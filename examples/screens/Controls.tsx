@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import {
   Screen, List, Section, SectionHeader, Text, TextField, TextEditor, DatePicker, ColorPicker, Menu, Button, Divider,
-  NavigationRow, Flow, Grid, GridRow, HStack, VStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle, MenuLabel, Spacer, Label, ShareLink, type HostInstance,
+  NavigationRow, Flow, Grid, GridRow, HStack, VStack, Image, Overlay, Circle, EditButton, ToolbarItem, Sheet, haptic, Picker, Toggle, MenuLabel, Spacer, Label, ShareLink, TimePicker, LabeledContent, LabeledContentLabel, type HostInstance, type TimeOfDay,
   type Color,
 } from "swiftjsx";
 
@@ -10,6 +10,7 @@ const tags = ["react", "swiftui", "jsx", "hooks", "worklets", "fetch", "zustand"
 export function ControlsDemo() {
   const [email, setEmail] = useState("");
   const [bio, setBio] = useState("Builds SwiftUI with React.");
+  const [alarm, setAlarm] = useState<TimeOfDay>({ hour: 7, minute: 30 });
   const [notes, setNotes] = useState("");
   const [birthday, setBirthday] = useState(new Date(1990, 4, 17));
   const [accent, setAccent] = useState("#5856d6");
@@ -102,10 +103,17 @@ export function ControlsDemo() {
           </HStack>
         </Section>
 
-        <Section header="Pickers">
+        <Section header="Pickers" tint="orange">
           <DatePicker label="Birthday" value={birthday} onChange={setBirthday} max={new Date()} />
           <ColorPicker label="Accent" value={accent} onChange={setAccent} />
           <Text font="footnote" foregroundStyle="secondary">Born {birthday.toDateString()} · {accent}</Text>
+          <TimePicker label="Alarm" value={alarm} onChange={setAlarm} minuteInterval={5} accessibilityIdentifier="alarm" />
+          <LabeledContent accessibilityIdentifier="alarm-value">
+            <LabeledContentLabel>
+              <Label title="Wake up" systemImage="alarm" foregroundStyle="orange" />
+            </LabeledContentLabel>
+            <Text monospacedDigit>{`${alarm.hour}:${String(alarm.minute).padStart(2, "0")}`}</Text>
+          </LabeledContent>
         </Section>
 
         <Section

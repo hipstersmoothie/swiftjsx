@@ -25,6 +25,33 @@ export function DatePicker({ value, onChange, min, max, ...props }: DatePickerPr
   return <DatePickerHost {...props} value={ms(value)} min={ms(min)} max={ms(max)} onChange={(t: number) => onChange(new Date(t))} />;
 }
 
+export type TimeOfDay = { hour: number; minute: number };
+
+type TimePickerProps = Modifiers & {
+  /** 0–23 and 0–59, in the device's time zone. */
+  value: TimeOfDay;
+  onChange: (time: TimeOfDay) => void;
+  label?: string;
+  datePickerStyle?: "automatic" | "compact" | "wheel";
+  /** Picked times snap to multiples of this many minutes (the control still lists every minute). */
+  minuteInterval?: number;
+  min?: TimeOfDay;
+  max?: TimeOfDay;
+  tint?: ColorValue;
+};
+
+/** A time of day (alarms, reminders, opening hours): no dates or time zones to carry around. */
+export function TimePicker({ value, onChange, min, max, minuteInterval, ...props }: TimePickerProps) {
+  const today = (t: TimeOfDay | undefined) => (t === undefined ? undefined : new Date().setHours(t.hour, t.minute, 0, 0));
+  const change = (ms: number) => {
+    const date = new Date(ms);
+    let minutes = date.getHours() * 60 + date.getMinutes();
+    if (minuteInterval && minuteInterval > 1) minutes = (Math.round(minutes / minuteInterval) * minuteInterval) % (24 * 60);
+    onChange({ hour: Math.floor(minutes / 60), minute: minutes % 60 });
+  };
+  return <DatePickerHost {...props} components="hourAndMinute" value={today(value)} min={today(min)} max={today(max)} onChange={change} />;
+}
+
 type NavigationRowProps = Modifiers & {
   title?: string;
   subtitle?: string;

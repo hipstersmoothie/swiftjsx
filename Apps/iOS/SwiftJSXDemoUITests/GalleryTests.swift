@@ -748,4 +748,43 @@ final class GalleryTests: XCTestCase {
         snapshot("charts-scrub")
         XCTAssert(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'steps'")).firstMatch.waitForExistence(timeout: 3))
     }
+    func testPressInOut() {
+        open("Animation")
+        let card = element("hold-to-pause")
+        for _ in 0..<6 where !(card.exists && card.isHittable) { app.swipeUp() }
+        XCTAssert(card.waitForExistence(timeout: 5))
+        card.press(forDuration: 1)
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'Last press: released'"), evaluatedWith: card)], timeout: 3) == .completed,
+                  card.label)
+        // A drag that starts on it scrolls the page and cancels the press.
+        let before = card.frame.minY
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)))
+        sleep(1)
+        XCTAssertLessThan(card.frame.minY, before - 50, "a drag on the card should still scroll")
+        XCTAssert(card.label.contains("Last press: cancelled"), card.label)
+    }
+
+    func testScrollingChart() {
+        open("Charts")
+        let chart = element("scroll-chart")
+        for _ in 0..<4 where !(chart.exists && chart.isHittable) { app.swipeUp() }
+        XCTAssert(chart.waitForExistence(timeout: 5))
+        let status = label("scroll-chart-status")
+        let start = status.label
+        snapshot("chart-scroll-before")
+        chart.swipeRight()
+        sleep(2)
+        snapshot("chart-scroll-after")
+        XCTAssertNotEqual(status.label, start, "scrolling the chart should move its position")
+    }
+
+    func testTimeAndLabeledContent() {
+        open("Controls & layout")
+        let value = app.staticTexts["7:30"]
+        for _ in 0..<6 where !(value.exists && value.isHittable) { app.swipeUp() }
+        XCTAssert(value.waitForExistence(timeout: 5))
+        XCTAssert(app.staticTexts["Wake up"].exists, "the LabeledContent's view label")
+        snapshot("time-picker")
+    }
 }

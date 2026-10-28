@@ -94,7 +94,9 @@ struct NodeView: View {
     @Environment(\.jsxRuntime) private var runtime
 
     var body: some View {
-        content.modifier(Decorations(node: node))
+        // A wrapped Section stops being a section (List sees some other view):
+        // its modifier props go to its rows instead (see the Section case).
+        if node.type == "Section" { content } else { content.modifier(Decorations(node: node)) }
     }
 
     /// Controls that take `tint` get it on the control itself (a Button in
@@ -229,7 +231,13 @@ struct NodeView: View {
             let header = node.children.first { $0.type == "SectionHeader" }
             let footer = node.children.first { $0.type == "SectionFooter" }
             Section {
-                EditableChildren(node: node)
+                // Modifier props on a Section style each of its rows
+                // (listRowBackground, tint, font…).
+                if node.decorated {
+                    EditableChildren(node: node).modifier(Modifiers(node: node))
+                } else {
+                    EditableChildren(node: node)
+                }
             } header: {
                 if let header { HStack { Children(node: header) }.modifier(Decorations(node: header)) }
                 else if let title = node.string("header") { Text(title) }
@@ -280,7 +288,11 @@ struct NodeView: View {
             LabeledContent {
                 Children(node: node)
             } label: {
-                Text(node.string("label") ?? "")
+                if let label = node.children.first(where: { $0.type == "LabeledContentLabel" }) {
+                    HStack { Children(node: label) }.modifier(Decorations(node: label))
+                } else {
+                    Text(node.string("label") ?? "")
+                }
             }
 
         case "Spacer":

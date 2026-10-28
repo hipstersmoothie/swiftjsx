@@ -76,7 +76,7 @@ public final class Node: Identifiable {
         case accessibility, accessibilityElement
         case refresh, swipeActions, contextMenu
         case overlay, backgroundView, contentShape, layout, relativeFrame, listRow
-        case tint, aspectRatio, safeAreaInset, keyPress, keyframes, appear
+        case tint, aspectRatio, safeAreaInset, keyPress, keyframes, appear, press
     }
 
     /// Called after props or children change.
@@ -106,7 +106,7 @@ public final class Node: Identifiable {
     }
 
     static let interactionFeatures: Set<Feature> = [
-        .transform, .doubleTap, .longPress, .drag, .magnify, .rotate, .accessibility, .accessibilityElement, .keyPress, .keyframes, .appear,
+        .transform, .doubleTap, .longPress, .drag, .magnify, .rotate, .accessibility, .accessibilityElement, .keyPress, .keyframes, .appear, .press,
     ]
 
     static let featureKeys: [(String, Feature)] = [
@@ -114,6 +114,7 @@ public final class Node: Identifiable {
         ("offset", .transform), ("scale", .transform), ("rotation", .transform),
         ("scaleX", .transform), ("scaleY", .transform), ("rotation3D", .transform), ("keyframes", .keyframes), ("initial", .appear),
         ("onDoubleTap", .doubleTap), ("onLongPress", .longPress),
+        ("onPressIn", .press), ("onPressOut", .press), ("pressedScale", .press), ("pressedOpacity", .press),
         ("onDrag", .drag), ("onDragEnd", .drag), ("onDragStart", .drag), ("onMagnify", .magnify), ("onMagnifyEnd", .magnify),
         ("onRotate", .rotate), ("onRotateEnd", .rotate),
         ("accessibilityLabel", .accessibility), ("accessibilityHint", .accessibility),
@@ -150,7 +151,7 @@ public final class Node: Identifiable {
     /// Children that aren't laid out but modify their parent: presentations,
     /// `<SwipeActions>`, `<ContextMenu>`.
     var isAttachment: Bool { isPresentation || Self.attachmentTypes.contains(type) }
-    static let attachmentTypes: Set<String> = ["SwipeActions", "ContextMenu", "Overlay", "Background", "SectionHeader", "SectionFooter", "SafeAreaInset"]
+    static let attachmentTypes: Set<String> = ["SwipeActions", "ContextMenu", "Overlay", "Background", "SectionHeader", "SectionFooter", "SafeAreaInset", "LabeledContentLabel"]
     static let presentationTypes: Set<String> = ["Sheet", "Alert", "ConfirmationDialog"]
 
     init(id: Int, type: String, props: [String: Any] = [:], text: String = "") {

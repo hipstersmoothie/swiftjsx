@@ -226,7 +226,7 @@ public final class JSXRuntime {
                 let loaded = (try? await ImageLoader.shared.load(url)) != nil
                 engine?.resolve(callback: callback, value: loaded)
             }
-        case "notificationsRequest", "notificationsStatus", "notificationsSchedule", "notificationsCancel", "notificationsPending", "badge":
+        case "notificationsRequest", "notificationsStatus", "notificationsSchedule", "notificationsCancel", "notificationsPending", "notificationsCategories", "badge":
             handleNotificationCommand(name, args) { [engine] value in engine?.resolve(callback: callback, value: value) }
         case "keepAwake":
             setKeepAwake(args["on"] as? Bool ?? false)

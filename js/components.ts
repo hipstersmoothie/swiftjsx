@@ -30,13 +30,24 @@ export type Gradient = {
   gradient: (ColorValue | { color: ColorValue; location: number })[];
   /** Default "linear", from `start` (top) to `end` (bottom). */
   type?: "linear" | "radial" | "angular";
-  start?: Alignment;
-  end?: Alignment;
+  /** An alignment, or a unit point (`{ x: 0, y: 0.5 }` is the leading middle). */
+  start?: Alignment | UnitPoint;
+  end?: Alignment | UnitPoint;
   /** Radial and angular gradients. */
-  center?: Alignment;
+  center?: Alignment | UnitPoint;
   startRadius?: number;
   endRadius?: number;
+  /**
+   * Angular gradients: degrees clockwise from the trailing side (default 0
+   * and `startAngle + 360`). Less than a full turn for an arc, e.g. a gauge
+   * from 135 to 405.
+   */
+  startAngle?: number;
+  endAngle?: number;
 };
+
+/** 0…1 across and down. */
+export type UnitPoint = { x: number; y: number };
 
 /**
  * What `foregroundStyle`, `background` and shape `fill`/`stroke` take: a
@@ -220,6 +231,16 @@ export interface Modifiers {
   onLongPress?: () => void;
   /** Seconds before `onLongPress` fires (default 0.5). */
   longPressDuration?: number;
+  /**
+   * The finger went down / lifted (hold to pause). Alongside the view's
+   * other gestures and scrolling; `cancelled` when the finger moved away (a
+   * scroll started) instead of lifting.
+   */
+  onPressIn?: () => void;
+  onPressOut?: (event: { cancelled: boolean }) => void;
+  /** While the finger is down. */
+  pressedScale?: number;
+  pressedOpacity?: number;
   /** While dragging. Inside a ScrollView a drag takes over scrolling. */
   onDrag?: (event: DragEvent) => void;
   /** When the finger lifts; `cancelled` if the system cancelled the drag (positions are the last ones seen). */
@@ -572,7 +593,9 @@ export const Ellipse = host<ShapeProps>("Ellipse");
 export const Capsule = host<ShapeProps>("Capsule");
 
 /** A label and a value on one row ("Version … 1.0"), aligned the way Forms and Lists do it. */
-export const LabeledContent = host<Modifiers & WithChildren & { label: string }>("LabeledContent");
+/** `label` as text, or a `<LabeledContentLabel>` child for any view (an icon, a font). */
+export const LabeledContent = host<Modifiers & WithChildren & { label?: string }>("LabeledContent");
+export const LabeledContentLabel = host<Modifiers & WithChildren>("LabeledContentLabel");
 
 export const Spacer = host<Modifiers & { minLength?: number }>("Spacer");
 export const Divider = host<Modifiers>("Divider");
@@ -599,14 +622,10 @@ export const Button = host<
      * content. Any of these (or onPressIn / onPressOut) replaces `buttonStyle`
      * with a plain style that shows your content as is.
      */
-    pressedScale?: number;
-    pressedOpacity?: number;
     pressedBackground?: Fill;
     /** Fires after holding (`longPressDuration`, default 0.5 s); the release then doesn't fire `onPress`. */
     onLongPress?: () => void;
     longPressDuration?: number;
-    onPressIn?: () => void;
-    onPressOut?: () => void;
   }
 >("Button");
 
@@ -933,6 +952,21 @@ export const Chart = host<
     seriesColors?: Record<string, ColorValue>;
     /** Scrubbing: the x value under the finger (null when released). Dates come as ms since 1970. */
     onXSelectionChange?: (x: string | number | null) => void;
+    /** The y value under the finger (null when released). */
+    onYSelectionChange?: (y: number | null) => void;
+    /** A span of x: two fingers on iOS (numbers, or dates as ms). Null when released. */
+    onXRangeSelectionChange?: (range: [number, number] | null) => void;
+    /**
+     * Scrolls horizontally, showing this much x at a time: a number, for
+     * dates seconds or `{ unit: "day", count: 7 }`, for categories how many.
+     */
+    xVisibleDomain?: number | { unit: CalendarUnit; count?: number };
+    /** Where a scrolling chart starts: the x at its leading edge (default: the start). */
+    xScrollPosition?: ChartX;
+    /** While scrolling: the x at the leading edge (dates as ms). */
+    onXScrollPositionChange?: (x: string | number) => void;
+    /** Snap to multiples of a number, or to calendar units ("day", "week", "month"), when the finger lifts. */
+    xScrollAlignment?: number | "hour" | "day" | "week" | "month" | "year";
   }
 >("Chart");
 

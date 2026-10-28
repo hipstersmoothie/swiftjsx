@@ -37,8 +37,30 @@ export type NotificationContent = {
   data: unknown;
 };
 export type NotificationResponse = NotificationContent & {
-  /** "open" (tapped), "dismiss", or a custom action's id. */
+  /** "open" (tapped), "dismiss" (with a category's `dismissAction`), or a custom action's id. */
   action: string;
+  /** What they typed, for an action with `textInput`. */
+  text?: string;
+};
+export type NotificationAction = {
+  id: string;
+  title: string;
+  /** Shown in red. */
+  destructive?: boolean;
+  /** Opens the app (otherwise it's handled in the background). */
+  foreground?: boolean;
+  /** Needs the device unlocked. */
+  authenticate?: boolean;
+  systemImage?: string;
+  /** A reply field; its text comes back as the response's `text`. */
+  textInput?: { button?: string; placeholder?: string };
+};
+export type NotificationCategory = {
+  id: string;
+  /** Buttons shown when the notification is long-pressed / expanded. */
+  actions: NotificationAction[];
+  /** Report swipe-to-dismiss as a "dismiss" response. */
+  dismissAction?: boolean;
 };
 export type NotificationRequest = {
   /** Reuse an id to replace a scheduled notification (default: a new UUID). */
@@ -54,6 +76,18 @@ export type NotificationRequest = {
   data?: unknown;
   /** Notifications with the same group are stacked together. */
   group?: string;
+  /** A category from `setCategories` (its action buttons). */
+  category?: string;
+  /** Images, audio or video to show with it (file: or https: URLs; downloaded first). */
+  attachments?: (string | { url: string; id?: string })[];
+  /**
+   * "timeSensitive" breaks through Focus (needs the Time Sensitive
+   * Notifications capability); "passive" arrives silently; "critical" needs
+   * an entitlement from Apple. Default "active".
+   */
+  interruptionLevel?: "passive" | "active" | "timeSensitive" | "critical";
+  /** 0…1: which one is featured in a group's summary. */
+  relevance?: number;
   /** When: a Date, or seconds from now. Neither: right away. */
   at?: Date;
   seconds?: number;
@@ -74,6 +108,14 @@ export const notifications = {
   async schedule(request: NotificationRequest): Promise<string | null> {
     const { at, ...rest } = request;
     return (await nativeCall("notificationsSchedule", { ...rest, at: at ? +at : undefined })) as string | null;
+  },
+  /**
+   * The action buttons notifications can have, by category (replaces the
+   * previous set; call it at startup). Taps on them are "response" events
+   * with `action` set to the action's id.
+   */
+  async setCategories(categories: NotificationCategory[]): Promise<void> {
+    await nativeCall("notificationsCategories", { categories });
   },
   /** Removes scheduled and delivered notifications: these ids, or all. */
   async cancel(ids?: string | string[]): Promise<void> {

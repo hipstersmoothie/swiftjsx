@@ -28,6 +28,17 @@ export function StylesDemo() {
                 <Circle stroke={{ gradient: ["mint", "teal", "blue"], type: "angular" }} lineWidth={10} trim={[0, progress]} rotation={-90} />
                 <Text font={{ size: 17, weight: "semibold", design: "rounded" }} monospacedDigit animation="default">{Math.round(progress * 100)}%</Text>
               </ZStack>
+              {/* A gauge: a 270° arc whose gradient spans just the arc. */}
+              <ZStack frame={{ width: 72, height: 72 }}>
+                <Circle
+                  stroke={{ gradient: ["green", "yellow", "red"], type: "angular", startAngle: 0, endAngle: 270 }}
+                  lineWidth={8}
+                  lineCap="round"
+                  trim={[0, 0.75]}
+                  rotation={135}
+                />
+                <Image systemName="gauge.with.needle" font="title3" foregroundStyle="secondary" />
+              </ZStack>
               <VStack alignment="leading" spacing={6}>
                 <Text font="headline">Tap the ring</Text>
                 <Text font="caption" foregroundStyle="secondary">Circle with stroke, trim and an angular gradient.</Text>

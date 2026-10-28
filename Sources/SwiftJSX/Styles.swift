@@ -142,7 +142,8 @@ private func adaptive(light: Color, dark: Color) -> Color {
 /// A fill: any color, a hierarchical level of the current foreground
 /// ("primary"…"quinary"), a material ("thinMaterial"…), or a gradient:
 /// `{ gradient: [color | { color, location }], type?: "linear" | "radial" | "angular",
-///    start?, end?, center?, startRadius?, endRadius? }`.
+///    start?, end?, center?, startRadius?, endRadius?, startAngle?, endAngle? }`.
+/// Points are alignments ("top") or unit points (`{ x: 0.5, y: 0 }`).
 func fill(_ value: Any?) -> AnyShapeStyle? {
     switch value {
     case let name as String:
@@ -176,15 +177,24 @@ private func gradient(_ spec: [String: Any]) -> AnyShapeStyle {
     }
     let g = Gradient(stops: stops.isEmpty ? [.init(color: .clear, location: 0)] : stops)
     func number(_ key: String) -> CGFloat? { (spec[key] as? NSNumber).map { CGFloat($0.doubleValue) } }
-    let center = unitPoint(spec["center"] as? String) ?? .center
+    func point(_ key: String) -> UnitPoint? {
+        if let dict = spec[key] as? [String: Any], let x = dict["x"] as? NSNumber, let y = dict["y"] as? NSNumber {
+            return UnitPoint(x: x.doubleValue, y: y.doubleValue)
+        }
+        return unitPoint(spec[key] as? String)
+    }
+    let center = point("center") ?? .center
     switch spec["type"] as? String {
     case "radial":
         return AnyShapeStyle(RadialGradient(gradient: g, center: center, startRadius: number("startRadius") ?? 0, endRadius: number("endRadius") ?? 200))
     case "angular":
-        return AnyShapeStyle(AngularGradient(gradient: g, center: center))
+        // Degrees clockwise from the trailing side, like SwiftUI; a part of
+        // the circle (a gauge's arc) when they span less than 360.
+        let start = Double(number("startAngle") ?? 0)
+        return AnyShapeStyle(AngularGradient(gradient: g, center: center, startAngle: .degrees(start),
+                                             endAngle: .degrees(Double(number("endAngle") ?? CGFloat(start + 360)))))
     default:
-        return AnyShapeStyle(LinearGradient(gradient: g, startPoint: unitPoint(spec["start"] as? String) ?? .top,
-                                            endPoint: unitPoint(spec["end"] as? String) ?? .bottom))
+        return AnyShapeStyle(LinearGradient(gradient: g, startPoint: point("start") ?? .top, endPoint: point("end") ?? .bottom))
     }
 }
 

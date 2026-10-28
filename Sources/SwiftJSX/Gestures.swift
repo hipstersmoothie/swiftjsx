@@ -118,6 +118,8 @@ struct GestureModifiers: ViewModifier {
                              gesture: LongPressGesture(minimumDuration: node.double("longPressDuration") ?? 0.5)
                                  .onEnded { _ in fire("onLongPress") }))
             .modifier(dragAttachment)
+            // Buttons report presses through their style (PressableStyle).
+            .modifier(PressEvents(node: node, enabled: node.features.contains(.press) && node.type != "Button", fire: fire))
             // A drag the system cancelled (another gesture won, a sheet appeared…)
             // never ends normally; report it so drag state doesn't get stuck.
             // Checked a turn later: SwiftUI doesn't promise whether the reset
@@ -472,7 +474,86 @@ struct KeyboardShortcutModifier: ViewModifier {
     }
 }
 
+/// `onPressIn` / `onPressOut({ cancelled })` and `pressedScale` /
+/// `pressedOpacity` on any view (hold to pause, a card that sinks under the
+/// finger). Alongside its other gestures and scrolling: moving the finger
+/// (a scroll starting) ends the press with `cancelled: true`.
+private struct PressEvents: ViewModifier {
+    let node: Node
+    let enabled: Bool
+    let fire: (String, Any?) -> Void
+    @State private var pressed = false
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .scaleEffect(pressed ? node.cgFloat("pressedScale") ?? 1 : 1)
+                .opacity(pressed ? node.double("pressedOpacity") ?? 1 : 1)
+                .animation(.snappy(duration: 0.15), value: pressed)
+                #if os(iOS)
+                .gesture(PressRecognizer { down, cancelled in change(down, cancelled: cancelled) })
+                #else
+                .simultaneousGesture(DragGesture(minimumDistance: 0)
+                    .onChanged { _ in if !pressed { change(true, cancelled: false) } }
+                    .onEnded { _ in change(false, cancelled: false) })
+                #endif
+        } else {
+            content
+        }
+    }
+
+    private func change(_ down: Bool, cancelled: Bool) {
+        guard down != pressed else { return }
+        pressed = down
+        if down { fire("onPressIn", nil) } else { fire("onPressOut", ["cancelled": cancelled]) }
+    }
+}
+
 #if os(iOS)
+/// A touch-down recognizer that never blocks anything: it recognizes with
+/// every other gesture, and gives up once the finger moves 10 points.
+private struct PressRecognizer: UIGestureRecognizerRepresentable {
+    let onChange: (_ down: Bool, _ cancelled: Bool) -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        let press = UILongPressGestureRecognizer()
+        press.minimumPressDuration = 0
+        press.allowableMovement = .greatestFiniteMagnitude
+        press.cancelsTouchesInView = false
+        press.delegate = context.coordinator
+        return press
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        let location = recognizer.location(in: recognizer.view?.window)
+        switch recognizer.state {
+        case .began:
+            context.coordinator.start = location
+            onChange(true, false)
+        case .changed:
+            let start = context.coordinator.start
+            if hypot(location.x - start.x, location.y - start.y) > 10 {
+                onChange(false, true)
+                // Cancels the recognizer (until the next touch).
+                recognizer.isEnabled = false
+                recognizer.isEnabled = true
+            }
+        case .ended:
+            onChange(false, false)
+        default:
+            onChange(false, true)
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var start: CGPoint = .zero
+        func gestureRecognizer(_ recognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    }
+}
+
 /// `dragAxis="horizontal" | "vertical"`: drag events (same shape as a
 /// SwiftUI drag's) from a pan that begins only when the movement is along the
 /// axis. A ScrollView's own pan waits for it to fail, so a vertical swipe on a

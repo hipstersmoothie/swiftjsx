@@ -173,24 +173,22 @@ export function CheckoutScreen() {
     <Screen title="Checkout" titleDisplayMode="inline">
       {/* Number pads have no return key: Previous / Next / Done above the keyboard. */}
       <ToolbarItem placement="keyboard">
-        <HStack>
-          <Button
-            onPress={() => focused && move(focused, -1)}
-            disabled={!focused || order.indexOf(focused) === 0}
-            accessibilityLabel="Previous field"
-          >
-            <Image systemName="chevron.up" />
-          </Button>
-          <Button
-            onPress={() => focused && move(focused, 1)}
-            disabled={!focused || order.indexOf(focused) === order.length - 1}
-            accessibilityLabel="Next field"
-          >
-            <Image systemName="chevron.down" />
-          </Button>
-          <Spacer />
-          <Button title="Done" fontWeight="semibold" onPress={() => focused && refs[focused].current?.blur()} />
-        </HStack>
+        <Button
+          onPress={() => focused && move(focused, -1)}
+          disabled={!focused || order.indexOf(focused) === 0}
+          accessibilityLabel="Previous field"
+        >
+          <Image systemName="chevron.up" />
+        </Button>
+        <Button
+          onPress={() => focused && move(focused, 1)}
+          disabled={!focused || order.indexOf(focused) === order.length - 1}
+          accessibilityLabel="Next field"
+        >
+          <Image systemName="chevron.down" />
+        </Button>
+        <Spacer />
+        <Button title="Done" fontWeight="semibold" onPress={() => focused && refs[focused].current?.blur()} />
       </ToolbarItem>
 
       <Form>

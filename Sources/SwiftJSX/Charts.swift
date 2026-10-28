@@ -7,10 +7,6 @@ import SwiftUI
 /// groups marks into colored series (stacked bars, several lines).
 struct ChartHost: View {
     let node: Node
-    @Environment(\.jsxRuntime) private var runtime
-    @State private var numberSelection: Double?
-    @State private var dateSelection: Date?
-    @State private var categorySelection: String?
 
     var body: some View {
         let marks = node.children.filter { $0.type.hasSuffix("Mark") }
@@ -27,15 +23,8 @@ struct ChartHost: View {
         .modifier(Scales(node: node))
         .modifier(Axes(node: node, xKind: xKind(marks)))
         .modifier(SeriesColors(node: node))
-        .modifier(Selection(node: node, kind: xKind(marks), number: $numberSelection, date: $dateSelection, category: $categorySelection))
-        .onChange(of: numberSelection) { _, value in report(value.map { $0 as Any }) }
-        .onChange(of: dateSelection) { _, value in report(value.map { $0.timeIntervalSince1970 * 1000 as Any }) }
-        .onChange(of: categorySelection) { _, value in report(value.map { $0 as Any }) }
-    }
-
-    private func report(_ value: Any?) {
-        guard node.has("onXSelectionChange") else { return }
-        runtime?.dispatch(node.id, "onXSelectionChange", value ?? NSNull())
+        .modifier(Selections(node: node, kind: xKind(marks)))
+        .modifier(Scrolling(node: node, kind: xKind(marks)))
     }
 
     private func xKind(_ marks: [Node]) -> ValueKind {
@@ -158,8 +147,40 @@ struct ChartHost: View {
         }
     }
 
-    /// `onXSelectionChange`: scrubbing selects the x value under the finger.
-    private struct Selection: ViewModifier {
+    /// `onXSelectionChange`: scrubbing selects the x value under the finger;
+    /// `onYSelectionChange` the y value; `onXRangeSelectionChange` a span.
+    private struct Selections: ViewModifier {
+        let node: Node
+        let kind: ValueKind
+        @Environment(\.jsxRuntime) private var runtime
+        @State private var number: Double?
+        @State private var date: Date?
+        @State private var category: String?
+        @State private var y: Double?
+        @State private var numberRange: ClosedRange<Double>?
+        @State private var dateRange: ClosedRange<Date>?
+
+        func body(content: Content) -> some View {
+            content
+                .modifier(XSelection(node: node, kind: kind, number: $number, date: $date, category: $category))
+                .onChange(of: number) { _, value in report("onXSelectionChange", value) }
+                .onChange(of: date) { _, value in report("onXSelectionChange", value.map { $0.timeIntervalSince1970 * 1000 }) }
+                .onChange(of: category) { _, value in report("onXSelectionChange", value) }
+                .modifier(YSelection(node: node, value: $y))
+                .onChange(of: y) { _, value in report("onYSelectionChange", value) }
+                .modifier(RangeSelection(node: node, kind: kind, number: $numberRange, date: $dateRange))
+                .onChange(of: numberRange) { _, range in report("onXRangeSelectionChange", range.map { [$0.lowerBound, $0.upperBound] }) }
+                .onChange(of: dateRange) { _, range in
+                    report("onXRangeSelectionChange", range.map { [$0.lowerBound.timeIntervalSince1970 * 1000, $0.upperBound.timeIntervalSince1970 * 1000] })
+                }
+        }
+
+        private func report(_ event: String, _ value: Any?) {
+            if node.has(event) { runtime?.dispatch(node.id, event, value ?? NSNull()) }
+        }
+    }
+
+    private struct XSelection: ViewModifier {
         let node: Node
         let kind: ValueKind
         @Binding var number: Double?
@@ -176,6 +197,122 @@ struct ChartHost: View {
                 case .category: content.chartXSelection(value: $category)
                 }
             }
+        }
+    }
+}
+
+/// `onYSelectionChange`: the y value under the finger.
+private struct YSelection: ViewModifier {
+    let node: Node
+    @Binding var value: Double?
+    func body(content: Content) -> some View {
+        if node.has("onYSelectionChange") { content.chartYSelection(value: $value) } else { content }
+    }
+}
+
+/// `onXRangeSelectionChange([start, end] | null)`: on iOS, two fingers (or
+/// a drag after a hold) select a span of x (numbers or dates).
+private struct RangeSelection: ViewModifier {
+    let node: Node
+    let kind: ValueKind
+    @Binding var number: ClosedRange<Double>?
+    @Binding var date: ClosedRange<Date>?
+    func body(content: Content) -> some View {
+        if !node.has("onXRangeSelectionChange") {
+            content
+        } else {
+            switch kind {
+            case .number: content.chartXSelection(range: $number)
+            case .date: content.chartXSelection(range: $date)
+            case .category: content
+            }
+        }
+    }
+}
+
+/// `xVisibleDomain`: a scrolling chart showing this much x at a time
+/// (numbers; for dates, seconds or `{ unit, count }`; for categories, how
+/// many). `xScrollPosition` is where it starts (the leading edge's x);
+/// `onXScrollPositionChange` reports it while scrolling; `xScrollAlignment`
+/// snaps to a number or a calendar unit ("day", "week", "month") when the
+/// finger lifts.
+private struct Scrolling: ViewModifier {
+    let node: Node
+    let kind: ValueKind
+    @Environment(\.jsxRuntime) private var runtime
+    @State private var number: Double
+    @State private var date: Date
+    @State private var category: String
+
+    init(node: Node, kind: ValueKind) {
+        self.node = node
+        self.kind = kind
+        let start = node.prop("xScrollPosition")
+        _number = State(initialValue: (start as? NSNumber)?.doubleValue ?? -Double.greatestFiniteMagnitude)
+        _date = State(initialValue: start as? Date ?? .distantPast)
+        _category = State(initialValue: start as? String ?? "")
+    }
+
+    func body(content: Content) -> some View {
+        if let length = node.prop("xVisibleDomain") {
+            switch kind {
+            case .number:
+                content
+                    .chartScrollableAxes(.horizontal)
+                    .chartXVisibleDomain(length: (length as? NSNumber)?.doubleValue ?? 10)
+                    .chartScrollPosition(x: $number)
+                    .modifier(Optional(node.double("xScrollAlignment")) { c, unit in c.chartScrollTargetBehavior(.valueAligned(unit: unit)) })
+                    .onChange(of: number) { _, x in report(x) }
+            case .date:
+                content
+                    .chartScrollableAxes(.horizontal)
+                    .chartXVisibleDomain(length: Self.seconds(length))
+                    .chartScrollPosition(x: $date)
+                    .modifier(Optional(Self.alignment(node.string("xScrollAlignment"))) { c, match in
+                        c.chartScrollTargetBehavior(.valueAligned(matching: match, majorAlignment: .matching(match)))
+                    })
+                    .onChange(of: date) { _, x in report(x.timeIntervalSince1970 * 1000) }
+            case .category:
+                content
+                    .chartScrollableAxes(.horizontal)
+                    .chartXVisibleDomain(length: (length as? NSNumber)?.intValue ?? 5)
+                    .chartScrollPosition(x: $category)
+                    .onChange(of: category) { _, x in report(x) }
+            }
+        } else {
+            content
+        }
+    }
+
+    private func report(_ x: Any) {
+        if node.has("onXScrollPositionChange") { runtime?.dispatch(node.id, "onXScrollPositionChange", x) }
+    }
+
+    private static func seconds(_ length: Any) -> Double {
+        if let n = length as? NSNumber { return n.doubleValue }
+        let spec = length as? [String: Any]
+        let count = (spec?["count"] as? NSNumber)?.doubleValue ?? 1
+        let unit: Double = switch spec?["unit"] as? String {
+        case "minute": 60
+        case "hour": 3600
+        case "week", "weekOfYear": 7 * 86400
+        case "month": 30.44 * 86400
+        case "quarter": 91.31 * 86400
+        case "year": 365.25 * 86400
+        default: 86400
+        }
+        return count * unit
+    }
+
+    /// The date components a snapped position matches.
+    private static func alignment(_ unit: String?) -> DateComponents? {
+        switch unit {
+        case "hour": DateComponents(minute: 0)
+        case "day": DateComponents(hour: 0)
+        case "week", "weekOfYear": DateComponents(hour: 0, weekday: Calendar.current.firstWeekday)
+        case "month": DateComponents(day: 1, hour: 0)
+        case "year": DateComponents(month: 1, day: 1, hour: 0)
+        default: nil
         }
     }
 }

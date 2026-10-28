@@ -6,6 +6,8 @@ const days = Array.from({ length: 14 }, (_, i) => {
   const date = new Date(2026, 9, 14 + i);
   return { date, steps: Math.round(6000 + 4000 * Math.sin(i / 2) + (i % 3) * 900), resting: 56 + Math.round(4 * Math.cos(i / 3)) };
 });
+// Three months of daily distance, for a scrolling chart.
+const year = Array.from({ length: 90 }, (_, i) => ({ date: new Date(2026, 7, 1 + i), km: Math.round((3 + 2.5 * Math.sin(i / 5) + (i % 4)) * 10) / 10 }));
 const sleep = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => ({
   day,
   stages: { Deep: 1 + (i % 3) * 0.3, Core: 3.5 + (i % 2) * 0.4, REM: 1.5 + ((i + 1) % 3) * 0.2, Awake: 0.3 },
@@ -14,6 +16,9 @@ const sleep = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => 
 export function ChartsDemo() {
   const [selected, setSelected] = useState<number | null>(null);
   const [kind, setKind] = useState("bars");
+  const [leading, setLeading] = useState(+year[year.length - 14].date);
+  const [level, setLevel] = useState<number | null>(null);
+  const [range, setRange] = useState<[number, number] | null>(null);
   const day = selected === null ? null : days.reduce((a, b) => (Math.abs(+b.date - selected) < Math.abs(+a.date - selected) ? b : a));
 
   return (
@@ -41,6 +46,32 @@ export function ChartsDemo() {
                 ),
               )}
               <RuleMark y={10000} foregroundStyle="secondary" dash={[4, 4]} lineWidth={1} annotation="Goal 10,000" annotationPosition="top" />
+            </Chart>
+          </VStack>
+
+          <VStack alignment="leading" spacing={8}>
+            <Text font="headline">Distance (scrolls)</Text>
+            <Text font="caption" foregroundStyle="secondary" accessibilityIdentifier="scroll-chart-status">
+              {range
+                ? `${new Date(range[0]).toLocaleDateString()} – ${new Date(range[1]).toLocaleDateString()}`
+                : `From ${new Date(leading).toLocaleDateString()}${level === null ? "" : ` · ${level.toFixed(1)} km`}`}
+            </Text>
+            <Chart
+              frame={{ height: 180 }}
+              xVisibleDomain={{ unit: "day", count: 14 }}
+              xScrollPosition={year[year.length - 14].date}
+              xScrollAlignment="day"
+              onXScrollPositionChange={(x) => setLeading(x as number)}
+              onYSelectionChange={setLevel}
+              onXRangeSelectionChange={setRange}
+              xAxis={{ stride: { unit: "day", count: 3 }, format: "monthDay" }}
+              yAxis={{ format: "{} km" }}
+              accessibilityIdentifier="scroll-chart"
+            >
+              {year.map((d) => (
+                <BarMark key={+d.date} x={d.date} xUnit="day" y={d.km} cornerRadius={3} foregroundStyle="teal" />
+              ))}
+              {level !== null && <RuleMark y={level} foregroundStyle="secondary" lineWidth={1} />}
             </Chart>
           </VStack>
 

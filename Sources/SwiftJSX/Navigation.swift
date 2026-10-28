@@ -77,10 +77,28 @@ private struct ScreenToolbar: ToolbarContent {
     let items: [Node]
 
     #if os(iOS)
+    /// Above the keyboard and in the bottom bar, an item's children are the
+    /// group's own items, so a `<Spacer />` among them spans the bar ("Done"
+    /// on the trailing edge).
+    private static let barPlacements = ["keyboard", "bottomBar"]
+
     var body: some ToolbarContent {
-        ForEach(items) { item in
+        ForEach(items.filter { !Self.barPlacements.contains($0.string("placement") ?? "") }) { item in
             ToolbarItem(placement: toolbarPlacement(item.string("placement"))) {
                 HStack { Children(node: item) }
+            }
+        }
+        bar("keyboard")
+        bar("bottomBar")
+    }
+
+    /// None: no group (an empty one still shows a bar over the keyboard).
+    @ToolbarContentBuilder
+    private func bar(_ placement: String) -> some ToolbarContent {
+        let matching = items.filter { $0.string("placement") == placement }
+        if !matching.isEmpty {
+            ToolbarItemGroup(placement: toolbarPlacement(placement)) {
+                ForEach(matching) { item in Children(node: item) }
             }
         }
     }

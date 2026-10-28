@@ -81,9 +81,21 @@ export async function requestPermission(): Promise<NotificationPermission> {
 
 const requestId = (timerId: string) => `recipes.timer.${timerId}`;
 
+// A "Remind me in 1 min" button on timer notifications (long-press one).
+void notifications.setCategories([
+  { id: "recipes.timer", actions: [{ id: "snooze", title: "Remind Me in 1 Minute", systemImage: "clock.arrow.circlepath" }] },
+]);
+notifications.addListener("response", (response) => {
+  const { timerId } = (response.data ?? {}) as { timerId?: string };
+  if (response.action === "snooze" && timerId) void scheduleTimerNotification(timerId, 60, response.title, response.body);
+});
+
 /** Schedules (or reschedules: same id replaces) the notification for a timer. */
 export async function scheduleTimerNotification(timerId: string, seconds: number, title: string, body: string): Promise<void> {
-  await notifications.schedule({ id: requestId(timerId), title, body, seconds: Math.max(1, Math.round(seconds)), group: "recipes.timers", data: { timerId } });
+  await notifications.schedule({
+    id: requestId(timerId), title, body, seconds: Math.max(1, Math.round(seconds)),
+    group: "recipes.timers", category: "recipes.timer", interruptionLevel: "timeSensitive", data: { timerId },
+  });
 }
 
 export function cancelTimerNotification(timerId: string) {

@@ -33154,22 +33154,127 @@ ${error.stack}` : String(error));
       };
     }
   };
+  var labels = {
+    "utf-8": "utf-8",
+    utf8: "utf-8",
+    "unicode-1-1-utf-8": "utf-8",
+    "unicode11utf8": "utf-8",
+    "unicode20utf8": "utf-8",
+    "x-unicode20utf8": "utf-8",
+    "utf-16le": "utf-16le",
+    "utf-16": "utf-16le",
+    ucs2: "utf-16le",
+    "ucs-2": "utf-16le",
+    unicode: "utf-16le",
+    "csunicode": "utf-16le",
+    "iso-10646-ucs-2": "utf-16le",
+    "unicodefeff": "utf-16le",
+    "utf-16be": "utf-16be",
+    "unicodefffe": "utf-16be",
+    // As in browsers, Latin-1 labels decode as windows-1252.
+    "windows-1252": "windows-1252",
+    "iso-8859-1": "windows-1252",
+    latin1: "windows-1252",
+    "l1": "windows-1252",
+    ascii: "windows-1252",
+    "us-ascii": "windows-1252",
+    "iso8859-1": "windows-1252",
+    "iso_8859-1": "windows-1252",
+    "cp1252": "windows-1252",
+    "cp819": "windows-1252",
+    "x-cp1252": "windows-1252",
+    "ansi_x3.4-1968": "windows-1252"
+  };
+  var cp1252 = [8364, 129, 8218, 402, 8222, 8230, 8224, 8225, 710, 8240, 352, 8249, 338, 141, 381, 143, 144, 8216, 8217, 8220, 8221, 8226, 8211, 8212, 732, 8482, 353, 8250, 339, 157, 382, 376];
   var TextDecoder = class {
     constructor(label = "utf-8", options = {}) {
-      this.encoding = "utf-8";
-      const name = String(label).trim().toLowerCase();
-      if (name !== "utf-8" && name !== "utf8" && name !== "unicode-1-1-utf-8") {
-        throw new RangeError(`TextDecoder: only UTF-8 is supported, not "${label}"`);
-      }
+      this.pending = new Uint8Array(0);
+      this.started = false;
+      const encoding = labels[String(label).trim().toLowerCase()];
+      if (!encoding) throw new RangeError(`TextDecoder: unsupported encoding "${label}" (utf-8, utf-16le, utf-16be and windows-1252 / latin1 are)`);
+      this.encoding = encoding;
       this.fatal = !!options.fatal;
       this.ignoreBOM = !!options.ignoreBOM;
     }
-    decode(input, _options) {
-      if (input === void 0) return "";
-      const bytes = input instanceof DataView ? new Uint8Array(input.buffer, input.byteOffset, input.byteLength) : input;
-      const text = __web.decodeUTF8(bytes, this.fatal);
-      if (text === null) throw new TypeError("TextDecoder: the encoded data was not valid UTF-8");
-      return !this.ignoreBOM && text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+    decode(input, options) {
+      const stream = !!options?.stream;
+      let bytes = input === void 0 ? new Uint8Array(0) : ArrayBuffer.isView(input) ? new Uint8Array(input.buffer, input.byteOffset, input.byteLength) : new Uint8Array(input);
+      if (this.pending.length) {
+        const joined = new Uint8Array(this.pending.length + bytes.length);
+        joined.set(this.pending);
+        joined.set(bytes, this.pending.length);
+        bytes = joined;
+        this.pending = new Uint8Array(0);
+      }
+      if (stream) {
+        const keep = this.incompleteTail(bytes);
+        if (keep) {
+          this.pending = bytes.slice(bytes.length - keep);
+          bytes = bytes.subarray(0, bytes.length - keep);
+        }
+      }
+      let text = this.decodeComplete(bytes, stream);
+      if (!this.started && !this.ignoreBOM && text.charCodeAt(0) === 65279) text = text.slice(1);
+      if (text.length) this.started = true;
+      if (!stream) this.started = false;
+      return text;
+    }
+    /** How many bytes at the end start a character the next chunk finishes. */
+    incompleteTail(bytes) {
+      const n = bytes.length;
+      if (this.encoding === "windows-1252" || !n) return 0;
+      if (this.encoding !== "utf-8") {
+        let keep = n % 2;
+        if (n - keep >= 2) {
+          const i = n - keep - 2;
+          const unit = this.encoding === "utf-16le" ? bytes[i] | bytes[i + 1] << 8 : bytes[i] << 8 | bytes[i + 1];
+          if (unit >= 55296 && unit <= 56319) keep += 2;
+        }
+        return keep;
+      }
+      for (let back = 1; back <= Math.min(3, n); back++) {
+        const byte = bytes[n - back];
+        if ((byte & 192) === 128) continue;
+        const size = byte >= 240 ? 4 : byte >= 224 ? 3 : byte >= 192 ? 2 : 1;
+        return size > back ? back : 0;
+      }
+      return 0;
+    }
+    decodeComplete(bytes, stream) {
+      if (this.encoding === "utf-8") {
+        const text = __web.decodeUTF8(bytes, this.fatal);
+        if (text === null) throw new TypeError("TextDecoder: the encoded data was not valid UTF-8");
+        return text;
+      }
+      let out = "";
+      if (this.encoding === "windows-1252") {
+        for (let i = 0; i < bytes.length; i += 8192) {
+          const codes = Array.from(bytes.subarray(i, i + 8192), (b) => b >= 128 && b <= 159 ? cp1252[b - 128] : b);
+          out += String.fromCharCode(...codes);
+        }
+        return out;
+      }
+      const little = this.encoding === "utf-16le";
+      const even = bytes.length - bytes.length % 2;
+      const units = [];
+      for (let i = 0; i < even; i += 2) units.push(little ? bytes[i] | bytes[i + 1] << 8 : bytes[i] << 8 | bytes[i + 1]);
+      for (let i = 0; i < units.length; i++) {
+        const unit = units[i];
+        const lead = unit >= 55296 && unit <= 56319;
+        const trail = unit >= 56320 && unit <= 57343;
+        if (lead && units[i + 1] >= 56320 && units[i + 1] <= 57343) {
+          i++;
+        } else if (lead || trail) {
+          if (this.fatal) throw new TypeError(`TextDecoder: the encoded data was not valid ${this.encoding}`);
+          units[i] = 65533;
+        }
+      }
+      if (even < bytes.length && !stream) {
+        if (this.fatal) throw new TypeError(`TextDecoder: the encoded data was not valid ${this.encoding}`);
+        units.push(65533);
+      }
+      for (let i = 0; i < units.length; i += 8192) out += String.fromCharCode(...units.slice(i, i + 8192));
+      return out;
     }
   };
   var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -34350,6 +34455,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     Image: () => Image,
     Label: () => Label,
     LabeledContent: () => LabeledContent,
+    LabeledContentLabel: () => LabeledContentLabel,
     LazyHStack: () => LazyHStack,
     LazyVGrid: () => LazyVGrid,
     LazyVStack: () => LazyVStack,
@@ -34398,6 +34504,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     Text: () => Text,
     TextEditor: () => TextEditor,
     TextField: () => TextField,
+    TimePicker: () => TimePicker,
     Toggle: () => Toggle,
     ToolbarItem: () => ToolbarItem,
     VStack: () => VStack,
@@ -35135,6 +35242,7 @@ ${e.stack}` : String(e);
   var Ellipse = host("Ellipse");
   var Capsule = host("Capsule");
   var LabeledContent = host("LabeledContent");
+  var LabeledContentLabel = host("LabeledContentLabel");
   var Spacer = host("Spacer");
   var Divider = host("Divider");
   var ProgressView = host("ProgressView");
@@ -36121,11 +36229,11 @@ ${e.stack}` : String(e);
   var DatePickerHost = "DatePicker";
   function DatePicker(t0) {
     const $ = (0, import_compiler_runtime6.c)(21);
-    if ($[0] !== "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40") {
+    if ($[0] !== "9715e193f82cac90ab2ed91e97d7f30da3fe8b389fb708954efa791baed249e5") {
       for (let $i = 0; $i < 21; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40";
+      $[0] = "9715e193f82cac90ab2ed91e97d7f30da3fe8b389fb708954efa791baed249e5";
     }
     let max;
     let min;
@@ -36203,13 +36311,113 @@ ${e.stack}` : String(e);
   function _temp3(d) {
     return d === void 0 ? void 0 : typeof d === "number" ? d : d.getTime();
   }
+  function TimePicker(t0) {
+    const $ = (0, import_compiler_runtime6.c)(23);
+    if ($[0] !== "9715e193f82cac90ab2ed91e97d7f30da3fe8b389fb708954efa791baed249e5") {
+      for (let $i = 0; $i < 23; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "9715e193f82cac90ab2ed91e97d7f30da3fe8b389fb708954efa791baed249e5";
+    }
+    let max;
+    let min;
+    let minuteInterval;
+    let onChange;
+    let props;
+    let value;
+    if ($[1] !== t0) {
+      ({
+        value,
+        onChange,
+        min,
+        max,
+        minuteInterval,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = max;
+      $[3] = min;
+      $[4] = minuteInterval;
+      $[5] = onChange;
+      $[6] = props;
+      $[7] = value;
+    } else {
+      max = $[2];
+      min = $[3];
+      minuteInterval = $[4];
+      onChange = $[5];
+      props = $[6];
+      value = $[7];
+    }
+    const today = _temp22;
+    let t1;
+    if ($[8] !== minuteInterval || $[9] !== onChange) {
+      t1 = (ms) => {
+        const date = new Date(ms);
+        let minutes = date.getHours() * 60 + date.getMinutes();
+        if (minuteInterval && minuteInterval > 1) {
+          minutes = Math.round(minutes / minuteInterval) * minuteInterval % 1440;
+        }
+        onChange({
+          hour: Math.floor(minutes / 60),
+          minute: minutes % 60
+        });
+      };
+      $[8] = minuteInterval;
+      $[9] = onChange;
+      $[10] = t1;
+    } else {
+      t1 = $[10];
+    }
+    const change = t1;
+    let t2;
+    if ($[11] !== value) {
+      t2 = today(value);
+      $[11] = value;
+      $[12] = t2;
+    } else {
+      t2 = $[12];
+    }
+    let t3;
+    if ($[13] !== min) {
+      t3 = today(min);
+      $[13] = min;
+      $[14] = t3;
+    } else {
+      t3 = $[14];
+    }
+    let t4;
+    if ($[15] !== max) {
+      t4 = today(max);
+      $[15] = max;
+      $[16] = t4;
+    } else {
+      t4 = $[16];
+    }
+    let t5;
+    if ($[17] !== change || $[18] !== props || $[19] !== t2 || $[20] !== t3 || $[21] !== t4) {
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(DatePickerHost, { ...props, components: "hourAndMinute", value: t2, min: t3, max: t4, onChange: change });
+      $[17] = change;
+      $[18] = props;
+      $[19] = t2;
+      $[20] = t3;
+      $[21] = t4;
+      $[22] = t5;
+    } else {
+      t5 = $[22];
+    }
+    return t5;
+  }
+  function _temp22(t) {
+    return t === void 0 ? void 0 : (/* @__PURE__ */ new Date()).setHours(t.hour, t.minute, 0, 0);
+  }
   function NavigationRow(t0) {
     const $ = (0, import_compiler_runtime6.c)(33);
-    if ($[0] !== "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40") {
+    if ($[0] !== "9715e193f82cac90ab2ed91e97d7f30da3fe8b389fb708954efa791baed249e5") {
       for (let $i = 0; $i < 33; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40";
+      $[0] = "9715e193f82cac90ab2ed91e97d7f30da3fe8b389fb708954efa791baed249e5";
     }
     let badge;
     let children;
@@ -36344,11 +36552,11 @@ ${e.stack}` : String(e);
   }
   function Picker(t0) {
     const $ = (0, import_compiler_runtime6.c)(16);
-    if ($[0] !== "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40") {
+    if ($[0] !== "9715e193f82cac90ab2ed91e97d7f30da3fe8b389fb708954efa791baed249e5") {
       for (let $i = 0; $i < 16; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "ac1a16e191e76a1fd5c3b25129fa01c09b5c8caa773d0a4dc03cf036fb150f40";
+      $[0] = "9715e193f82cac90ab2ed91e97d7f30da3fe8b389fb708954efa791baed249e5";
     }
     let onChange;
     let options;
@@ -36389,7 +36597,7 @@ ${e.stack}` : String(e);
     }
     let t3;
     if ($[9] !== options) {
-      t3 = options.map(_temp22);
+      t3 = options.map(_temp32);
       $[9] = options;
       $[10] = t3;
     } else {
@@ -36408,7 +36616,7 @@ ${e.stack}` : String(e);
     }
     return t4;
   }
-  function _temp22(o_0) {
+  function _temp32(o_0) {
     return {
       ...o_0,
       value: String(o_0.value)
@@ -36538,6 +36746,16 @@ ${e.stack}` : String(e);
         at: at ? +at : void 0
       });
     },
+    /**
+     * The action buttons notifications can have, by category (replaces the
+     * previous set; call it at startup). Taps on them are "response" events
+     * with `action` set to the action's id.
+     */
+    async setCategories(categories) {
+      await nativeCall("notificationsCategories", {
+        categories
+      });
+    },
     /** Removes scheduled and delivered notifications: these ids, or all. */
     async cancel(ids) {
       await nativeCall("notificationsCancel", ids === void 0 ? {} : {
@@ -36573,11 +36791,11 @@ ${e.stack}` : String(e);
   };
   function useNotificationListener(type, listener) {
     const $ = (0, import_compiler_runtime7.c)(6);
-    if ($[0] !== "bb9694b9133fc80ee1fa6c1bc545b4f8d5dd5d26f31dcfc311287886776777e2") {
+    if ($[0] !== "5006df16a263148b3751e0468062d9f1124806a3ac47d02716e266595a9e4732") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "bb9694b9133fc80ee1fa6c1bc545b4f8d5dd5d26f31dcfc311287886776777e2";
+      $[0] = "5006df16a263148b3751e0468062d9f1124806a3ac47d02716e266595a9e4732";
     }
     const latest = (0, import_react8.useRef)(listener);
     let t0;
@@ -36663,11 +36881,11 @@ ${e.stack}` : String(e);
   }
   function useKeepAwake(t0) {
     const $ = (0, import_compiler_runtime7.c)(4);
-    if ($[0] !== "bb9694b9133fc80ee1fa6c1bc545b4f8d5dd5d26f31dcfc311287886776777e2") {
+    if ($[0] !== "5006df16a263148b3751e0468062d9f1124806a3ac47d02716e266595a9e4732") {
       for (let $i = 0; $i < 4; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "bb9694b9133fc80ee1fa6c1bc545b4f8d5dd5d26f31dcfc311287886776777e2";
+      $[0] = "5006df16a263148b3751e0468062d9f1124806a3ac47d02716e266595a9e4732";
     }
     const active = t0 === void 0 ? true : t0;
     let t1;

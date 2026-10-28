@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Screen, ScrollView, VStack, HStack, Text, Button, AbsoluteStack, AnimatePresence, Portal, Sheet, Spacer, withAnimation, haptic,
-  SwipeActions, Label, Image, Divider,
+  SwipeActions, Label, Image, Divider, ProgressView,
 } from "swiftjsx";
 
 const COLORS = ["orange", "pink", "indigo", "teal", "green", "red", "blue", "purple", "yellow"] as const;
@@ -43,12 +43,22 @@ export function AnimationDemo() {
   const [entrance, setEntrance] = useState(0);
   const [basket, setBasket] = useState<string[]>([]);
   const [over, setOver] = useState(false);
+  const [held, setHeld] = useState(false);
+  const [story, setStory] = useState(0);
+  const [presses, setPresses] = useState("none");
   const [rows, setRows] = useState([
     { id: 1, title: "Groceries", flagged: false, pinned: false },
     { id: 2, title: "Dentist at 3", flagged: false, pinned: false },
     { id: 3, title: "Call the bank", flagged: false, pinned: false },
   ]);
   const update = (id: number, change: Partial<(typeof rows)[number]>) => setRows((list) => list.map((r) => (r.id === id ? { ...r, ...change } : r)));
+
+  // A story that plays on its own; holding it pauses.
+  useEffect(() => {
+    if (held) return;
+    const timer = setInterval(() => setStory((p) => (p >= 1 ? 0 : p + 0.02)), 100);
+    return () => clearInterval(timer);
+  }, [held]);
 
   const shuffle = () =>
     withAnimation(
@@ -200,6 +210,26 @@ export function AnimationDemo() {
             onLongPress={() => setTaps((t) => ({ ...t, holds: t.holds + 1 }))}
             accessibilityIdentifier="tap-or-hold-scroll"
           />
+          <VStack
+            alignment="leading"
+            spacing={8}
+            padding
+            frame={{ maxWidth: Infinity, alignment: "leading" }}
+            background={held ? "indigo/80" : "indigo"}
+            cornerRadius={14}
+            pressedScale={0.97}
+            onPressIn={() => setHeld(true)}
+            onPressOut={({ cancelled }) => {
+              setHeld(false);
+              setPresses(cancelled ? "cancelled" : "released");
+            }}
+            accessibilityElement="combine"
+            accessibilityIdentifier="hold-to-pause"
+          >
+            <ProgressView value={story} tint="white" />
+            <Text font="headline" foregroundStyle="white">{held ? "Paused" : "Hold to pause"}</Text>
+            <Text font="caption" foregroundStyle="white/80" accessibilityIdentifier="press-status">{`Last press: ${presses}`}</Text>
+          </VStack>
           <Text font="headline" padding={{ top: 12 }}>Portal</Text>
           <Button title="Open a sheet" buttonStyle="bordered" onPress={() => setSheet(true)} accessibilityIdentifier="open-portal-sheet" />
           <Sheet isPresented={sheet} onDismiss={() => setSheet(false)}>

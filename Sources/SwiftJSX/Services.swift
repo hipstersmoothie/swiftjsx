@@ -69,6 +69,7 @@ final class NotificationHub: NSObject, UNUserNotificationCenterDelegate, @unchec
         var payload = Self.describe(response.notification)
         payload["action"] = response.actionIdentifier == UNNotificationDefaultActionIdentifier ? "open"
             : response.actionIdentifier == UNNotificationDismissActionIdentifier ? "dismiss" : response.actionIdentifier
+        if let text = (response as? UNTextInputNotificationResponse)?.userText { payload["text"] = text }
         let sendable = UncheckedSendable(payload)
         DispatchQueue.main.async { MainActor.assumeIsolated { self.emit("notificationResponse", sendable.value) } }
         completionHandler()
@@ -106,6 +107,16 @@ func handleNotificationCommand(_ name: String, _ args: [String: Any], done: @esc
         if let badge = args["badge"] as? NSNumber { content.badge = badge }
         if let data = args["data"], !(data is NSNull) { content.userInfo = ["data": data] }
         if let thread = args["group"] as? String { content.threadIdentifier = thread }
+        if let category = args["category"] as? String { content.categoryIdentifier = category }
+        if let score = (args["relevance"] as? NSNumber)?.doubleValue { content.relevanceScore = score }
+        #if os(iOS)
+        switch args["interruptionLevel"] as? String {
+        case "passive": content.interruptionLevel = .passive
+        case "timeSensitive": content.interruptionLevel = .timeSensitive
+        case "critical": content.interruptionLevel = .critical
+        default: break
+        }
+        #endif
         let repeats = args["repeats"] as? Bool ?? false
         var trigger: UNNotificationTrigger?
         if let seconds = (args["seconds"] as? NSNumber)?.doubleValue {
@@ -116,9 +127,23 @@ func handleNotificationCommand(_ name: String, _ args: [String: Any], done: @esc
             trigger = UNCalendarNotificationTrigger(dateMatching: Calendar.current.dateComponents(parts, from: date), repeats: repeats)
         }
         let id = args["id"] as? String ?? UUID().uuidString
-        center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger)) { error in
-            DispatchQueue.main.async { MainActor.assumeIsolated { done(error == nil ? id : NSNull()) } }
+        let attachments = (args["attachments"] as? [Any] ?? []).compactMap { item -> (String, URL)? in
+            let dict = item as? [String: Any]
+            guard let url = ((item as? String) ?? (dict?["url"] as? String)).flatMap(URL.init(string:)) else { return nil }
+            return (dict?["id"] as? String ?? UUID().uuidString, url)
         }
+        let request = UncheckedSendable((content, trigger))
+        Task {
+            // The system takes local files only: download others first.
+            request.value.0.attachments = await notificationAttachments(attachments)
+            let scheduled = UNNotificationRequest(identifier: id, content: request.value.0, trigger: request.value.1)
+            let added = (try? await center.add(scheduled)) != nil
+            done(added ? id : NSNull())
+        }
+    case "notificationsCategories":
+        let categories = (args["categories"] as? [[String: Any]] ?? []).map(notificationCategory)
+        center.setNotificationCategories(Set(categories))
+        done(NSNull())
     case "notificationsCancel":
         if let ids = args["ids"] as? [String] {
             center.removePendingNotificationRequests(withIdentifiers: ids)
@@ -147,6 +172,46 @@ func handleNotificationCommand(_ name: String, _ args: [String: Any], done: @esc
     default:
         done(NSNull())
     }
+}
+
+/// `{ id, actions: [{ id, title, destructive, foreground, authenticate,
+/// systemImage, textInput: { button, placeholder } }], dismissAction }`.
+private func notificationCategory(_ dict: [String: Any]) -> UNNotificationCategory {
+    let actions = (dict["actions"] as? [[String: Any]] ?? []).map { action -> UNNotificationAction in
+        var options: UNNotificationActionOptions = []
+        if action["destructive"] as? Bool == true { options.insert(.destructive) }
+        if action["foreground"] as? Bool == true { options.insert(.foreground) }
+        if action["authenticate"] as? Bool == true { options.insert(.authenticationRequired) }
+        let id = action["id"] as? String ?? ""
+        let title = action["title"] as? String ?? id
+        let icon = (action["systemImage"] as? String).map { UNNotificationActionIcon(systemImageName: $0) }
+        if let input = action["textInput"] as? [String: Any] {
+            return UNTextInputNotificationAction(identifier: id, title: title, options: options, icon: icon,
+                                                 textInputButtonTitle: input["button"] as? String ?? "Send",
+                                                 textInputPlaceholder: input["placeholder"] as? String ?? "")
+        }
+        return UNNotificationAction(identifier: id, title: title, options: options, icon: icon)
+    }
+    // Without customDismissAction, swiping one away sends no "dismiss" response.
+    let options: UNNotificationCategoryOptions = dict["dismissAction"] as? Bool == true ? [.customDismissAction] : []
+    return UNNotificationCategory(identifier: dict["id"] as? String ?? "", actions: actions, intentIdentifiers: [], options: options)
+}
+
+/// Images, audio or video shown with a notification. Remote URLs are
+/// downloaded (the system wants files, and moves them into its own store).
+private func notificationAttachments(_ items: [(String, URL)]) async -> [UNNotificationAttachment] {
+    var attachments: [UNNotificationAttachment] = []
+    for (id, url) in items {
+        var file = url
+        if !url.isFileURL {
+            guard let (temporary, _) = try? await URLSession.shared.download(from: url) else { continue }
+            let name = url.lastPathComponent.isEmpty ? "attachment" : url.lastPathComponent
+            file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "-" + name)
+            guard (try? FileManager.default.moveItem(at: temporary, to: file)) != nil else { continue }
+        }
+        if let attachment = try? UNNotificationAttachment(identifier: id, url: file) { attachments.append(attachment) }
+    }
+    return attachments
 }
 
 /// `setKeepAwake(on)`: no auto-lock while on (cooking steps, a timer).

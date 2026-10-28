@@ -159,6 +159,17 @@ const checks: Checks = {
       threw = true;
     }
     eq(threw, true);
+    // Streaming: characters split across chunks.
+    const streaming = new TextDecoder();
+    const parts = [bytes.subarray(0, 2), bytes.subarray(2, 8), bytes.subarray(8)];
+    eq(parts.map((p) => streaming.decode(p, { stream: true })).join("") + streaming.decode(), "héllo 👋");
+    eq(new TextDecoder().decode(new Uint8Array([0xef, 0xbb, 0xbf, 0x61])), "a");
+    eq(new TextDecoder("utf-16le").decode(new Uint8Array([0x68, 0, 0x3d, 0xd8, 0x4b, 0xdc])), "h👋");
+    eq(new TextDecoder("utf-16be").decode(new Uint8Array([0, 0x68, 0xd8, 0x3d])), "h\ufffd");
+    const utf16 = new TextDecoder("utf-16le");
+    eq(utf16.decode(new Uint8Array([0x68, 0, 0x3d]), { stream: true }) + utf16.decode(new Uint8Array([0xd8, 0x4b, 0xdc])), "h👋");
+    eq(new TextDecoder("latin1").decode(new Uint8Array([0x63, 0x61, 0x66, 0xe9, 0x80])), "café€");
+    eq(new TextDecoder("ISO-8859-1").encoding, "windows-1252");
     eq(btoa("hello"), "aGVsbG8=");
     eq(atob("aGVsbG8="), "hello");
   },
