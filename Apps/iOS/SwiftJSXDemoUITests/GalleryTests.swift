@@ -91,14 +91,14 @@ final class GalleryTests: XCTestCase {
     func testSplitView() {
         open("Split view")
         app.buttons["Open split view"].tap()
-        app.buttons["Mars"].tap()
+        app.staticTexts["Mars"].tap()
         let facts = label("planet-facts")
         XCTAssert(facts.waitForExistence(timeout: 5))
         XCTAssert(facts.label.contains("Olympus Mons"))
         // Back to the sidebar (compact): React hears it and clears the selection.
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssert(app.buttons["Venus"].waitForExistence(timeout: 5))
-        app.buttons["Venus"].tap()
+        XCTAssert(app.staticTexts["Venus"].waitForExistence(timeout: 5))
+        app.staticTexts["Venus"].tap()
         XCTAssert(facts.waitForExistence(timeout: 5))
         XCTAssert(facts.label.contains("sulfuric"))
     }

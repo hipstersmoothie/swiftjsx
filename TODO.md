@@ -68,7 +68,7 @@ wanted and couldn't do. Checked items are done and kept for the record.
 - [x] `listStyle`, row background / insets / separator / badge, `onDelete` / `onMove`,
       section header/footer views; ScrollView indicators, paging, anchor, margins,
       `onScroll`; `VirtualList` grids (`columns`).
-- [ ] `List` selection (iPad sidebars).
+- [x] `List` selection (`selection` / `onSelectionChange`, rows with `tag`).
 - [ ] Swipe actions and context menus outside `List` (a `ScrollView` of rows), and on the
       UIKit-backed `VirtualList listStyle="list"`.
 - [ ] Over the UIKit list, a large navigation title doesn't collapse into the inline
@@ -86,7 +86,7 @@ wanted and couldn't do. Checked items are done and kept for the record.
       it was pushed with. Read changing data from state/stores inside the screen.
 - [ ] A navigation ref usable outside a `<Navigator>` (react-navigation's
       `createNavigationContainerRef`), `Navigator.replace`, a `Screen` subtitle.
-- [ ] `NavigationSplitView` `columnVisibility`.
+- [x] `NavigationSplitView` `columnVisibility` / `onColumnVisibilityChange`.
 - [ ] Sheets: an "attempted to dismiss" callback (to ask before discarding changes).
 - [ ] Search: `isSearching`, dismiss from code, submit / cancel events, scopes,
       suggestions.

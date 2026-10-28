@@ -158,9 +158,7 @@ struct NodeView: View {
             ScreenHost(node: node)
 
         case "List":
-            List { EditableChildren(node: node) }
-                .modifier(ListStyleModifier(style: node.string("listStyle")))
-                .scrollContentBackground(node.string("scrollContentBackground") == "hidden" ? .hidden : .automatic)
+            SelectableList(node: node)
 
         case "Form":
             Form { Children(node: node) }

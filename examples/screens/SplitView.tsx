@@ -41,11 +41,10 @@ function Planets({ onClose }: { onClose: () => void }) {
           <ToolbarItem placement="cancellationAction">
             <Button title="Close" onPress={onClose} />
           </ToolbarItem>
-          <List>
+          {/* List selection: tagged rows; iPad highlights the selected one. */}
+          <List selection={selected} onSelectionChange={setSelected}>
             {planets.map((p) => (
-              <Button key={p.id} onPress={() => setSelected(p.id)} accessibilityTraits={selected === p.id ? "selected" : undefined}>
-                <Label title={p.name} systemImage="circle.fill" foregroundStyle={selected === p.id ? p.color : "primary"} />
-              </Button>
+              <Label key={p.id} tag={p.id} title={p.name} systemImage="circle.fill" foregroundStyle={p.color} />
             ))}
           </List>
         </Screen>

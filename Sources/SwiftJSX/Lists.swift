@@ -75,6 +75,33 @@ struct ScrollOptions: ViewModifier {
     }
 }
 
+/// `<List selection onSelectionChange>`: rows with a `tag` are selectable
+/// (iPad sidebars highlight the selected row).
+struct SelectableList: View {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+    @State private var picked: String??
+
+    var body: some View {
+        Group {
+            if node.has("onSelectionChange") || node.has("selection") {
+                List(selection: Binding<String?>(
+                    get: { picked ?? node.string("selection") },
+                    set: { value in
+                        picked = .some(value)
+                        runtime?.dispatch(node.id, "onSelectionChange", value ?? NSNull())
+                    }
+                )) { EditableChildren(node: node) }
+            } else {
+                List { EditableChildren(node: node) }
+            }
+        }
+        .modifier(ListStyleModifier(style: node.string("listStyle")))
+        .scrollContentBackground(node.string("scrollContentBackground") == "hidden" ? .hidden : .automatic)
+        .onChange(of: node.string("selection")) { picked = nil }
+    }
+}
+
 /// List and Section children, with swipe-to-delete (`onDelete(indices)`) and
 /// drag-to-reorder in edit mode (`onMove({ from, to })`) when given.
 struct EditableChildren: View {

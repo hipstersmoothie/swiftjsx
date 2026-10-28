@@ -83,8 +83,18 @@ struct SplitViewHost: View {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
     @State private var picked: NavigationSplitViewColumn?
+    @State private var visibilityPicked: NavigationSplitViewVisibility?
 
     var body: some View {
+        // `columnVisibility`: "automatic" | "all" | "doubleColumn" | "detailOnly";
+        // the user hiding or showing the sidebar reports onColumnVisibilityChange.
+        let visibility = Binding<NavigationSplitViewVisibility>(
+            get: { visibilityPicked ?? splitVisibility(node.string("columnVisibility")) },
+            set: { value in
+                visibilityPicked = value
+                runtime?.dispatch(node.id, "onColumnVisibilityChange", visibilityName(value))
+            }
+        )
         let sidebar = column("sidebar")
         let content = column("content")
         let detail = column("detail")
@@ -99,7 +109,7 @@ struct SplitViewHost: View {
 
         Group {
             if let content {
-                NavigationSplitView(preferredCompactColumn: compact) {
+                NavigationSplitView(columnVisibility: visibility, preferredCompactColumn: compact) {
                     ColumnView(node: sidebar)
                 } content: {
                     ColumnView(node: content)
@@ -107,7 +117,7 @@ struct SplitViewHost: View {
                     ColumnView(node: detail)
                 }
             } else {
-                NavigationSplitView(preferredCompactColumn: compact) {
+                NavigationSplitView(columnVisibility: visibility, preferredCompactColumn: compact) {
                     ColumnView(node: sidebar)
                 } detail: {
                     ColumnView(node: detail)
@@ -116,6 +126,7 @@ struct SplitViewHost: View {
         }
         .modifier(SplitViewStyleModifier(style: node.string("navigationSplitViewStyle")))
         .onChange(of: node.string("preferredCompactColumn")) { picked = nil }
+        .onChange(of: node.string("columnVisibility")) { visibilityPicked = nil }
     }
 
     private func column(_ name: String) -> Node? {
@@ -141,6 +152,24 @@ private struct SplitViewStyleModifier: ViewModifier {
         case "prominentDetail": content.navigationSplitViewStyle(.prominentDetail)
         default: content
         }
+    }
+}
+
+private func splitVisibility(_ name: String?) -> NavigationSplitViewVisibility {
+    switch name {
+    case "all": .all
+    case "doubleColumn": .doubleColumn
+    case "detailOnly": .detailOnly
+    default: .automatic
+    }
+}
+
+private func visibilityName(_ visibility: NavigationSplitViewVisibility) -> String {
+    switch visibility {
+    case .all: "all"
+    case .doubleColumn: "doubleColumn"
+    case .detailOnly: "detailOnly"
+    default: "automatic"
     }
 }
 

@@ -133,6 +133,8 @@ export interface Modifiers {
   listRowSeparator?: "visible" | "hidden";
   /** A count or short text shown at the trailing edge of a List row. */
   badge?: number | string;
+  /** This row's value for `<List selection>`. */
+  tag?: string;
   opacity?: number;
   disabled?: boolean;
   /** Animate every change to this view (and its children's insertions/removals). */
@@ -287,6 +289,9 @@ export const List = host<
     listStyle?: "automatic" | "plain" | "grouped" | "insetGrouped" | "inset" | "sidebar";
     /** "hidden": no list background, so the List's own `background` (or what's behind) shows. */
     scrollContentBackground?: "visible" | "hidden";
+    /** The selected row's `tag` (iPad sidebars highlight it); rows need a `tag`. */
+    selection?: string | null;
+    onSelectionChange?: (tag: string | null) => void;
   }
 >("List");
 export const Form = host<Modifiers & WithChildren & { scrollContentBackground?: "visible" | "hidden" }>("Form");
@@ -561,6 +566,9 @@ export const NavigationSplitViewHost = host<
     preferredCompactColumn?: "sidebar" | "content" | "detail";
     onPreferredCompactColumnChange?: (column: "sidebar" | "content" | "detail") => void;
     navigationSplitViewStyle?: "automatic" | "balanced" | "prominentDetail";
+    /** Which columns show (iPad, Mac); the user changing it reports onColumnVisibilityChange. */
+    columnVisibility?: "automatic" | "all" | "doubleColumn" | "detailOnly";
+    onColumnVisibilityChange?: (visibility: "automatic" | "all" | "doubleColumn" | "detailOnly") => void;
   }
 >("NavigationSplitView");
 

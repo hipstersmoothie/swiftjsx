@@ -99,6 +99,7 @@ struct Modifiers: ViewModifier {
             .modifier(TapModifier(node: node) { runtime?.fire(node, "onTapGesture", ["x": $0.x, "y": $0.y]) })
             .modifier(RefreshModifier(node: node))
             .modifier(AttachedActions(node: node))
+            .modifier(Tag(value: node.string("tag")))
             // Last, so the view's own background and border use it too.
             .transformEnvironment(\.colorScheme) { scheme in
                 if let forced = colorScheme(node.string("colorScheme")) { scheme = forced }
@@ -454,6 +455,14 @@ struct FrameModifier: ViewModifier {
         let align = alignment(frame?["alignment"] as? String) ?? .center
         content.frame(width: v("width"), height: v("height"), alignment: align)
             .frame(minWidth: v("minWidth"), maxWidth: v("maxWidth"), minHeight: v("minHeight"), maxHeight: v("maxHeight"), alignment: align)
+    }
+}
+
+/// `tag`: the row's value for List selection.
+struct Tag: ViewModifier {
+    let value: String?
+    func body(content: Content) -> some View {
+        if let value { content.tag(value) } else { content }
     }
 }
 

@@ -130,7 +130,7 @@ public final class Node: Identifiable {
         "padding", "frame", "background", "foregroundStyle", "font", "fontWeight", "fontDesign",
         "cornerRadius", "border", "shadow", "opacity", "disabled", "transition", "onAppear",
         "onTapGesture", "hidden", "onDisappear", "colorScheme", "zIndex", "layoutPriority", "gridColumns",
-        "fixedSize", "allowsHitTesting", "preferredColorScheme",
+        "fixedSize", "allowsHitTesting", "preferredColorScheme", "tag",
     ]).union(featureKeys.map(\.0)).subtracting(["__ref"])
 
     /// Views with state of their own get the wrapper from the start, so even
