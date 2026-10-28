@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build bundles
+        run: npm run build
+
+      - name: Committed runtime is up to date
+        run: |
+          # runtime.js / runtime.production.js ship in the Swift package; rebuild
+          # them (npm run build) and commit when js/ changes.
+          git diff --exit-code -- Sources/SwiftJSX/Resources
+
+      - name: Swift tests
+        # The native backend's tests are skipped without the NativeScript add-on.
+        run: swift test
+
+      - name: Package and template
+        run: |
+          npm pack --pack-destination "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP"
+          node "$GITHUB_WORKSPACE/cli/swiftjsx.mjs" create CIApp --swiftjsx "$GITHUB_WORKSPACE" || true
+          test -f CIApp/src/App.tsx
+          cd CIApp
+          npm install "$RUNNER_TEMP"/swiftjsx-*.tgz
+          npm install
+          npx swiftjsx build
+          npx tsc --noEmit
+
+  ios:
+    name: iOS demo builds
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci && npm run build
+      - run: brew install xcodegen
+      - name: Build for the simulator
+        working-directory: Apps/iOS
+        run: |
+          xcodegen generate
+          xcodebuild build -project SwiftJSXDemo.xcodeproj -scheme SwiftJSXDemo \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build | tail -20
