@@ -23,6 +23,10 @@ struct CollectionList: UIViewRepresentable {
         let appearance = Self.appearance(node)
         var configuration = UICollectionLayoutListConfiguration(appearance: appearance)
         configuration.backgroundColor = .clear
+        // A row's <SwipeActions> as UIKit swipe actions.
+        let coordinator = context.coordinator
+        configuration.trailingSwipeActionsConfigurationProvider = { [weak coordinator] in coordinator?.swipeActions(at: $0, leading: false) }
+        configuration.leadingSwipeActionsConfigurationProvider = { [weak coordinator] in coordinator?.swipeActions(at: $0, leading: true) }
         let layout = UICollectionViewCompositionalLayout { _, environment in
             let section = NSCollectionLayoutSection.list(using: configuration, layoutEnvironment: environment)
             // UIKit's default top padding for a grouped section is about twice
@@ -120,12 +124,45 @@ struct CollectionList: UIViewRepresentable {
 
         func collectionView(_ view: UICollectionView, numberOfItemsInSection section: Int) -> Int { count }
 
+        /// The row's `<SwipeActions edge>` (in its element, or one level in).
+        func swipeActions(at indexPath: IndexPath, leading: Bool) -> UISwipeActionsConfiguration? {
+            guard let node, let row = node.children.first(where: { Int($0.double("index") ?? -1) == indexPath.item }) else { return nil }
+            func find(_ parent: Node, depth: Int) -> Node? {
+                if let set = parent.children.first(where: { $0.type == "SwipeActions" && ($0.string("edge") == "leading") == leading }) { return set }
+                guard depth > 0 else { return nil }
+                return parent.children.lazy.compactMap { find($0, depth: depth - 1) }.first
+            }
+            guard let set = find(row, depth: 2) else { return nil }
+            let actions = set.children.filter { $0.type == "Button" }.map { button -> UIContextualAction in
+                let label = button.children.first { $0.type == "Label" }
+                let destructive = button.string("role") == "destructive"
+                let action = UIContextualAction(style: destructive ? .destructive : .normal,
+                                                title: button.string("title") ?? label?.string("title")) { [weak self] _, _, done in
+                    if button.has("onPress") { self?.runtime?.fire(button, "onPress") }
+                    done(true)
+                }
+                if let tint = color(button.prop("tint")) {
+                    action.backgroundColor = UIColor(tint)
+                } else if !destructive {
+                    action.backgroundColor = .systemGray
+                }
+                if let icon = button.string("systemImage") ?? label?.string("systemImage") { action.image = UIImage(systemName: icon) }
+                return action
+            }
+            guard !actions.isEmpty else { return nil }
+            let configuration = UISwipeActionsConfiguration(actions: actions)
+            configuration.performsFirstActionWithFullSwipe = set.bool("allowsFullSwipe")
+            return configuration
+        }
+
         func collectionView(_ view: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
             let cell = view.dequeueReusableCell(withReuseIdentifier: "row", for: indexPath)
             guard let node else { return cell }
             let configuration = UIHostingConfiguration {
                 VirtualSlot(list: node, index: indexPath.item, layout: layout)
                     .environment(\.jsxRuntime, runtime)
+                    // Swipe actions come from UIKit here (below), not SwipeRow.
+                    .environment(\.inList, true)
             }
             // Fixed heights are exact: no vertical cell margins on top.
             cell.contentConfiguration = layout.fixed == nil ? configuration : configuration.margins(.vertical, 0)

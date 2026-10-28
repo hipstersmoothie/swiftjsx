@@ -2,10 +2,10 @@
 // refresh, nested comments, links, and saved stories in localStorage.
 import { QueryClient, QueryClientProvider, useInfiniteQuery } from "@tanstack/react-query";
 import {
-  TabView, Tab, Navigator, useNavigation, Screen, VirtualList, VStack, HStack, Text, Image, Button, ProgressView, Spacer,
+  TabView, Tab, Navigator, useNavigation, Screen, VirtualList, VStack, HStack, Text, Image, Button, ProgressView, Spacer, SwipeActions, Label,
 } from "swiftjsx";
 import { feeds, fetchFeed, ago, domain, type Feed, type Story } from "./api";
-import { useSaved } from "./saved";
+import { useSaved, useIsSaved } from "./saved";
 import { StoryScreen } from "./StoryScreen";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000 } } });
@@ -83,6 +83,8 @@ function SavedScreen() {
 function StoryRow({ story, rank }: { story: Story; rank?: number }) {
   const nav = useNavigation();
   const site = domain(story.url);
+  const saved = useIsSaved(story.id);
+  const toggleSaved = useSaved((s) => s.toggle);
   return (
     <Button buttonStyle="plain" onPress={() => nav.push(<StoryScreen story={story} />)}>
       <HStack alignment="top" spacing={12} padding={{ vertical: 4 }}>
@@ -98,6 +100,12 @@ function StoryRow({ story, rank }: { story: Story; rank?: number }) {
         </VStack>
         <Spacer />
       </HStack>
+      {/* UIKit swipe actions in the list-style VirtualList. */}
+      <SwipeActions edge="trailing" allowsFullSwipe>
+        <Button tint="orange" onPress={() => toggleSaved(story)}>
+          <Label title={saved ? "Unsave" : "Save"} systemImage={saved ? "bookmark.slash" : "bookmark"} />
+        </Button>
+      </SwipeActions>
     </Button>
   );
 }

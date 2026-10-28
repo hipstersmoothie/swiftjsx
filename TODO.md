@@ -113,7 +113,8 @@ for the record.
 - [x] Swipe actions outside a `List` (a ScrollView or stack of rows; iOS): the row slides
       over its actions, full swipes, one open row at a time. (Context menus already work
       anywhere.)
-- [ ] Swipe actions on the UIKit-backed `VirtualList listStyle="list"`.
+- [x] Swipe actions on the UIKit-backed `VirtualList listStyle="list"` (UIContextualActions
+      from the row's `<SwipeActions>`).
 - [ ] Over the UIKit list, a large navigation title doesn't collapse into the inline
       title (SwiftUI only tracks its own scroll views); use `titleDisplayMode="inline"`.
       Off iOS, `listStyle="list"` is still SwiftUI's `List`.

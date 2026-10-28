@@ -647,6 +647,23 @@ final class GalleryTests: XCTestCase {
         snapshot("swipe-deleted")
     }
 
+    func testHackerNewsSwipeToSave() {
+        openApp("Hacker News")
+        let story = app.cells.containing(NSPredicate(format: "label CONTAINS '▲'")).firstMatch
+        XCTAssert(story.waitForExistence(timeout: 15), "no stories loaded")
+        // UIKit swipe actions on the list-style VirtualList.
+        story.swipeLeft()
+        let save = app.buttons["Save"]
+        XCTAssert(save.waitForExistence(timeout: 3), "no swipe action")
+        snapshot("hn-swipe")
+        save.tap()
+        app.tabBars.buttons["Saved"].tap()
+        XCTAssert(app.buttons.containing(NSPredicate(format: "label CONTAINS '▲'")).firstMatch.waitForExistence(timeout: 5), "not saved")
+        // Clean up: unsave from the Saved list's own swipe.
+        app.cells.containing(NSPredicate(format: "label CONTAINS '▲'")).firstMatch.swipeLeft()
+        if app.buttons["Unsave"].waitForExistence(timeout: 3) { app.buttons["Unsave"].tap() }
+    }
+
     func testCharts() {
         open("Charts")
         let caption = app.staticTexts["Drag across the chart"]
