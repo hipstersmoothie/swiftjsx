@@ -82,14 +82,34 @@ private struct ScreenToolbar: ToolbarContent {
     /// on the trailing edge).
     private static let barPlacements = ["keyboard", "bottomBar"]
 
+    // Up to twelve items, each its own ToolbarItem (its own glass button).
+    // Not a ForEach: Xcode 26's iOS SDK has no ForEach of toolbar content
+    // before iOS 26 (Xcode 27's back-deploys it).
     var body: some ToolbarContent {
-        ForEach(items.filter { !Self.barPlacements.contains($0.string("placement") ?? "") }) { item in
-            ToolbarItem(placement: toolbarPlacement(item.string("placement"))) {
-                HStack { Children(node: item) }
-            }
-        }
+        let regular = items.filter { !Self.barPlacements.contains($0.string("placement") ?? "") }
+        item(regular, 0)
+        item(regular, 1)
+        item(regular, 2)
+        item(regular, 3)
+        item(regular, 4)
+        item(regular, 5)
+        item(regular, 6)
+        item(regular, 7)
+        item(regular, 8)
+        item(regular, 9)
+        item(regular, 10)
+        item(regular, 11)
         bar("keyboard")
         bar("bottomBar")
+    }
+
+    @ToolbarContentBuilder
+    private func item(_ list: [Node], _ index: Int) -> some ToolbarContent {
+        if index < list.count {
+            ToolbarItem(placement: toolbarPlacement(list[index].string("placement"))) {
+                HStack { Children(node: list[index]) }
+            }
+        }
     }
 
     /// None: no group (an empty one still shows a bar over the keyboard).
