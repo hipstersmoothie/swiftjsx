@@ -255,6 +255,29 @@ for the record.
       row don't move it (new posts above a feed you're reading); it follows the row's
       measured position while the new rows settle.
 
+## App kit
+
+- [x] All 18 example apps moved onto the kit (toast, ContentUnavailable, Avatar, Chip,
+      Badge, ProgressRing, Pager, `format`, `useNow`, `<Text date>`), dropping about
+      1,200 lines of per-app copies.
+- [x] Gaps the migration found, filled: `format.compact({ from, digits })`,
+      `duration(…, "abbreviated")`, `bytes(0)` → "Zero KB", `relativeTime({ weeks })`,
+      weekdays ahead in `relativeDay`, compact counts; `useNow({ active })`; toast
+      `position` (incl. "center"); Avatar `design`, `cornerRadius`, `outline`, a symbol
+      fallback and one-letter initials for one word; IconTile `glyphScale`; Chip `ref` and
+      unselected colors; ProgressRing `lineCap`; PageIndicator `dotSize` / `spacing`; Pager
+      `indicatorInactive`; ContentUnavailable `symbolColor` and `description` with `search`;
+      `onInitialEnd`; keyframes `delay`.
+- [ ] Still custom in the apps: ContentUnavailable with a custom image (chat's avatar) or
+      fonts (Bluesky's Inter); themed toasts; a Badge in other sizes (shop's discount tag);
+      Chip borders and fonts; Instagram's shrinking far dots.
+- [ ] `initial` and `keyframes` values multiply the view's own (`opacity` can't go above
+      the real one), so a dot that brightens on its turn needs a cover.
+- [ ] Not built yet: a form sheet with a discard guard, color swatch and symbol pickers, a
+      zoomable image viewer, a side drawer, a month calendar, Sheet lazy content and
+      `onPresented`, live props on pushed screens, weekday notification triggers, a share
+      button anchor.
+
 ## Rendering
 
 - [ ] `foregroundStyle`, gestures, transforms, accessibility props and refs are attached

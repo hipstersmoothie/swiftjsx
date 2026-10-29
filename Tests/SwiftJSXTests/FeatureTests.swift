@@ -464,6 +464,13 @@ struct CompilerTests {
         #expect(texts.contains("list a, b, and c"))
         #expect(texts.contains("ago 5m 3h 5 minutes ago"))
         #expect(texts.contains("day Today Yesterday"))
+        #expect(texts.contains("compact2 1,234 12K"))
+        #expect(texts.contains("bytes2 Zero KB 512 KB 106 GB"))
+        #expect(texts.contains("abbr 45 sec 25 min 1 hr 5 min 1 hr"))
+        #expect(texts.contains("weeks 4w"))
+        #expect(texts.contains("ahead Saturday"))
+        #expect(texts.contains("countc 12.4K likes"))
+        #expect(texts.contains("initials AL C"))
         #expect(runtime.find("ContentUnavailable")?.string("title") == "Nothing here")
 
         // Persistent state: saved, and read back by a fresh runtime.

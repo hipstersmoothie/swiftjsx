@@ -227,10 +227,14 @@ export interface Modifiers {
    */
   initial?: { opacity?: number; scale?: number; x?: number; y?: number; rotation?: number };
   initialAnimation?: AnimationSpec;
+  /** The `initial` animation finished (start the next step of an entrance). */
+  onInitialEnd?: () => void;
   keyframes?: {
     trigger?: unknown;
     steps: { scale?: number; opacity?: number; x?: number; y?: number; rotation?: number; duration?: number; animation?: AnimationSpec }[];
     repeat?: boolean;
+    /** Seconds before a repeating loop first starts (to run views out of phase). */
+    delay?: number;
     settle?: AnimationSpec;
   };
 
@@ -631,7 +635,16 @@ export const Path = host<ShapeProps & PathBox & { d: string }>("Path");
  * is the standard "No Results for …".
  */
 export const ContentUnavailable = host<
-  Modifiers & WithChildren & { title?: string; systemImage?: string; description?: string; search?: string }
+  Modifiers &
+    WithChildren & {
+      title?: string;
+      systemImage?: string;
+      description?: string;
+      /** "No Results for “query”" (with `description`, in place of the system's suggestion). */
+      search?: string;
+      /** The symbol's color or gradient (default: secondary). */
+      symbolColor?: Fill;
+    }
 >("ContentUnavailable");
 
 /** A fill or stroke for `<Canvas>` drawing: a color, or a gradient from `ctx.create…Gradient`. */

@@ -173,14 +173,20 @@ struct NodeView: View {
 
         case "ContentUnavailable":
             // An empty / error / no-results state, as the system draws it.
-            if let query = node.string("search") {
+            if let query = node.string("search"), node.string("description") == nil, !node.has("symbolColor") {
                 ContentUnavailableView.search(text: query)
             } else {
+                let query = node.string("search")
+                let title = query.map { "No Results for “\($0)”" } ?? node.string("title") ?? ""
                 ContentUnavailableView {
-                    if let image = node.string("systemImage") {
-                        Label(node.string("title") ?? "", systemImage: image)
+                    if let image = query == nil ? node.string("systemImage") : "magnifyingglass" {
+                        Label {
+                            Text(title)
+                        } icon: {
+                            Image(systemName: image).foregroundStyle(fill(node.prop("symbolColor")) ?? AnyShapeStyle(.secondary))
+                        }
                     } else {
-                        Text(node.string("title") ?? "")
+                        Text(title)
                     }
                 } description: {
                     if let description = node.string("description") { Text(description) }

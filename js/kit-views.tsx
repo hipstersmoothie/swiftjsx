@@ -1,7 +1,7 @@
 // Views nearly every app was building from primitives: avatars, icon tiles,
 // chips, badges, progress rings, page indicators and a pager.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import {
   HStack, VStack, ZStack, Text, Image, Button, Circle, Capsule, Overlay, ScrollView,
   type Fill, type ColorValue, type Modifiers,
@@ -10,11 +10,11 @@ import type { HostInstance } from "./renderer";
 
 // MARK: Avatar
 
-/** "Ada Lovelace" → "AL"; one word → its first two letters. */
+/** "Ada Lovelace" → "AL"; one word → its first letter (as Contacts does). */
 export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (!words.length) return "";
-  const letters = words.length === 1 ? [...words[0]].slice(0, 2) : [[...words[0]][0], [...words[words.length - 1]][0]];
+  const letters = words.length === 1 ? [[...words[0]][0]] : [[...words[0]][0], [...words[words.length - 1]][0]];
   return letters.join("").toLocaleUpperCase();
 }
 
@@ -41,15 +41,29 @@ export type AvatarProps = Omit<Modifiers, "badge"> & {
   ringGap?: number;
   /** A view at the bottom-trailing corner (a status dot, a "+"). */
   badge?: ReactNode;
+  /** The initials' font design ("rounded"). */
+  design?: "default" | "rounded" | "serif" | "monospaced";
+  /** Shown instead of initials when there's no name (default "person.fill"). */
+  systemImage?: string;
+  /** A roundedSquare's corner radius (default 22% of the size). */
+  cornerRadius?: number;
+  /** A solid edge (the background color) that cuts it out of overlapping avatars in a stack. */
+  outline?: { color: Fill; width?: number };
 };
 
 /** A person's picture, or their initials on a color. */
-export function Avatar({ src, name = "", size = 40, shape = "circle", color, ring, ringWidth = 2.5, ringGap = 2, badge, ...props }: AvatarProps) {
-  const corner = shape === "circle" ? "capsule" : size * 0.22;
-  const fallback = (
-    <Text font={{ size: size * 0.4, weight: "semibold" }} foregroundStyle="white" frame={{ width: size, height: size }} background={color ?? colorFor(name)}>
-      {initials(name)}
+export function Avatar({
+  src, name = "", size = 40, shape = "circle", color, ring, ringWidth = 2.5, ringGap = 2, badge, design, systemImage = "person.fill",
+  cornerRadius, outline, ...props
+}: AvatarProps) {
+  const corner = shape === "circle" ? "capsule" : cornerRadius ?? size * 0.22;
+  const letters = initials(name);
+  const fallback = letters ? (
+    <Text font={{ size: size * 0.4, weight: "semibold", design }} foregroundStyle="white" frame={{ width: size, height: size }} background={color ?? colorFor(name)}>
+      {letters}
     </Text>
+  ) : (
+    <Image systemName={systemImage} font={{ size: size * 0.5 }} foregroundStyle="white" frame={{ width: size, height: size }} background={color ?? "gray"} />
   );
   const picture = src ? (
     <Image src={src} contentMode="fill" frame={{ width: size, height: size }} cornerRadius={corner}>
@@ -58,10 +72,12 @@ export function Avatar({ src, name = "", size = 40, shape = "circle", color, rin
   ) : (
     <ZStack frame={{ width: size, height: size }} cornerRadius={corner}>{fallback}</ZStack>
   );
-  const outer = size + (ring ? (ringWidth + ringGap) * 2 : 0);
+  const edge = outline ? outline.width ?? 2 : 0;
+  const outer = size + (ring ? (ringWidth + ringGap) * 2 : 0) + edge * 2;
   return (
     <ZStack frame={{ width: outer, height: outer }} accessibilityElement="ignore" accessibilityLabel={name || undefined} {...props}>
-      {ring ? (shape === "circle" ? <Circle stroke={ring} lineWidth={ringWidth} /> : null) : null}
+      {outline ? <ZStack frame={{ width: outer, height: outer }} background={outline.color} cornerRadius={shape === "circle" ? "capsule" : (cornerRadius ?? size * 0.22) + edge} /> : null}
+      {ring ? (shape === "circle" ? <Circle stroke={ring} lineWidth={ringWidth} frame={{ width: outer - edge * 2, height: outer - edge * 2 }} /> : null) : null}
       {picture}
       {badge ? <Overlay alignment="bottomTrailing">{badge}</Overlay> : null}
     </ZStack>
@@ -77,12 +93,21 @@ export function IconTile({
   size = 29,
   shape = "rounded",
   foreground = "white",
+  glyphScale = 0.55,
   ...props
-}: Modifiers & { systemImage: string; color?: Fill; size?: number; shape?: "rounded" | "circle"; foreground?: ColorValue }) {
+}: Modifiers & {
+  systemImage: string;
+  color?: Fill;
+  size?: number;
+  shape?: "rounded" | "circle";
+  foreground?: ColorValue;
+  /** The symbol's size as a fraction of the tile. */
+  glyphScale?: number;
+}) {
   return (
     <Image
       systemName={systemImage}
-      font={{ size: size * 0.55, weight: "semibold" }}
+      font={{ size: size * glyphScale, weight: "semibold" }}
       foregroundStyle={foreground}
       frame={{ width: size, height: size }}
       background={color}
@@ -101,24 +126,38 @@ export function Chip({
   systemImage,
   selected = false,
   tint = "accent",
+  inactive = "secondarySystemFill",
+  inactiveForeground = "primary",
   onPress,
+  ref,
   ...props
-}: Modifiers & { label: string; systemImage?: string; selected?: boolean; tint?: ColorValue; onPress?: () => void }) {
+}: Modifiers & {
+  /** The chip's view (to scroll to it). */
+  ref?: Ref<HostInstance>;
+  label: string;
+  systemImage?: string;
+  selected?: boolean;
+  tint?: ColorValue;
+  /** The background and text color when not selected. */
+  inactive?: Fill;
+  inactiveForeground?: ColorValue;
+  onPress?: () => void;
+}) {
   const body = (
     <HStack
       spacing={5}
       padding={{ horizontal: 12, vertical: 6 }}
-      background={selected ? tint : "secondarySystemFill"}
-      foregroundStyle={selected ? "white" : "primary"}
+      background={selected ? tint : inactive}
+      foregroundStyle={selected ? "white" : inactiveForeground}
       cornerRadius="capsule"
     >
       {systemImage ? <Image systemName={systemImage} font="caption" /> : null}
       <Text font="subheadline" fontWeight="medium">{label}</Text>
     </HStack>
   );
-  if (!onPress) return <HStack accessibilityElement="combine" {...props}>{body}</HStack>;
+  if (!onPress) return <HStack ref={ref} accessibilityElement="combine" {...props}>{body}</HStack>;
   return (
-    <Button buttonStyle="plain" onPress={onPress} accessibilityTraits={selected ? ["selected"] : undefined} {...props}>
+    <Button ref={ref} buttonStyle="plain" onPress={onPress} accessibilityTraits={selected ? ["selected"] : undefined} {...props}>
       {body}
     </Button>
   );
@@ -164,9 +203,19 @@ export function ProgressRing({
   color = "accent",
   track = "systemFill",
   allowsOverflow = false,
+  lineCap = "round",
   children,
   ...props
-}: Modifiers & { value: number; total?: number; lineWidth?: number; color?: Fill; track?: Fill; allowsOverflow?: boolean; children?: ReactNode }) {
+}: Modifiers & {
+  value: number;
+  total?: number;
+  lineWidth?: number;
+  color?: Fill;
+  track?: Fill;
+  allowsOverflow?: boolean;
+  lineCap?: "round" | "butt" | "square";
+  children?: ReactNode;
+}) {
   const fraction = total > 0 ? value / total : 0;
   const shown = allowsOverflow ? fraction : Math.min(Math.max(fraction, 0), 1);
   // A trim of exactly 0 makes the stroke vanish mid-animation: start just above.
@@ -174,8 +223,8 @@ export function ProgressRing({
   return (
     <ZStack accessibilityElement="combine" accessibilityValue={`${Math.round(fraction * 100)}%`} {...props}>
       <Circle stroke={track} lineWidth={lineWidth} />
-      <Circle stroke={color} lineWidth={lineWidth} lineCap="round" trim={[0, first]} rotation={-90} opacity={shown > 0 ? 1 : 0} />
-      {shown > 1 ? <Circle stroke={color} lineWidth={lineWidth} lineCap="round" trim={[0, Math.min(shown - 1, 1)]} rotation={-90} shadow={{ radius: 2 }} /> : null}
+      <Circle stroke={color} lineWidth={lineWidth} lineCap={lineCap} trim={[0, first]} rotation={-90} opacity={shown > 0 ? 1 : 0} />
+      {shown > 1 ? <Circle stroke={color} lineWidth={lineWidth} lineCap={lineCap} trim={[0, Math.min(shown - 1, 1)]} rotation={-90} shadow={{ radius: 2 }} /> : null}
       {children}
     </ZStack>
   );
@@ -197,6 +246,8 @@ export function PageIndicator({
   tint = "white",
   inactive,
   progress = 1,
+  dotSize,
+  spacing,
   onSelect,
   ...props
 }: Modifiers & {
@@ -206,9 +257,15 @@ export function PageIndicator({
   tint?: ColorValue;
   inactive?: Fill;
   progress?: number;
+  /** A dot's diameter (a segment's height). */
+  dotSize?: number;
+  spacing?: number;
   onSelect?: (page: number) => void;
 }) {
   const label = `Page ${page + 1} of ${count}`;
+  const segments = style === "segments";
+  const dot = dotSize ?? (segments ? 3 : 7);
+  const gap = spacing ?? (segments ? 4 : 6);
   if (style === "counter") {
     return (
       <Text font="caption" fontWeight="semibold" monospacedDigit foregroundStyle="white" padding={{ horizontal: 9, vertical: 4 }} background="black/55" cornerRadius="capsule" accessibilityLabel={label} {...props}>
@@ -218,9 +275,9 @@ export function PageIndicator({
   }
   if (style === "segments") {
     return (
-      <HStack spacing={4} accessibilityElement="ignore" accessibilityLabel={label} {...props}>
+      <HStack spacing={gap} accessibilityElement="ignore" accessibilityLabel={label} {...props}>
         {Array.from({ length: count }, (_, i) => (
-          <Capsule key={i} fill={inactive ?? "white/35"} frame={{ maxWidth: "infinity", height: 3 }}>
+          <Capsule key={i} fill={inactive ?? "white/35"} frame={{ maxWidth: "infinity", height: dot }}>
             <Overlay alignment="leading">
               {/* Filled by scaling from the leading edge (sizes relative to the parent aren't a thing). */}
               <Capsule
@@ -236,12 +293,12 @@ export function PageIndicator({
     );
   }
   return (
-    <HStack spacing={6} accessibilityElement="ignore" accessibilityLabel={label} {...props}>
+    <HStack spacing={gap} accessibilityElement="ignore" accessibilityLabel={label} {...props}>
       {Array.from({ length: count }, (_, i) => (
         <Capsule
           key={i}
           fill={i === page ? tint : inactive ?? "white/45"}
-          frame={{ width: style === "capsule" && i === page ? 18 : 7, height: 7 }}
+          frame={{ width: style === "capsule" && i === page ? dot * 2.5 : dot, height: dot }}
           animation="snappy"
           onTapGesture={onSelect ? () => onSelect(i) : undefined}
         />
@@ -262,6 +319,7 @@ export type PagerProps = Modifiers & {
   indicator?: PageIndicatorStyle | "none";
   indicatorAlignment?: "bottom" | "top" | "bottomTrailing" | "topTrailing";
   indicatorTint?: ColorValue;
+  indicatorInactive?: Fill;
   /** Space between pages. */
   spacing?: number;
 };
@@ -278,6 +336,7 @@ export function Pager({
   indicator = "dots",
   indicatorAlignment = "bottom",
   indicatorTint,
+  indicatorInactive,
   spacing = 0,
   ...props
 }: PagerProps) {
@@ -320,7 +379,7 @@ export function Pager({
       </ScrollView>
       {indicator !== "none" && pages.length > 1 ? (
         <Overlay alignment={indicatorAlignment}>
-          <PageIndicator count={pages.length} page={shown} style={indicator} tint={indicatorTint} padding={12} onSelect={(i) => ref.current?.scrollTo(i, { animated: true })} />
+          <PageIndicator count={pages.length} page={shown} style={indicator} tint={indicatorTint} inactive={indicatorInactive} padding={12} onSelect={(i) => ref.current?.scrollTo(i, { animated: true })} />
         </Overlay>
       ) : null}
     </ZStack>

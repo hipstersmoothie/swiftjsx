@@ -36,8 +36,11 @@ struct TransformModifier: ViewModifier {
 /// scale, opacity, x / y offset and rotation, with its `animation` or
 /// `duration`) whenever `trigger` changes, then settles back; `repeat` loops.
 /// A pop: `[{ scale: 1.25 }, { scale: 1 }]`; a shake: `[{ x: -8 }, { x: 8 }, { x: -4 }, { x: 0 }]`.
+/// `delay` (seconds) holds a repeating loop back once, so views with the
+/// same steps run out of phase (typing dots lighting up in turn).
 struct KeyframesModifier: ViewModifier {
     let node: Node
+    @State private var started = false
 
     struct Step: Equatable {
         var scale = 1.0, opacity = 1.0, x = 0.0, y = 0.0, rotation = 0.0
@@ -59,10 +62,16 @@ struct KeyframesModifier: ViewModifier {
             let animations: [Animation] = [parseAnimation(spec["settle"]) ?? .spring(duration: 0.3)] + raw.map { step in
                 parseAnimation(step["animation"]) ?? .easeInOut(duration: (step["duration"] as? NSNumber)?.doubleValue ?? 0.12)
             }
-            if spec["repeat"] as? Bool == true {
+            let delay = (spec["delay"] as? NSNumber)?.doubleValue ?? 0
+            if spec["repeat"] as? Bool == true, started || delay <= 0 {
                 content.phaseAnimator(Array(steps.indices)) { view, phase in
                     apply(view, steps[phase])
                 } animation: { animations[$0] }
+            } else if spec["repeat"] as? Bool == true {
+                content.task {
+                    try? await Task.sleep(for: .seconds(delay))
+                    started = true
+                }
             } else {
                 content.phaseAnimator(Array(steps.indices), trigger: trigger(spec["trigger"])) { view, phase in
                     apply(view, steps[phase])
@@ -653,6 +662,7 @@ struct AxisPan: UIGestureRecognizerRepresentable {
 /// animate; this always does.
 struct AppearModifier: ViewModifier {
     let node: Node
+    @Environment(\.jsxRuntime) private var runtime
     @State private var appeared = false
 
     func body(content: Content) -> some View {
@@ -665,7 +675,9 @@ struct AppearModifier: ViewModifier {
                 .offset(x: appeared ? 0 : number("x", 0), y: appeared ? 0 : number("y", 0))
                 .onAppear {
                     let animation = parseAnimation(node.prop("initialAnimation")) ?? parseAnimation(node.prop("animation")) ?? .smooth
-                    withAnimation(animation) { appeared = true }
+                    withAnimation(animation) { appeared = true } completion: {
+                        if node.has("onInitialEnd") { runtime?.dispatch(node.id, "onInitialEnd") }
+                    }
                 }
         } else {
             content

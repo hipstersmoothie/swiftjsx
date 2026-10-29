@@ -16,6 +16,8 @@ export type ToastOptions = {
   haptic?: "success" | "warning" | "error" | "light" | "selection";
   /** A button in the toast ("Undo"); tapping it runs `onPress` and closes the toast. */
   action?: { title: string; onPress: () => void };
+  /** This toast's place, over the `configureToasts` default ("center": over a photo or video). */
+  position?: "top" | "bottom" | "center";
 };
 
 type Shown = ToastOptions & { id: number; text: string };
@@ -25,11 +27,13 @@ let current: Shown | null = null;
 const queue: Shown[] = [];
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setTimeout> | null = null;
-let placement: { position: "top" | "bottom"; offset: number } = { position: "bottom", offset: 56 };
+let lastPosition: "top" | "bottom" | "center" | undefined;
+let placement: { position: "top" | "bottom" | "center"; offset: number } = { position: "bottom", offset: 56 };
 
 function show(next: Shown | null) {
   withAnimation({ type: "spring", duration: 0.35, bounce: 0.2 }, () => {
     current = next;
+    if (next) lastPosition = next.position ?? placement.position;
     listeners.forEach((l) => l());
   });
   if (timer) clearTimeout(timer);
@@ -74,9 +78,11 @@ function ToastHost(): ReactNode {
     },
     () => current,
   );
-  const top = placement.position === "top";
+  // The last toast's place (kept while it leaves).
+  const position = lastPosition ?? placement.position;
+  const top = position === "top";
   return (
-    <Portal alignment={top ? "top" : "bottom"} interactive={!!shown?.action}>
+    <Portal alignment={position} interactive={!!shown?.action}>
       {shown ? (
         <HStack
           key={shown.id}
@@ -85,8 +91,8 @@ function ToastHost(): ReactNode {
           background="regularMaterial"
           cornerRadius="capsule"
           shadow={{ radius: 12, y: 4, color: "black/15" }}
-          offset={{ x: 0, y: top ? 0 : -placement.offset }}
-          transition={{ type: "move", edge: top ? "top" : "bottom" }}
+          offset={{ x: 0, y: position === "bottom" ? -placement.offset : 0 }}
+          transition={position === "center" ? { type: "scale", scale: 0.85 } : { type: "move", edge: top ? "top" : "bottom" }}
           accessibilityElement="combine"
           accessibilityIdentifier="toast"
         >

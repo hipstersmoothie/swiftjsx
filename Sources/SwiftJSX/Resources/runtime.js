@@ -36064,38 +36064,61 @@ ${e.stack}` : String(e);
     };
   }
   var every = (interval) => interval === "second" ? 1e3 : interval === "minute" ? 6e4 : interval;
-  function useNow(t0) {
-    const $ = (0, import_compiler_runtime2.c)(6);
-    if ($[0] !== "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464") {
-      for (let $i = 0; $i < 6; $i += 1) {
+  function useNow(t0, t1) {
+    const $ = (0, import_compiler_runtime2.c)(12);
+    if ($[0] !== "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334") {
+      for (let $i = 0; $i < 12; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464";
+      $[0] = "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334";
     }
     const interval = t0 === void 0 ? "minute" : t0;
-    let t1;
-    if ($[1] !== interval) {
-      t1 = every(interval);
-      $[1] = interval;
-      $[2] = t1;
-    } else {
-      t1 = $[2];
-    }
-    const ms = t1;
     let t2;
-    let t3;
-    if ($[3] !== ms) {
-      t2 = (listener) => subscribe(ms, listener);
-      t3 = () => ticker(ms).now;
-      $[3] = ms;
-      $[4] = t2;
-      $[5] = t3;
+    if ($[1] !== t1) {
+      t2 = t1 === void 0 ? {} : t1;
+      $[1] = t1;
+      $[2] = t2;
     } else {
-      t2 = $[4];
-      t3 = $[5];
+      t2 = $[2];
     }
-    return (0, import_react3.useSyncExternalStore)(t2, t3);
+    const options = t2;
+    let t3;
+    if ($[3] !== interval) {
+      t3 = every(interval);
+      $[3] = interval;
+      $[4] = t3;
+    } else {
+      t3 = $[4];
+    }
+    const ms = t3;
+    const active = options.active ?? true;
+    const [paused] = (0, import_react3.useState)(_temp);
+    let t4;
+    if ($[5] !== active || $[6] !== ms) {
+      t4 = active ? (listener) => subscribe(ms, listener) : noSubscribe;
+      $[5] = active;
+      $[6] = ms;
+      $[7] = t4;
+    } else {
+      t4 = $[7];
+    }
+    let t5;
+    if ($[8] !== active || $[9] !== ms || $[10] !== paused) {
+      t5 = () => active ? ticker(ms).now : paused;
+      $[8] = active;
+      $[9] = ms;
+      $[10] = paused;
+      $[11] = t5;
+    } else {
+      t5 = $[11];
+    }
+    return (0, import_react3.useSyncExternalStore)(t4, t5);
   }
+  function _temp() {
+    return Date.now();
+  }
+  var noSubscribe = () => () => {
+  };
   var startOfDay = (ms) => new Date(ms).setHours(0, 0, 0, 0);
   var today = startOfDay(Date.now());
   var todayListeners = /* @__PURE__ */ new Set();
@@ -36107,37 +36130,37 @@ ${e.stack}` : String(e);
   }
   function useToday() {
     const $ = (0, import_compiler_runtime2.c)(1);
-    if ($[0] !== "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464") {
+    if ($[0] !== "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464";
+      $[0] = "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334";
     }
-    return (0, import_react3.useSyncExternalStore)(_temp2, _temp3);
+    return (0, import_react3.useSyncExternalStore)(_temp3, _temp4);
   }
-  function _temp3() {
+  function _temp4() {
     return today;
   }
-  function _temp2(listener) {
+  function _temp3(listener) {
     todayListeners.add(listener);
     const offs = [on("timechange", checkToday), on("focus", checkToday), on("pageshow", checkToday)];
     const timer2 = setInterval(checkToday, 6e4);
     return () => {
       todayListeners.delete(listener);
-      offs.forEach(_temp);
+      offs.forEach(_temp2);
       clearInterval(timer2);
     };
   }
-  function _temp(off) {
+  function _temp2(off) {
     return off();
   }
   function useDebouncedValue(value, t0) {
     const $ = (0, import_compiler_runtime2.c)(11);
-    if ($[0] !== "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464") {
+    if ($[0] !== "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334") {
       for (let $i = 0; $i < 11; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464";
+      $[0] = "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334";
     }
     const ms = t0 === void 0 ? 300 : t0;
     const [settled, setSettled] = (0, import_react3.useState)(value);
@@ -36181,11 +36204,11 @@ ${e.stack}` : String(e);
   }
   function useDebouncedCallback(fn, t0) {
     const $ = (0, import_compiler_runtime2.c)(7);
-    if ($[0] !== "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464") {
+    if ($[0] !== "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464";
+      $[0] = "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334";
     }
     const ms = t0 === void 0 ? 300 : t0;
     const latest = (0, import_react3.useRef)(fn);
@@ -36246,18 +36269,18 @@ ${e.stack}` : String(e);
   on("pageshow", () => setAppState("inactive"));
   function useAppState() {
     const $ = (0, import_compiler_runtime2.c)(1);
-    if ($[0] !== "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464") {
+    if ($[0] !== "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464";
+      $[0] = "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334";
     }
-    return (0, import_react3.useSyncExternalStore)(_temp4, _temp5);
+    return (0, import_react3.useSyncExternalStore)(_temp5, _temp6);
   }
-  function _temp5() {
+  function _temp6() {
     return appState;
   }
-  function _temp4(listener) {
+  function _temp5(listener) {
     appStateListeners.add(listener);
     return () => appStateListeners.delete(listener);
   }
@@ -36285,11 +36308,11 @@ ${e.stack}` : String(e);
   }
   function usePersistentState(key, initial, t0) {
     const $ = (0, import_compiler_runtime2.c)(16);
-    if ($[0] !== "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464") {
+    if ($[0] !== "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334") {
       for (let $i = 0; $i < 16; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "a4de7df707bb00102f7c0703332361d7bc8a6e4dd5bd47fe9eb367b02f34e464";
+      $[0] = "23a2b380850bf6c7273515d73dc21825256ce55e4694f1e0de77137cf61ba334";
     }
     let t1;
     if ($[1] !== t0) {
@@ -36374,10 +36397,10 @@ ${e.stack}` : String(e);
   var format = {
     /** 1,234.5 (any Intl.NumberFormat options). */
     number: (n, options = {}) => numberFormat(options).format(n),
-    /** 1.2K, 3.4M. */
-    compact: (n) => numberFormat({
+    /** 1.2K, 3.4M; below `from` (default 1000) the full number ("1,234" with `from: 10_000`). */
+    compact: (n, options = {}) => Math.abs(n) < (options.from ?? 1e3) ? format.number(n) : numberFormat({
       notation: "compact",
-      maximumFractionDigits: 1
+      maximumFractionDigits: options.digits ?? 1
     }).format(n),
     /** 0.42 → 42%. */
     percent: (fraction, digits = 0) => numberFormat({
@@ -36389,8 +36412,9 @@ ${e.stack}` : String(e);
       style: "currency",
       currency
     }).format(amount),
-    /** 1.5 MB (decimal units, as Finder and Settings show sizes). */
+    /** 1.5 MB, 106 GB, "Zero KB" (decimal units, as Finder and Settings show sizes). */
     bytes: (bytes) => {
+      if (bytes === 0) return "Zero KB";
       const units = ["byte", "kilobyte", "megabyte", "gigabyte", "terabyte"];
       let value = bytes;
       let unit = 0;
@@ -36398,20 +36422,24 @@ ${e.stack}` : String(e);
         value /= 1e3;
         unit++;
       }
+      const digits = unit === 0 || Math.abs(value) >= 100 ? 0 : 1;
       return numberFormat({
         style: "unit",
         unit: units[unit],
         unitDisplay: "short",
-        maximumFractionDigits: unit === 0 ? 0 : 1
-      }).format(value);
+        maximumFractionDigits: digits
+      }).format(value).replace("kB", "KB");
     },
     /**
-     * Seconds as "1:05:09" / "5:09" ("positional", default), "1h 5m"
-     * ("short"), or "1 hour, 5 minutes" ("long").
+     * Seconds as "1:05:09" / "5:09" ("positional", default), "1h 5m 9s"
+     * ("short"), "1 hour, 5 minutes, 9 seconds" ("long"), or "1 hr 5 min"
+     * ("abbreviated": to the minute from a minute up, as Maps and Clock show
+     * lengths; "45 sec" under one).
      */
     duration: (seconds, style = "positional") => {
       const sign = seconds < 0 ? "-" : "";
-      const total = Math.round(Math.abs(seconds));
+      const exact = Math.round(Math.abs(seconds));
+      const total = style === "abbreviated" && exact >= 60 ? Math.round(exact / 60) * 60 : exact;
       const h = Math.floor(total / 3600);
       const m = Math.floor(total % 3600 / 60);
       const s = total % 60;
@@ -36421,7 +36449,7 @@ ${e.stack}` : String(e);
       }
       const parts = [[h, "hour"], [m, "minute"], [s, "second"]];
       const shown = parts.filter(([v], i) => v > 0 || i === 2 && h === 0 && m === 0);
-      const display = style === "long" ? "long" : "narrow";
+      const display = style === "long" ? "long" : style === "abbreviated" ? "short" : "narrow";
       const pieces = shown.map(([v, unit]) => numberFormat({
         style: "unit",
         unit,
@@ -36440,13 +36468,14 @@ ${e.stack}` : String(e);
      * "3 cards", "1 card": `forms` by plural category (`one`, `other`, and
      * `few` / `many` where the language has them); `#` is the number.
      */
-    count: (n, forms) => {
+    count: (n, forms, options = {}) => {
       const category = cached("p", {}, () => new Intl.PluralRules(void 0)).select(n);
-      return (forms[category] ?? forms.other).replace("#", format.number(n));
+      return (forms[category] ?? forms.other).replace("#", options.compact ? format.compact(n) : format.number(n));
     },
     /**
      * "5m", "3h", "2d", then "Mar 4" (and "Mar 4, 2025" in another year):
-     * the compact age feeds and lists show. `long`: "5 minutes ago".
+     * the compact age feeds and lists show; with `weeks`, "4w" up to a year
+     * first (as Instagram does). `long`: "5 minutes ago".
      */
     relativeTime: (date, options = {}) => {
       const ms = +date;
@@ -36464,6 +36493,7 @@ ${e.stack}` : String(e);
       if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
       if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
       if (seconds < 7 * 86400) return `${Math.floor(seconds / 86400)}d`;
+      if (options.weeks && seconds < 365 * 86400) return `${Math.floor(seconds / (7 * 86400))}w`;
       const sameYear = new Date(ms).getFullYear() === new Date(now).getFullYear();
       return cached("d", {
         sameYear
@@ -36476,7 +36506,7 @@ ${e.stack}` : String(e);
         year: "numeric"
       })).format(ms);
     },
-    /** "Today", "Yesterday", "Tomorrow", a weekday within the week, else a date. */
+    /** "Today", "Yesterday", "Tomorrow", a weekday within a week either way, else a date. */
     relativeDay: (date, options = {}) => {
       const day = startOfDay(+date);
       const today2 = startOfDay(options.now ?? Date.now());
@@ -36488,7 +36518,7 @@ ${e.stack}` : String(e);
         const text = rtf.format(diff, "day");
         return text.charAt(0).toLocaleUpperCase() + text.slice(1);
       }
-      if (diff > -7 && diff < 0) return cached("wd", {}, () => new Intl.DateTimeFormat(void 0, {
+      if (diff > -7 && diff < 7) return cached("wd", {}, () => new Intl.DateTimeFormat(void 0, {
         weekday: "long"
       })).format(day);
       const sameYear = new Date(day).getFullYear() === new Date(today2).getFullYear();
@@ -36600,6 +36630,7 @@ ${e.stack}` : String(e);
   var queue = [];
   var listeners2 = /* @__PURE__ */ new Set();
   var timer = null;
+  var lastPosition;
   var placement = {
     position: "bottom",
     offset: 56
@@ -36611,6 +36642,7 @@ ${e.stack}` : String(e);
       bounce: 0.2
     }, () => {
       current = next;
+      if (next) lastPosition = next.position ?? placement.position;
       listeners2.forEach((l) => l());
     });
     if (timer) clearTimeout(timer);
@@ -36647,14 +36679,15 @@ ${e.stack}` : String(e);
   }
   function ToastHost() {
     const $ = (0, import_compiler_runtime3.c)(6);
-    if ($[0] !== "7ea491ebe4dc92f02de1829e76e0c572c8fc36a87abea6e6a7d6755357fdb807") {
+    if ($[0] !== "82ff94c86244f1cf9ef66529980b803e20ae925756e972040b0fb2d0267ef671") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "7ea491ebe4dc92f02de1829e76e0c572c8fc36a87abea6e6a7d6755357fdb807";
+      $[0] = "82ff94c86244f1cf9ef66529980b803e20ae925756e972040b0fb2d0267ef671";
     }
-    const shown = (0, import_react4.useSyncExternalStore)(_temp6, _temp22);
-    const top = placement.position === "top";
+    const shown = (0, import_react4.useSyncExternalStore)(_temp7, _temp22);
+    const position = lastPosition ?? placement.position;
+    const top = position === "top";
     const t0 = !!shown?.action;
     let t1;
     if ($[1] !== shown) {
@@ -36667,8 +36700,11 @@ ${e.stack}` : String(e);
         color: "black/15"
       }, offset: {
         x: 0,
-        y: top ? 0 : -placement.offset
-      }, transition: {
+        y: position === "bottom" ? -placement.offset : 0
+      }, transition: position === "center" ? {
+        type: "scale",
+        scale: 0.85
+      } : {
         type: "move",
         edge: top ? "top" : "bottom"
       }, accessibilityElement: "combine", accessibilityIdentifier: "toast", children: [
@@ -36686,7 +36722,7 @@ ${e.stack}` : String(e);
     }
     let t2;
     if ($[3] !== t0 || $[4] !== t1) {
-      t2 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Portal, { alignment: top ? "top" : "bottom", interactive: t0, children: t1 });
+      t2 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Portal, { alignment: position, interactive: t0, children: t1 });
       $[3] = t0;
       $[4] = t1;
       $[5] = t2;
@@ -36698,7 +36734,7 @@ ${e.stack}` : String(e);
   function _temp22() {
     return current;
   }
-  function _temp6(listener) {
+  function _temp7(listener) {
     listeners2.add(listener);
     return () => listeners2.delete(listener);
   }
@@ -36711,7 +36747,7 @@ ${e.stack}` : String(e);
   function initials(name) {
     const words = name.trim().split(/\s+/).filter(Boolean);
     if (!words.length) return "";
-    const letters = words.length === 1 ? [...words[0]].slice(0, 2) : [[...words[0]][0], [...words[words.length - 1]][0]];
+    const letters = words.length === 1 ? [[...words[0]][0]] : [[...words[0]][0], [...words[words.length - 1]][0]];
     return letters.join("").toLocaleUpperCase();
   }
   var AVATAR_COLORS = ["blue", "indigo", "purple", "pink", "red", "orange", "teal", "green", "mint", "cyan"];
@@ -36721,15 +36757,18 @@ ${e.stack}` : String(e);
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
   }
   function Avatar(t0) {
-    const $ = (0, import_compiler_runtime4.c)(46);
-    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
-      for (let $i = 0; $i < 46; $i += 1) {
+    const $ = (0, import_compiler_runtime4.c)(55);
+    if ($[0] !== "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be") {
+      for (let $i = 0; $i < 55; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+      $[0] = "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be";
     }
     let badge;
     let color;
+    let cornerRadius;
+    let design;
+    let outline;
     let props;
     let ring;
     let src;
@@ -36738,6 +36777,7 @@ ${e.stack}` : String(e);
     let t3;
     let t4;
     let t5;
+    let t6;
     if ($[1] !== t0) {
       ({
         src,
@@ -36749,164 +36789,184 @@ ${e.stack}` : String(e);
         ringWidth: t4,
         ringGap: t5,
         badge,
+        design,
+        systemImage: t6,
+        cornerRadius,
+        outline,
         ...props
       } = t0);
       $[1] = t0;
       $[2] = badge;
       $[3] = color;
-      $[4] = props;
-      $[5] = ring;
-      $[6] = src;
-      $[7] = t1;
-      $[8] = t2;
-      $[9] = t3;
-      $[10] = t4;
-      $[11] = t5;
+      $[4] = cornerRadius;
+      $[5] = design;
+      $[6] = outline;
+      $[7] = props;
+      $[8] = ring;
+      $[9] = src;
+      $[10] = t1;
+      $[11] = t2;
+      $[12] = t3;
+      $[13] = t4;
+      $[14] = t5;
+      $[15] = t6;
     } else {
       badge = $[2];
       color = $[3];
-      props = $[4];
-      ring = $[5];
-      src = $[6];
-      t1 = $[7];
-      t2 = $[8];
-      t3 = $[9];
-      t4 = $[10];
-      t5 = $[11];
+      cornerRadius = $[4];
+      design = $[5];
+      outline = $[6];
+      props = $[7];
+      ring = $[8];
+      src = $[9];
+      t1 = $[10];
+      t2 = $[11];
+      t3 = $[12];
+      t4 = $[13];
+      t5 = $[14];
+      t6 = $[15];
     }
     const name = t1 === void 0 ? "" : t1;
     const size = t2 === void 0 ? 40 : t2;
     const shape = t3 === void 0 ? "circle" : t3;
     const ringWidth = t4 === void 0 ? 2.5 : t4;
     const ringGap = t5 === void 0 ? 2 : t5;
-    const corner = shape === "circle" ? "capsule" : size * 0.22;
-    const t6 = size * 0.4;
+    const systemImage = t6 === void 0 ? "person.fill" : t6;
+    const corner = shape === "circle" ? "capsule" : cornerRadius ?? size * 0.22;
     let t7;
-    if ($[12] !== t6) {
-      t7 = {
-        size: t6,
-        weight: "semibold"
-      };
-      $[12] = t6;
-      $[13] = t7;
+    if ($[16] !== name) {
+      t7 = initials(name);
+      $[16] = name;
+      $[17] = t7;
     } else {
-      t7 = $[13];
+      t7 = $[17];
     }
+    const letters = t7;
     let t8;
-    if ($[14] !== size) {
-      t8 = {
+    if ($[18] !== color || $[19] !== design || $[20] !== letters || $[21] !== name || $[22] !== size || $[23] !== systemImage) {
+      t8 = letters ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { font: {
+        size: size * 0.4,
+        weight: "semibold",
+        design
+      }, foregroundStyle: "white", frame: {
         width: size,
         height: size
-      };
-      $[14] = size;
-      $[15] = t8;
+      }, background: color ?? colorFor(name), children: letters }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { systemName: systemImage, font: {
+        size: size * 0.5
+      }, foregroundStyle: "white", frame: {
+        width: size,
+        height: size
+      }, background: color ?? "gray" });
+      $[18] = color;
+      $[19] = design;
+      $[20] = letters;
+      $[21] = name;
+      $[22] = size;
+      $[23] = systemImage;
+      $[24] = t8;
     } else {
-      t8 = $[15];
+      t8 = $[24];
     }
+    const fallback = t8;
     let t9;
-    if ($[16] !== color || $[17] !== name) {
-      t9 = color ?? colorFor(name);
-      $[16] = color;
-      $[17] = name;
-      $[18] = t9;
-    } else {
-      t9 = $[18];
-    }
-    let t10;
-    if ($[19] !== name) {
-      t10 = initials(name);
-      $[19] = name;
-      $[20] = t10;
-    } else {
-      t10 = $[20];
-    }
-    let t11;
-    if ($[21] !== t10 || $[22] !== t7 || $[23] !== t8 || $[24] !== t9) {
-      t11 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { font: t7, foregroundStyle: "white", frame: t8, background: t9, children: t10 });
-      $[21] = t10;
-      $[22] = t7;
-      $[23] = t8;
-      $[24] = t9;
-      $[25] = t11;
-    } else {
-      t11 = $[25];
-    }
-    const fallback = t11;
-    let t12;
-    if ($[26] !== corner || $[27] !== fallback || $[28] !== size || $[29] !== src) {
-      t12 = src ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { src, contentMode: "fill", frame: {
+    if ($[25] !== corner || $[26] !== fallback || $[27] !== size || $[28] !== src) {
+      t9 = src ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { src, contentMode: "fill", frame: {
         width: size,
         height: size
       }, cornerRadius: corner, children: fallback }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ZStack, { frame: {
         width: size,
         height: size
       }, cornerRadius: corner, children: fallback });
-      $[26] = corner;
-      $[27] = fallback;
-      $[28] = size;
-      $[29] = src;
-      $[30] = t12;
+      $[25] = corner;
+      $[26] = fallback;
+      $[27] = size;
+      $[28] = src;
+      $[29] = t9;
     } else {
-      t12 = $[30];
+      t9 = $[29];
     }
-    const picture = t12;
-    const outer = size + (ring ? (ringWidth + ringGap) * 2 : 0);
-    let t13;
-    if ($[31] !== outer) {
-      t13 = {
+    const picture = t9;
+    const edge = outline ? outline.width ?? 2 : 0;
+    const outer = size + (ring ? (ringWidth + ringGap) * 2 : 0) + edge * 2;
+    let t10;
+    if ($[30] !== outer) {
+      t10 = {
         width: outer,
         height: outer
       };
-      $[31] = outer;
-      $[32] = t13;
+      $[30] = outer;
+      $[31] = t10;
     } else {
-      t13 = $[32];
+      t10 = $[31];
     }
-    const t14 = name || void 0;
+    const t11 = name || void 0;
+    let t12;
+    if ($[32] !== cornerRadius || $[33] !== edge || $[34] !== outer || $[35] !== outline || $[36] !== shape || $[37] !== size) {
+      t12 = outline ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ZStack, { frame: {
+        width: outer,
+        height: outer
+      }, background: outline.color, cornerRadius: shape === "circle" ? "capsule" : (cornerRadius ?? size * 0.22) + edge }) : null;
+      $[32] = cornerRadius;
+      $[33] = edge;
+      $[34] = outer;
+      $[35] = outline;
+      $[36] = shape;
+      $[37] = size;
+      $[38] = t12;
+    } else {
+      t12 = $[38];
+    }
+    let t13;
+    if ($[39] !== edge || $[40] !== outer || $[41] !== ring || $[42] !== ringWidth || $[43] !== shape) {
+      t13 = ring ? shape === "circle" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: ring, lineWidth: ringWidth, frame: {
+        width: outer - edge * 2,
+        height: outer - edge * 2
+      } }) : null : null;
+      $[39] = edge;
+      $[40] = outer;
+      $[41] = ring;
+      $[42] = ringWidth;
+      $[43] = shape;
+      $[44] = t13;
+    } else {
+      t13 = $[44];
+    }
+    let t14;
+    if ($[45] !== badge) {
+      t14 = badge ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Overlay, { alignment: "bottomTrailing", children: badge }) : null;
+      $[45] = badge;
+      $[46] = t14;
+    } else {
+      t14 = $[46];
+    }
     let t15;
-    if ($[33] !== ring || $[34] !== ringWidth || $[35] !== shape) {
-      t15 = ring ? shape === "circle" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: ring, lineWidth: ringWidth }) : null : null;
-      $[33] = ring;
-      $[34] = ringWidth;
-      $[35] = shape;
-      $[36] = t15;
-    } else {
-      t15 = $[36];
-    }
-    let t16;
-    if ($[37] !== badge) {
-      t16 = badge ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Overlay, { alignment: "bottomTrailing", children: badge }) : null;
-      $[37] = badge;
-      $[38] = t16;
-    } else {
-      t16 = $[38];
-    }
-    let t17;
-    if ($[39] !== picture || $[40] !== props || $[41] !== t13 || $[42] !== t14 || $[43] !== t15 || $[44] !== t16) {
-      t17 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(ZStack, { frame: t13, accessibilityElement: "ignore", accessibilityLabel: t14, ...props, children: [
-        t15,
+    if ($[47] !== picture || $[48] !== props || $[49] !== t10 || $[50] !== t11 || $[51] !== t12 || $[52] !== t13 || $[53] !== t14) {
+      t15 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(ZStack, { frame: t10, accessibilityElement: "ignore", accessibilityLabel: t11, ...props, children: [
+        t12,
+        t13,
         picture,
-        t16
+        t14
       ] });
-      $[39] = picture;
-      $[40] = props;
-      $[41] = t13;
-      $[42] = t14;
-      $[43] = t15;
-      $[44] = t16;
-      $[45] = t17;
+      $[47] = picture;
+      $[48] = props;
+      $[49] = t10;
+      $[50] = t11;
+      $[51] = t12;
+      $[52] = t13;
+      $[53] = t14;
+      $[54] = t15;
     } else {
-      t17 = $[45];
+      t15 = $[54];
     }
-    return t17;
+    return t15;
   }
   function IconTile(t0) {
-    const $ = (0, import_compiler_runtime4.c)(20);
-    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
-      for (let $i = 0; $i < 20; $i += 1) {
+    const $ = (0, import_compiler_runtime4.c)(21);
+    if ($[0] !== "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be") {
+      for (let $i = 0; $i < 21; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+      $[0] = "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be";
     }
     let props;
     let systemImage;
@@ -36914,6 +36974,7 @@ ${e.stack}` : String(e);
     let t2;
     let t3;
     let t4;
+    let t5;
     if ($[1] !== t0) {
       ({
         systemImage,
@@ -36921,6 +36982,7 @@ ${e.stack}` : String(e);
         size: t2,
         shape: t3,
         foreground: t4,
+        glyphScale: t5,
         ...props
       } = t0);
       $[1] = t0;
@@ -36930,6 +36992,7 @@ ${e.stack}` : String(e);
       $[5] = t2;
       $[6] = t3;
       $[7] = t4;
+      $[8] = t5;
     } else {
       props = $[2];
       systemImage = $[3];
@@ -36937,174 +37000,192 @@ ${e.stack}` : String(e);
       t2 = $[5];
       t3 = $[6];
       t4 = $[7];
+      t5 = $[8];
     }
     const color = t1 === void 0 ? "blue" : t1;
     const size = t2 === void 0 ? 29 : t2;
     const shape = t3 === void 0 ? "rounded" : t3;
     const foreground = t4 === void 0 ? "white" : t4;
-    const t5 = size * 0.55;
-    let t6;
-    if ($[8] !== t5) {
-      t6 = {
-        size: t5,
+    const glyphScale = t5 === void 0 ? 0.55 : t5;
+    const t6 = size * glyphScale;
+    let t7;
+    if ($[9] !== t6) {
+      t7 = {
+        size: t6,
         weight: "semibold"
       };
-      $[8] = t5;
       $[9] = t6;
+      $[10] = t7;
     } else {
-      t6 = $[9];
+      t7 = $[10];
     }
-    let t7;
-    if ($[10] !== size) {
-      t7 = {
+    let t8;
+    if ($[11] !== size) {
+      t8 = {
         width: size,
         height: size
       };
-      $[10] = size;
-      $[11] = t7;
+      $[11] = size;
+      $[12] = t8;
     } else {
-      t7 = $[11];
+      t8 = $[12];
     }
-    const t8 = shape === "circle" ? "capsule" : size * 0.225;
-    let t9;
-    if ($[12] !== color || $[13] !== foreground || $[14] !== props || $[15] !== systemImage || $[16] !== t6 || $[17] !== t7 || $[18] !== t8) {
-      t9 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { systemName: systemImage, font: t6, foregroundStyle: foreground, frame: t7, background: color, cornerRadius: t8, accessibilityHidden: true, ...props });
-      $[12] = color;
-      $[13] = foreground;
-      $[14] = props;
-      $[15] = systemImage;
-      $[16] = t6;
+    const t9 = shape === "circle" ? "capsule" : size * 0.225;
+    let t10;
+    if ($[13] !== color || $[14] !== foreground || $[15] !== props || $[16] !== systemImage || $[17] !== t7 || $[18] !== t8 || $[19] !== t9) {
+      t10 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { systemName: systemImage, font: t7, foregroundStyle: foreground, frame: t8, background: color, cornerRadius: t9, accessibilityHidden: true, ...props });
+      $[13] = color;
+      $[14] = foreground;
+      $[15] = props;
+      $[16] = systemImage;
       $[17] = t7;
       $[18] = t8;
       $[19] = t9;
+      $[20] = t10;
     } else {
-      t9 = $[19];
+      t10 = $[20];
     }
-    return t9;
+    return t10;
   }
   function Chip(t0) {
-    const $ = (0, import_compiler_runtime4.c)(28);
-    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
-      for (let $i = 0; $i < 28; $i += 1) {
+    const $ = (0, import_compiler_runtime4.c)(33);
+    if ($[0] !== "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be") {
+      for (let $i = 0; $i < 33; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+      $[0] = "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be";
     }
     let label;
     let onPress;
     let props;
+    let ref;
     let systemImage;
     let t1;
     let t2;
+    let t3;
+    let t4;
     if ($[1] !== t0) {
       ({
         label,
         systemImage,
         selected: t1,
         tint: t2,
+        inactive: t3,
+        inactiveForeground: t4,
         onPress,
+        ref,
         ...props
       } = t0);
       $[1] = t0;
       $[2] = label;
       $[3] = onPress;
       $[4] = props;
-      $[5] = systemImage;
-      $[6] = t1;
-      $[7] = t2;
+      $[5] = ref;
+      $[6] = systemImage;
+      $[7] = t1;
+      $[8] = t2;
+      $[9] = t3;
+      $[10] = t4;
     } else {
       label = $[2];
       onPress = $[3];
       props = $[4];
-      systemImage = $[5];
-      t1 = $[6];
-      t2 = $[7];
+      ref = $[5];
+      systemImage = $[6];
+      t1 = $[7];
+      t2 = $[8];
+      t3 = $[9];
+      t4 = $[10];
     }
     const selected = t1 === void 0 ? false : t1;
     const tint = t2 === void 0 ? "accent" : t2;
-    let t3;
-    if ($[8] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t3 = {
+    const inactive = t3 === void 0 ? "secondarySystemFill" : t3;
+    const inactiveForeground = t4 === void 0 ? "primary" : t4;
+    let t5;
+    if ($[11] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t5 = {
         horizontal: 12,
         vertical: 6
       };
-      $[8] = t3;
+      $[11] = t5;
     } else {
-      t3 = $[8];
+      t5 = $[11];
     }
-    const t4 = selected ? tint : "secondarySystemFill";
-    const t5 = selected ? "white" : "primary";
-    let t6;
-    if ($[9] !== systemImage) {
-      t6 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { systemName: systemImage, font: "caption" }) : null;
-      $[9] = systemImage;
-      $[10] = t6;
-    } else {
-      t6 = $[10];
-    }
-    let t7;
-    if ($[11] !== label) {
-      t7 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { font: "subheadline", fontWeight: "medium", children: label });
-      $[11] = label;
-      $[12] = t7;
-    } else {
-      t7 = $[12];
-    }
+    const t6 = selected ? tint : inactive;
+    const t7 = selected ? "white" : inactiveForeground;
     let t8;
-    if ($[13] !== t4 || $[14] !== t5 || $[15] !== t6 || $[16] !== t7) {
-      t8 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(HStack, { spacing: 5, padding: t3, background: t4, foregroundStyle: t5, cornerRadius: "capsule", children: [
-        t6,
-        t7
-      ] });
-      $[13] = t4;
-      $[14] = t5;
-      $[15] = t6;
-      $[16] = t7;
-      $[17] = t8;
+    if ($[12] !== systemImage) {
+      t8 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { systemName: systemImage, font: "caption" }) : null;
+      $[12] = systemImage;
+      $[13] = t8;
     } else {
-      t8 = $[17];
-    }
-    const body = t8;
-    if (!onPress) {
-      let t92;
-      if ($[18] !== body || $[19] !== props) {
-        t92 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(HStack, { accessibilityElement: "combine", ...props, children: body });
-        $[18] = body;
-        $[19] = props;
-        $[20] = t92;
-      } else {
-        t92 = $[20];
-      }
-      return t92;
+      t8 = $[13];
     }
     let t9;
-    if ($[21] !== selected) {
-      t9 = selected ? ["selected"] : void 0;
-      $[21] = selected;
-      $[22] = t9;
+    if ($[14] !== label) {
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { font: "subheadline", fontWeight: "medium", children: label });
+      $[14] = label;
+      $[15] = t9;
     } else {
-      t9 = $[22];
+      t9 = $[15];
     }
     let t10;
-    if ($[23] !== body || $[24] !== onPress || $[25] !== props || $[26] !== t9) {
-      t10 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Button, { buttonStyle: "plain", onPress, accessibilityTraits: t9, ...props, children: body });
-      $[23] = body;
-      $[24] = onPress;
-      $[25] = props;
-      $[26] = t9;
-      $[27] = t10;
+    if ($[16] !== t6 || $[17] !== t7 || $[18] !== t8 || $[19] !== t9) {
+      t10 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(HStack, { spacing: 5, padding: t5, background: t6, foregroundStyle: t7, cornerRadius: "capsule", children: [
+        t8,
+        t9
+      ] });
+      $[16] = t6;
+      $[17] = t7;
+      $[18] = t8;
+      $[19] = t9;
+      $[20] = t10;
     } else {
-      t10 = $[27];
+      t10 = $[20];
     }
-    return t10;
+    const body = t10;
+    if (!onPress) {
+      let t112;
+      if ($[21] !== body || $[22] !== props || $[23] !== ref) {
+        t112 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(HStack, { ref, accessibilityElement: "combine", ...props, children: body });
+        $[21] = body;
+        $[22] = props;
+        $[23] = ref;
+        $[24] = t112;
+      } else {
+        t112 = $[24];
+      }
+      return t112;
+    }
+    let t11;
+    if ($[25] !== selected) {
+      t11 = selected ? ["selected"] : void 0;
+      $[25] = selected;
+      $[26] = t11;
+    } else {
+      t11 = $[26];
+    }
+    let t12;
+    if ($[27] !== body || $[28] !== onPress || $[29] !== props || $[30] !== ref || $[31] !== t11) {
+      t12 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Button, { ref, buttonStyle: "plain", onPress, accessibilityTraits: t11, ...props, children: body });
+      $[27] = body;
+      $[28] = onPress;
+      $[29] = props;
+      $[30] = ref;
+      $[31] = t11;
+      $[32] = t12;
+    } else {
+      t12 = $[32];
+    }
+    return t12;
   }
   function Badge(t0) {
     const $ = (0, import_compiler_runtime4.c)(13);
-    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
+    if ($[0] !== "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be") {
       for (let $i = 0; $i < 13; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+      $[0] = "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be";
     }
     let props;
     let t1;
@@ -37174,12 +37255,12 @@ ${e.stack}` : String(e);
     return t6;
   }
   function ProgressRing(t0) {
-    const $ = (0, import_compiler_runtime4.c)(33);
-    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
-      for (let $i = 0; $i < 33; $i += 1) {
+    const $ = (0, import_compiler_runtime4.c)(36);
+    if ($[0] !== "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be") {
+      for (let $i = 0; $i < 36; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+      $[0] = "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be";
     }
     let children;
     let props;
@@ -37188,6 +37269,7 @@ ${e.stack}` : String(e);
     let t3;
     let t4;
     let t5;
+    let t6;
     let value;
     if ($[1] !== t0) {
       ({
@@ -37197,6 +37279,7 @@ ${e.stack}` : String(e);
         color: t3,
         track: t4,
         allowsOverflow: t5,
+        lineCap: t6,
         children,
         ...props
       } = t0);
@@ -37208,7 +37291,8 @@ ${e.stack}` : String(e);
       $[6] = t3;
       $[7] = t4;
       $[8] = t5;
-      $[9] = value;
+      $[9] = t6;
+      $[10] = value;
     } else {
       children = $[2];
       props = $[3];
@@ -37217,99 +37301,105 @@ ${e.stack}` : String(e);
       t3 = $[6];
       t4 = $[7];
       t5 = $[8];
-      value = $[9];
+      t6 = $[9];
+      value = $[10];
     }
     const total = t1 === void 0 ? 1 : t1;
     const lineWidth = t2 === void 0 ? 8 : t2;
     const color = t3 === void 0 ? "accent" : t3;
     const track = t4 === void 0 ? "systemFill" : t4;
     const allowsOverflow = t5 === void 0 ? false : t5;
+    const lineCap = t6 === void 0 ? "round" : t6;
     const fraction = total > 0 ? value / total : 0;
     const shown = allowsOverflow ? fraction : Math.min(Math.max(fraction, 0), 1);
     const first = Math.max(1e-4, Math.min(shown, 1));
-    let t6;
-    if ($[10] !== fraction) {
-      t6 = Math.round(fraction * 100);
-      $[10] = fraction;
-      $[11] = t6;
+    let t7;
+    if ($[11] !== fraction) {
+      t7 = Math.round(fraction * 100);
+      $[11] = fraction;
+      $[12] = t7;
     } else {
-      t6 = $[11];
+      t7 = $[12];
     }
-    const t7 = `${t6}%`;
-    let t8;
-    if ($[12] !== lineWidth || $[13] !== track) {
-      t8 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: track, lineWidth });
-      $[12] = lineWidth;
-      $[13] = track;
-      $[14] = t8;
-    } else {
-      t8 = $[14];
-    }
+    const t8 = `${t7}%`;
     let t9;
-    if ($[15] !== first) {
-      t9 = [0, first];
-      $[15] = first;
-      $[16] = t9;
+    if ($[13] !== lineWidth || $[14] !== track) {
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: track, lineWidth });
+      $[13] = lineWidth;
+      $[14] = track;
+      $[15] = t9;
     } else {
-      t9 = $[16];
+      t9 = $[15];
     }
-    const t10 = shown > 0 ? 1 : 0;
-    let t11;
-    if ($[17] !== color || $[18] !== lineWidth || $[19] !== t10 || $[20] !== t9) {
-      t11 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: color, lineWidth, lineCap: "round", trim: t9, rotation: -90, opacity: t10 });
-      $[17] = color;
-      $[18] = lineWidth;
-      $[19] = t10;
-      $[20] = t9;
-      $[21] = t11;
+    let t10;
+    if ($[16] !== first) {
+      t10 = [0, first];
+      $[16] = first;
+      $[17] = t10;
     } else {
-      t11 = $[21];
+      t10 = $[17];
     }
+    const t11 = shown > 0 ? 1 : 0;
     let t12;
-    if ($[22] !== color || $[23] !== lineWidth || $[24] !== shown) {
-      t12 = shown > 1 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: color, lineWidth, lineCap: "round", trim: [0, Math.min(shown - 1, 1)], rotation: -90, shadow: {
-        radius: 2
-      } }) : null;
-      $[22] = color;
-      $[23] = lineWidth;
-      $[24] = shown;
-      $[25] = t12;
+    if ($[18] !== color || $[19] !== lineCap || $[20] !== lineWidth || $[21] !== t10 || $[22] !== t11) {
+      t12 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: color, lineWidth, lineCap, trim: t10, rotation: -90, opacity: t11 });
+      $[18] = color;
+      $[19] = lineCap;
+      $[20] = lineWidth;
+      $[21] = t10;
+      $[22] = t11;
+      $[23] = t12;
     } else {
-      t12 = $[25];
+      t12 = $[23];
     }
     let t13;
-    if ($[26] !== children || $[27] !== props || $[28] !== t11 || $[29] !== t12 || $[30] !== t7 || $[31] !== t8) {
-      t13 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(ZStack, { accessibilityElement: "combine", accessibilityValue: t7, ...props, children: [
-        t8,
-        t11,
+    if ($[24] !== color || $[25] !== lineCap || $[26] !== lineWidth || $[27] !== shown) {
+      t13 = shown > 1 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: color, lineWidth, lineCap, trim: [0, Math.min(shown - 1, 1)], rotation: -90, shadow: {
+        radius: 2
+      } }) : null;
+      $[24] = color;
+      $[25] = lineCap;
+      $[26] = lineWidth;
+      $[27] = shown;
+      $[28] = t13;
+    } else {
+      t13 = $[28];
+    }
+    let t14;
+    if ($[29] !== children || $[30] !== props || $[31] !== t12 || $[32] !== t13 || $[33] !== t8 || $[34] !== t9) {
+      t14 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(ZStack, { accessibilityElement: "combine", accessibilityValue: t8, ...props, children: [
+        t9,
         t12,
+        t13,
         children
       ] });
-      $[26] = children;
-      $[27] = props;
-      $[28] = t11;
-      $[29] = t12;
-      $[30] = t7;
-      $[31] = t8;
+      $[29] = children;
+      $[30] = props;
+      $[31] = t12;
       $[32] = t13;
+      $[33] = t8;
+      $[34] = t9;
+      $[35] = t14;
     } else {
-      t13 = $[32];
+      t14 = $[35];
     }
-    return t13;
+    return t14;
   }
   function PageIndicator(t0) {
-    const $ = (0, import_compiler_runtime4.c)(47);
-    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
-      for (let $i = 0; $i < 47; $i += 1) {
+    const $ = (0, import_compiler_runtime4.c)(55);
+    if ($[0] !== "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be") {
+      for (let $i = 0; $i < 55; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+      $[0] = "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be";
     }
     let count;
+    let dotSize;
     let inactive;
     let onSelect;
     let page;
     let props;
+    let spacing;
     let t1;
     let t2;
     let t3;
@@ -37321,149 +37411,165 @@ ${e.stack}` : String(e);
         tint: t2,
         inactive,
         progress: t3,
+        dotSize,
+        spacing,
         onSelect,
         ...props
       } = t0);
       $[1] = t0;
       $[2] = count;
-      $[3] = inactive;
-      $[4] = onSelect;
-      $[5] = page;
-      $[6] = props;
-      $[7] = t1;
-      $[8] = t2;
-      $[9] = t3;
+      $[3] = dotSize;
+      $[4] = inactive;
+      $[5] = onSelect;
+      $[6] = page;
+      $[7] = props;
+      $[8] = spacing;
+      $[9] = t1;
+      $[10] = t2;
+      $[11] = t3;
     } else {
       count = $[2];
-      inactive = $[3];
-      onSelect = $[4];
-      page = $[5];
-      props = $[6];
-      t1 = $[7];
-      t2 = $[8];
-      t3 = $[9];
+      dotSize = $[3];
+      inactive = $[4];
+      onSelect = $[5];
+      page = $[6];
+      props = $[7];
+      spacing = $[8];
+      t1 = $[9];
+      t2 = $[10];
+      t3 = $[11];
     }
     const style = t1 === void 0 ? "dots" : t1;
     const tint = t2 === void 0 ? "white" : t2;
     const progress = t3 === void 0 ? 1 : t3;
     const label = `Page ${page + 1} of ${count}`;
+    const segments = style === "segments";
+    const dot = dotSize ?? (segments ? 3 : 7);
+    const gap = spacing ?? (segments ? 4 : 6);
     if (style === "counter") {
       let t42;
-      if ($[10] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      if ($[12] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
         t42 = {
           horizontal: 9,
           vertical: 4
         };
-        $[10] = t42;
+        $[12] = t42;
       } else {
-        t42 = $[10];
+        t42 = $[12];
       }
       const t52 = `${page + 1} / ${count}`;
       let t6;
-      if ($[11] !== label || $[12] !== props || $[13] !== t52) {
+      if ($[13] !== label || $[14] !== props || $[15] !== t52) {
         t6 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { font: "caption", fontWeight: "semibold", monospacedDigit: true, foregroundStyle: "white", padding: t42, background: "black/55", cornerRadius: "capsule", accessibilityLabel: label, ...props, children: t52 });
-        $[11] = label;
-        $[12] = props;
-        $[13] = t52;
-        $[14] = t6;
+        $[13] = label;
+        $[14] = props;
+        $[15] = t52;
+        $[16] = t6;
       } else {
-        t6 = $[14];
+        t6 = $[16];
       }
       return t6;
     }
     if (style === "segments") {
       let t42;
-      if ($[15] !== count || $[16] !== inactive || $[17] !== page || $[18] !== progress || $[19] !== tint) {
+      if ($[17] !== count || $[18] !== dot || $[19] !== inactive || $[20] !== page || $[21] !== progress || $[22] !== tint) {
         let t53;
-        if ($[21] !== inactive || $[22] !== page || $[23] !== progress || $[24] !== tint) {
+        if ($[24] !== dot || $[25] !== inactive || $[26] !== page || $[27] !== progress || $[28] !== tint) {
           t53 = (_, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Capsule, { fill: inactive ?? "white/35", frame: {
             maxWidth: "infinity",
-            height: 3
+            height: dot
           }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Overlay, { alignment: "leading", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Capsule, { fill: tint, scaleX: i < page ? 1 : i === page ? Math.max(1e-3, Math.min(progress, 1)) : 1e-3, transformAnchor: "leading", opacity: i <= page ? 1 : 0 }) }) }, i);
-          $[21] = inactive;
-          $[22] = page;
-          $[23] = progress;
-          $[24] = tint;
-          $[25] = t53;
+          $[24] = dot;
+          $[25] = inactive;
+          $[26] = page;
+          $[27] = progress;
+          $[28] = tint;
+          $[29] = t53;
         } else {
-          t53 = $[25];
+          t53 = $[29];
         }
         t42 = Array.from({
           length: count
         }, t53);
-        $[15] = count;
-        $[16] = inactive;
-        $[17] = page;
-        $[18] = progress;
-        $[19] = tint;
-        $[20] = t42;
+        $[17] = count;
+        $[18] = dot;
+        $[19] = inactive;
+        $[20] = page;
+        $[21] = progress;
+        $[22] = tint;
+        $[23] = t42;
       } else {
-        t42 = $[20];
+        t42 = $[23];
       }
       let t52;
-      if ($[26] !== label || $[27] !== props || $[28] !== t42) {
-        t52 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(HStack, { spacing: 4, accessibilityElement: "ignore", accessibilityLabel: label, ...props, children: t42 });
-        $[26] = label;
-        $[27] = props;
-        $[28] = t42;
-        $[29] = t52;
+      if ($[30] !== gap || $[31] !== label || $[32] !== props || $[33] !== t42) {
+        t52 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(HStack, { spacing: gap, accessibilityElement: "ignore", accessibilityLabel: label, ...props, children: t42 });
+        $[30] = gap;
+        $[31] = label;
+        $[32] = props;
+        $[33] = t42;
+        $[34] = t52;
       } else {
-        t52 = $[29];
+        t52 = $[34];
       }
       return t52;
     }
     let t4;
-    if ($[30] !== count || $[31] !== inactive || $[32] !== onSelect || $[33] !== page || $[34] !== style || $[35] !== tint) {
+    if ($[35] !== count || $[36] !== dot || $[37] !== inactive || $[38] !== onSelect || $[39] !== page || $[40] !== style || $[41] !== tint) {
       let t52;
-      if ($[37] !== inactive || $[38] !== onSelect || $[39] !== page || $[40] !== style || $[41] !== tint) {
+      if ($[43] !== dot || $[44] !== inactive || $[45] !== onSelect || $[46] !== page || $[47] !== style || $[48] !== tint) {
         t52 = (__0, i_0) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Capsule, { fill: i_0 === page ? tint : inactive ?? "white/45", frame: {
-          width: style === "capsule" && i_0 === page ? 18 : 7,
-          height: 7
+          width: style === "capsule" && i_0 === page ? dot * 2.5 : dot,
+          height: dot
         }, animation: "snappy", onTapGesture: onSelect ? () => onSelect(i_0) : void 0 }, i_0);
-        $[37] = inactive;
-        $[38] = onSelect;
-        $[39] = page;
-        $[40] = style;
-        $[41] = tint;
-        $[42] = t52;
+        $[43] = dot;
+        $[44] = inactive;
+        $[45] = onSelect;
+        $[46] = page;
+        $[47] = style;
+        $[48] = tint;
+        $[49] = t52;
       } else {
-        t52 = $[42];
+        t52 = $[49];
       }
       t4 = Array.from({
         length: count
       }, t52);
-      $[30] = count;
-      $[31] = inactive;
-      $[32] = onSelect;
-      $[33] = page;
-      $[34] = style;
-      $[35] = tint;
-      $[36] = t4;
+      $[35] = count;
+      $[36] = dot;
+      $[37] = inactive;
+      $[38] = onSelect;
+      $[39] = page;
+      $[40] = style;
+      $[41] = tint;
+      $[42] = t4;
     } else {
-      t4 = $[36];
+      t4 = $[42];
     }
     let t5;
-    if ($[43] !== label || $[44] !== props || $[45] !== t4) {
-      t5 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(HStack, { spacing: 6, accessibilityElement: "ignore", accessibilityLabel: label, ...props, children: t4 });
-      $[43] = label;
-      $[44] = props;
-      $[45] = t4;
-      $[46] = t5;
+    if ($[50] !== gap || $[51] !== label || $[52] !== props || $[53] !== t4) {
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(HStack, { spacing: gap, accessibilityElement: "ignore", accessibilityLabel: label, ...props, children: t4 });
+      $[50] = gap;
+      $[51] = label;
+      $[52] = props;
+      $[53] = t4;
+      $[54] = t5;
     } else {
-      t5 = $[46];
+      t5 = $[54];
     }
     return t5;
   }
   function Pager(t0) {
-    const $ = (0, import_compiler_runtime4.c)(43);
-    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
-      for (let $i = 0; $i < 43; $i += 1) {
+    const $ = (0, import_compiler_runtime4.c)(45);
+    if ($[0] !== "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be") {
+      for (let $i = 0; $i < 45; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+      $[0] = "9114a288686abf87c893d7d9b96cf87ffd73d66309b9190a6bf0fac088eaa5be";
     }
     let autoAdvance;
     let children;
+    let indicatorInactive;
     let indicatorTint;
     let onPageChange;
     let page;
@@ -37480,47 +37586,50 @@ ${e.stack}` : String(e);
         indicator: t1,
         indicatorAlignment: t2,
         indicatorTint,
+        indicatorInactive,
         spacing: t3,
         ...props
       } = t0);
       $[1] = t0;
       $[2] = autoAdvance;
       $[3] = children;
-      $[4] = indicatorTint;
-      $[5] = onPageChange;
-      $[6] = page;
-      $[7] = props;
-      $[8] = t1;
-      $[9] = t2;
-      $[10] = t3;
+      $[4] = indicatorInactive;
+      $[5] = indicatorTint;
+      $[6] = onPageChange;
+      $[7] = page;
+      $[8] = props;
+      $[9] = t1;
+      $[10] = t2;
+      $[11] = t3;
     } else {
       autoAdvance = $[2];
       children = $[3];
-      indicatorTint = $[4];
-      onPageChange = $[5];
-      page = $[6];
-      props = $[7];
-      t1 = $[8];
-      t2 = $[9];
-      t3 = $[10];
+      indicatorInactive = $[4];
+      indicatorTint = $[5];
+      onPageChange = $[6];
+      page = $[7];
+      props = $[8];
+      t1 = $[9];
+      t2 = $[10];
+      t3 = $[11];
     }
     const indicator = t1 === void 0 ? "dots" : t1;
     const indicatorAlignment = t2 === void 0 ? "bottom" : t2;
     const spacing = t3 === void 0 ? 0 : t3;
     let t4;
-    if ($[11] !== children) {
-      t4 = children.filter(_temp7);
-      $[11] = children;
-      $[12] = t4;
+    if ($[12] !== children) {
+      t4 = children.filter(_temp8);
+      $[12] = children;
+      $[13] = t4;
     } else {
-      t4 = $[12];
+      t4 = $[13];
     }
     const pages = t4;
     const ref = (0, import_react5.useRef)(null);
     const [shown, setShown] = (0, import_react5.useState)(page ?? 0);
     const [dragging, setDragging] = (0, import_react5.useState)(false);
     let t5;
-    if ($[13] !== page || $[14] !== shown) {
+    if ($[14] !== page || $[15] !== shown) {
       t5 = () => {
         if (page === void 0 || page === shown) {
           return;
@@ -37529,24 +37638,24 @@ ${e.stack}` : String(e);
           animated: true
         });
       };
-      $[13] = page;
-      $[14] = shown;
-      $[15] = t5;
+      $[14] = page;
+      $[15] = shown;
+      $[16] = t5;
     } else {
-      t5 = $[15];
+      t5 = $[16];
     }
     let t6;
-    if ($[16] !== page) {
+    if ($[17] !== page) {
       t6 = [page];
-      $[16] = page;
-      $[17] = t6;
+      $[17] = page;
+      $[18] = t6;
     } else {
-      t6 = $[17];
+      t6 = $[18];
     }
     (0, import_react5.useEffect)(t5, t6);
     let t7;
     let t8;
-    if ($[18] !== autoAdvance || $[19] !== dragging || $[20] !== pages.length || $[21] !== shown) {
+    if ($[19] !== autoAdvance || $[20] !== dragging || $[21] !== pages.length || $[22] !== shown) {
       t7 = () => {
         if (!autoAdvance || dragging || pages.length < 2) {
           return;
@@ -37557,86 +37666,87 @@ ${e.stack}` : String(e);
         return () => clearTimeout(timer2);
       };
       t8 = [autoAdvance, dragging, shown, pages.length];
-      $[18] = autoAdvance;
-      $[19] = dragging;
-      $[20] = pages.length;
-      $[21] = shown;
-      $[22] = t7;
-      $[23] = t8;
+      $[19] = autoAdvance;
+      $[20] = dragging;
+      $[21] = pages.length;
+      $[22] = shown;
+      $[23] = t7;
+      $[24] = t8;
     } else {
-      t7 = $[22];
-      t8 = $[23];
+      t7 = $[23];
+      t8 = $[24];
     }
     (0, import_react5.useEffect)(t7, t8);
     let t9;
-    if ($[24] !== onPageChange) {
+    if ($[25] !== onPageChange) {
       t9 = (i) => {
         setShown(i);
         onPageChange?.(i);
       };
-      $[24] = onPageChange;
-      $[25] = t9;
+      $[25] = onPageChange;
+      $[26] = t9;
     } else {
-      t9 = $[25];
+      t9 = $[26];
     }
     let t10;
-    if ($[26] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+    if ($[27] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
       t10 = (phase) => setDragging(phase === "tracking" || phase === "interacting");
-      $[26] = t10;
+      $[27] = t10;
     } else {
-      t10 = $[26];
+      t10 = $[27];
     }
     let t11;
-    if ($[27] !== pages) {
+    if ($[28] !== pages) {
       t11 = pages.map(_temp23);
-      $[27] = pages;
-      $[28] = t11;
+      $[28] = pages;
+      $[29] = t11;
     } else {
-      t11 = $[28];
+      t11 = $[29];
     }
     let t12;
-    if ($[29] !== spacing || $[30] !== t11 || $[31] !== t9) {
+    if ($[30] !== spacing || $[31] !== t11 || $[32] !== t9) {
       t12 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ScrollView, { ref, axis: "horizontal", paging: true, spacing, showsIndicators: false, onScrollIndexChange: t9, onScrollPhaseChange: t10, children: t11 });
-      $[29] = spacing;
-      $[30] = t11;
-      $[31] = t9;
-      $[32] = t12;
+      $[30] = spacing;
+      $[31] = t11;
+      $[32] = t9;
+      $[33] = t12;
     } else {
-      t12 = $[32];
+      t12 = $[33];
     }
     let t13;
-    if ($[33] !== indicator || $[34] !== indicatorAlignment || $[35] !== indicatorTint || $[36] !== pages.length || $[37] !== shown) {
-      t13 = indicator !== "none" && pages.length > 1 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Overlay, { alignment: indicatorAlignment, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PageIndicator, { count: pages.length, page: shown, style: indicator, tint: indicatorTint, padding: 12, onSelect: (i_1) => ref.current?.scrollTo(i_1, {
+    if ($[34] !== indicator || $[35] !== indicatorAlignment || $[36] !== indicatorInactive || $[37] !== indicatorTint || $[38] !== pages.length || $[39] !== shown) {
+      t13 = indicator !== "none" && pages.length > 1 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Overlay, { alignment: indicatorAlignment, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PageIndicator, { count: pages.length, page: shown, style: indicator, tint: indicatorTint, inactive: indicatorInactive, padding: 12, onSelect: (i_1) => ref.current?.scrollTo(i_1, {
         animated: true
       }) }) }) : null;
-      $[33] = indicator;
-      $[34] = indicatorAlignment;
-      $[35] = indicatorTint;
-      $[36] = pages.length;
-      $[37] = shown;
-      $[38] = t13;
+      $[34] = indicator;
+      $[35] = indicatorAlignment;
+      $[36] = indicatorInactive;
+      $[37] = indicatorTint;
+      $[38] = pages.length;
+      $[39] = shown;
+      $[40] = t13;
     } else {
-      t13 = $[38];
+      t13 = $[40];
     }
     let t14;
-    if ($[39] !== props || $[40] !== t12 || $[41] !== t13) {
+    if ($[41] !== props || $[42] !== t12 || $[43] !== t13) {
       t14 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(ZStack, { ...props, children: [
         t12,
         t13
       ] });
-      $[39] = props;
-      $[40] = t12;
-      $[41] = t13;
-      $[42] = t14;
+      $[41] = props;
+      $[42] = t12;
+      $[43] = t13;
+      $[44] = t14;
     } else {
-      t14 = $[42];
+      t14 = $[44];
     }
     return t14;
   }
   function _temp23(child, i_0) {
     return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ZStack, { relativeWidth: 1, children: child }, i_0);
   }
-  function _temp7(c) {
+  function _temp8(c) {
     return c != null && c !== false;
   }
 
@@ -37755,7 +37865,7 @@ ${e.stack}` : String(e);
         let live2 = true;
         const refresh = () => {
           const result = mainThread ? onMain(readNow) : Promise.resolve().then(readNow);
-          result.then((v) => live2 && setValue(() => v)).catch(_temp8);
+          result.then((v) => live2 && setValue(() => v)).catch(_temp9);
         };
         refresh();
         const center = native.NSNotificationCenter.defaultCenter;
@@ -37790,7 +37900,7 @@ ${e.stack}` : String(e);
     (0, import_react6.useEffect)(t6, t7);
     return value;
   }
-  function _temp8(e) {
+  function _temp9(e) {
     return console.error(e);
   }
   function defineNativeClass(name, spec) {
@@ -37982,7 +38092,7 @@ ${e.stack}` : String(e);
           const view = latest.current.create();
           native.NSThread.mainThread.threadDictionary.setObjectForKey(view, id);
           latest.current.onCreate?.(view);
-        }).then(() => live2 && setKey(id), _temp9);
+        }).then(() => live2 && setKey(id), _temp10);
         return () => {
           live2 = false;
           onMain(() => native.NSThread.mainThread.threadDictionary.removeObjectForKey(id)).catch(_temp24);
@@ -38009,7 +38119,7 @@ ${e.stack}` : String(e);
   }
   function _temp24() {
   }
-  function _temp9(error) {
+  function _temp10(error) {
     return console.error("NativeView create() failed:", error);
   }
 
@@ -38092,7 +38202,7 @@ ${e.stack}` : String(e);
           screen
         }]);
       };
-      t3 = () => setStack(_temp10);
+      t3 = () => setStack(_temp11);
       t4 = () => setStack([]);
       t5 = (screen_0) => {
         const key_0 = lastKey.current = lastKey.current + 1;
@@ -38192,7 +38302,7 @@ ${e.stack}` : String(e);
   function _temp25(entry) {
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(NavigationPage, { children: entry.screen }, entry.key);
   }
-  function _temp10(s_0) {
+  function _temp11(s_0) {
     return s_0.slice(0, -1);
   }
   function useNavigation() {
@@ -38526,7 +38636,7 @@ ${e.stack}` : String(e);
     if (presented !== wasPresented) {
       setWasPresented(presented);
       if (presented) {
-        setGeneration(_temp11);
+        setGeneration(_temp12);
       }
     }
     let t0;
@@ -38557,7 +38667,7 @@ ${e.stack}` : String(e);
     }
     return t1;
   }
-  function _temp11(g4) {
+  function _temp12(g4) {
     return g4 + 1;
   }
   function Sheet(props) {
@@ -38773,7 +38883,7 @@ ${e.stack}` : String(e);
     } = t0;
     const animation = t1 === void 0 ? "default" : t1;
     const current3 = import_react11.Children.toArray(children).filter(import_react11.isValidElement);
-    const [leaving, setLeaving] = (0, import_react11.useState)(_temp12);
+    const [leaving, setLeaving] = (0, import_react11.useState)(_temp13);
     const [previous, setPrevious] = (0, import_react11.useState)({
       children,
       elements: current3
@@ -38873,7 +38983,7 @@ ${e.stack}` : String(e);
   function _temp26(c) {
     return c.key;
   }
-  function _temp12() {
+  function _temp13() {
     return /* @__PURE__ */ new Map();
   }
 
@@ -38915,7 +39025,7 @@ ${e.stack}` : String(e);
       props = $[5];
       value = $[6];
     }
-    const ms = _temp13;
+    const ms = _temp14;
     let t1;
     if ($[7] !== value) {
       t1 = ms(value);
@@ -38962,7 +39072,7 @@ ${e.stack}` : String(e);
     }
     return t5;
   }
-  function _temp13(d) {
+  function _temp14(d) {
     return d === void 0 ? void 0 : typeof d === "number" ? d : d.getTime();
   }
   function TimePicker(t0) {
@@ -39663,9 +39773,9 @@ ${e.stack}` : String(e);
       }
       $[0] = "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b";
     }
-    return (0, import_react13.useSyncExternalStore)(subscribe2, _temp14);
+    return (0, import_react13.useSyncExternalStore)(subscribe2, _temp15);
   }
-  function _temp14() {
+  function _temp15() {
     return current2;
   }
   function useColorScheme() {

@@ -185,17 +185,18 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   once even when several views want them, and decoded off the main thread. They fire
   `onLoad`/`onError`.
 - **App kit.** What every app was writing for itself:
-  - `toast(text, { systemImage, haptic, action })`: over everything (sheets too),
-    queued, read out by VoiceOver; mounted for you.
+  - `toast(text, { systemImage, haptic, action, position })`: over everything (sheets
+    too), queued, read out by VoiceOver; mounted for you.
   - `<ContentUnavailable systemImage title description>{actions}</ContentUnavailable>` and
     `search={query}`: empty, error and no-results states as the system draws them.
   - `<Text date={d} dateStyle="ago" | "timer" | "relative" | "time" …>`: dates that keep
     themselves current natively (no re-renders).
-  - `useNow("minute")`, `useToday()` (midnight, time zone and clock changes, foreground),
+  - `useNow("minute", { active })`, `useToday()` (midnight, time zone and clock changes, foreground),
     `useAppState()`, `useDebouncedValue(v, ms)`, `useDebouncedCallback`,
     `usePersistentState(key, initial)`.
   - `format.compact / percent / currency / bytes / duration / count / list /
-    relativeTime / relativeDay`, with the Intl formatters cached (slow to make without a JIT).
+    relativeTime / relativeDay` ("1 hr 5 min", "Zero KB", "4w", "Friday", "12.4K likes"),
+    with the Intl formatters cached (slow to make without a JIT).
   - Views: `<Avatar src name ring badge>` (initials when there's no picture),
     `<IconTile systemImage color>`, `<Chip label selected onPress>`, `<Badge value max>`,
     `<ProgressRing value>{center}</ProgressRing>`, `<PageIndicator count page style>` (dots,

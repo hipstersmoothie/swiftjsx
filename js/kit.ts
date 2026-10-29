@@ -55,13 +55,17 @@ const every = (interval: "second" | "minute" | number) => (interval === "second"
  * timer is shared by every component using the same interval. For text that
  * only shows a time, `<Text date dateStyle>` ticks without re-rendering.
  */
-export function useNow(interval: "second" | "minute" | number = "minute"): number {
+export function useNow(interval: "second" | "minute" | number = "minute", options: { active?: boolean } = {}): number {
   const ms = every(interval);
+  const active = options.active ?? true;
+  // Paused (`active: false`, e.g. while a screen is hidden): no timer, the last value.
+  const [paused] = useState(() => Date.now());
   return useSyncExternalStore(
-    (listener) => subscribe(ms, listener),
-    () => ticker(ms).now,
+    active ? (listener) => subscribe(ms, listener) : noSubscribe,
+    () => (active ? ticker(ms).now : paused),
   );
 }
+const noSubscribe = () => () => {};
 
 const startOfDay = (ms: number) => new Date(ms).setHours(0, 0, 0, 0);
 
@@ -236,14 +240,18 @@ const DAY = 86_400_000;
 export const format = {
   /** 1,234.5 (any Intl.NumberFormat options). */
   number: (n: number, options: Intl.NumberFormatOptions = {}) => numberFormat(options).format(n),
-  /** 1.2K, 3.4M. */
-  compact: (n: number) => numberFormat({ notation: "compact", maximumFractionDigits: 1 }).format(n),
+  /** 1.2K, 3.4M; below `from` (default 1000) the full number ("1,234" with `from: 10_000`). */
+  compact: (n: number, options: { digits?: number; from?: number } = {}) =>
+    Math.abs(n) < (options.from ?? 1000)
+      ? format.number(n)
+      : numberFormat({ notation: "compact", maximumFractionDigits: options.digits ?? 1 }).format(n),
   /** 0.42 → 42%. */
   percent: (fraction: number, digits = 0) => numberFormat({ style: "percent", maximumFractionDigits: digits }).format(fraction),
   /** $12.50 (an amount, not cents). */
   currency: (amount: number, currency: string) => numberFormat({ style: "currency", currency }).format(amount),
-  /** 1.5 MB (decimal units, as Finder and Settings show sizes). */
+  /** 1.5 MB, 106 GB, "Zero KB" (decimal units, as Finder and Settings show sizes). */
   bytes: (bytes: number) => {
+    if (bytes === 0) return "Zero KB";
     const units = ["byte", "kilobyte", "megabyte", "gigabyte", "terabyte"];
     let value = bytes;
     let unit = 0;
@@ -251,15 +259,20 @@ export const format = {
       value /= 1000;
       unit++;
     }
-    return numberFormat({ style: "unit", unit: units[unit], unitDisplay: "short", maximumFractionDigits: unit === 0 ? 0 : 1 }).format(value);
+    const digits = unit === 0 || Math.abs(value) >= 100 ? 0 : 1;
+    // Intl writes "kB"; Apple's sizes say "KB".
+    return numberFormat({ style: "unit", unit: units[unit], unitDisplay: "short", maximumFractionDigits: digits }).format(value).replace("kB", "KB");
   },
   /**
-   * Seconds as "1:05:09" / "5:09" ("positional", default), "1h 5m"
-   * ("short"), or "1 hour, 5 minutes" ("long").
+   * Seconds as "1:05:09" / "5:09" ("positional", default), "1h 5m 9s"
+   * ("short"), "1 hour, 5 minutes, 9 seconds" ("long"), or "1 hr 5 min"
+   * ("abbreviated": to the minute from a minute up, as Maps and Clock show
+   * lengths; "45 sec" under one).
    */
-  duration: (seconds: number, style: "positional" | "short" | "long" = "positional") => {
+  duration: (seconds: number, style: "positional" | "short" | "long" | "abbreviated" = "positional") => {
     const sign = seconds < 0 ? "-" : "";
-    const total = Math.round(Math.abs(seconds));
+    const exact = Math.round(Math.abs(seconds));
+    const total = style === "abbreviated" && exact >= 60 ? Math.round(exact / 60) * 60 : exact;
     const h = Math.floor(total / 3600);
     const m = Math.floor((total % 3600) / 60);
     const s = total % 60;
@@ -269,7 +282,7 @@ export const format = {
     }
     const parts: [number, string][] = [[h, "hour"], [m, "minute"], [s, "second"]];
     const shown = parts.filter(([v], i) => v > 0 || (i === 2 && h === 0 && m === 0));
-    const display = style === "long" ? "long" : "narrow";
+    const display = style === "long" ? "long" : style === "abbreviated" ? "short" : "narrow";
     const pieces = shown.map(([v, unit]) => numberFormat({ style: "unit", unit, unitDisplay: display }).format(v));
     return sign + (style === "long" ? format.list(pieces) : pieces.join(" "));
   },
@@ -280,15 +293,16 @@ export const format = {
    * "3 cards", "1 card": `forms` by plural category (`one`, `other`, and
    * `few` / `many` where the language has them); `#` is the number.
    */
-  count: (n: number, forms: { one?: string; few?: string; many?: string; other: string }) => {
+  count: (n: number, forms: { one?: string; few?: string; many?: string; other: string }, options: { compact?: boolean } = {}) => {
     const category = cached("p", {}, () => new Intl.PluralRules(undefined)).select(n) as keyof typeof forms;
-    return (forms[category] ?? forms.other).replace("#", format.number(n));
+    return (forms[category] ?? forms.other).replace("#", options.compact ? format.compact(n) : format.number(n));
   },
   /**
    * "5m", "3h", "2d", then "Mar 4" (and "Mar 4, 2025" in another year):
-   * the compact age feeds and lists show. `long`: "5 minutes ago".
+   * the compact age feeds and lists show; with `weeks`, "4w" up to a year
+   * first (as Instagram does). `long`: "5 minutes ago".
    */
-  relativeTime: (date: Date | number, options: { now?: number; style?: "narrow" | "long" } = {}) => {
+  relativeTime: (date: Date | number, options: { now?: number; style?: "narrow" | "long"; weeks?: boolean } = {}) => {
     const ms = +date;
     const now = options.now ?? Date.now();
     const seconds = Math.round((now - ms) / 1000);
@@ -305,11 +319,12 @@ export const format = {
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
     if (seconds < 7 * 86400) return `${Math.floor(seconds / 86400)}d`;
+    if (options.weeks && seconds < 365 * 86400) return `${Math.floor(seconds / (7 * 86400))}w`;
     const sameYear = new Date(ms).getFullYear() === new Date(now).getFullYear();
     return cached("d", { sameYear }, () => new Intl.DateTimeFormat(undefined, sameYear ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" }))
       .format(ms);
   },
-  /** "Today", "Yesterday", "Tomorrow", a weekday within the week, else a date. */
+  /** "Today", "Yesterday", "Tomorrow", a weekday within a week either way, else a date. */
   relativeDay: (date: Date | number, options: { now?: number } = {}) => {
     const day = startOfDay(+date);
     const today = startOfDay(options.now ?? Date.now());
@@ -319,7 +334,7 @@ export const format = {
       const text = rtf.format(diff, "day");
       return text.charAt(0).toLocaleUpperCase() + text.slice(1);
     }
-    if (diff > -7 && diff < 0) return cached("wd", {}, () => new Intl.DateTimeFormat(undefined, { weekday: "long" })).format(day);
+    if (diff > -7 && diff < 7) return cached("wd", {}, () => new Intl.DateTimeFormat(undefined, { weekday: "long" })).format(day);
     const sameYear = new Date(day).getFullYear() === new Date(today).getFullYear();
     return cached("d", { sameYear }, () => new Intl.DateTimeFormat(undefined, sameYear ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" }))
       .format(day);
