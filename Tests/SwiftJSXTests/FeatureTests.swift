@@ -449,3 +449,33 @@ struct CompilerTests {
         #expect(await eventually { runtime.texts().first == "font Arial Narrow ArialNarrow" })
     }
 }
+
+@MainActor
+@Suite struct KitTests {
+    @Test func formattersPersistenceDebounceAndToasts() async throws {
+        let runtime = try fixture("Kit")
+        let texts = runtime.texts()
+        #expect(texts.contains("compact 12.4K"))
+        #expect(texts.contains("percent 42%"))
+        #expect(texts.contains("currency $12.50"))
+        #expect(texts.contains("bytes 1.5 MB"))
+        #expect(texts.contains("duration 1:05:09 5:09 1h 5m 9s"))
+        #expect(texts.contains("count 1 card 3 cards"))
+        #expect(texts.contains("list a, b, and c"))
+        #expect(texts.contains("ago 5m 3h 5 minutes ago"))
+        #expect(texts.contains("day Today Yesterday"))
+        #expect(runtime.find("ContentUnavailable")?.string("title") == "Nothing here")
+
+        // Persistent state: saved, and read back by a fresh runtime.
+        let before = texts.first { $0.hasPrefix("stored ") } ?? ""
+        runtime.press("inc")
+        #expect(await eventually { runtime.texts().first { $0.hasPrefix("stored ") } != before })
+
+        runtime.press("type")
+        #expect(await eventually { runtime.texts().contains("debounced ab false") })
+
+        runtime.press("toast")
+        #expect(await eventually { runtime.texts().contains("Saved") })
+        #expect(runtime.error == nil)
+    }
+}

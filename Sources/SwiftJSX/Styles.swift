@@ -559,6 +559,7 @@ func markdownText(_ markdown: String) -> Text {
 /// with their own styling, and inline `<Image systemName>` symbols.
 @MainActor
 func styledText(_ node: Node) -> Text {
+    if let date = dateValue(node.prop("date")) { return dateText(date, style: node.string("dateStyle")) }
     if node.children.count == 1, node.children[0].type == "#text" {
         return Text(verbatim: cased(node.children[0].text, node))
     }
@@ -680,5 +681,34 @@ struct Truncation<Full: View>: ViewModifier {
         guard truncated != reported else { return }
         reported = truncated
         runtime?.dispatch(node.id, "onTruncationChange", truncated)
+    }
+}
+
+/// A `date` prop: a Date or ms since 1970.
+func dateValue(_ value: Any?) -> Date? {
+    switch value {
+    case let date as Date: date
+    case let ms as NSNumber: Date(timeIntervalSince1970: ms.doubleValue / 1000)
+    default: nil
+    }
+}
+
+/// `<Text date dateStyle>`: SwiftUI's self-updating date text (it ticks
+/// natively; React doesn't re-render).
+/// - "ago" (default): "5 minutes ago", "in 2 hours"
+/// - "relative": "2 hr, 5 min" (time to or since, no "ago")
+/// - "timer": "2:05" counting up since a past date or down to a future one
+/// - "offset": "+2 hours"
+/// - "time", "date", "dateTime": the date itself, in the user's locale
+func dateText(_ date: Date, style: String?) -> Text {
+    switch style {
+    case "relative": Text(date, style: .relative)
+    case "timer": Text(date, style: .timer)
+    case "offset": Text(date, style: .offset)
+    case "time": Text(date, style: .time)
+    case "date": Text(date, style: .date)
+    case "dateTime": Text(date.formatted(date: .abbreviated, time: .shortened))
+    default:
+        Text(.currentDate, format: .reference(to: date, allowedFields: [.year, .month, .week, .day, .hour, .minute, .second], maxFieldCount: 1))
     }
 }

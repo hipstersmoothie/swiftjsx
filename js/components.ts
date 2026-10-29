@@ -515,6 +515,17 @@ export const SafeAreaInset = host<Modifiers & WithChildren & { edge?: "top" | "b
  */
 export const Text = host<
   Modifiers & WithChildren & {
+    /**
+     * Show a date that keeps itself current (natively; React doesn't
+     * re-render): a Date or ms since 1970, styled by `dateStyle`.
+     */
+    date?: Date | number;
+    /**
+     * "ago" (default: "5 minutes ago", "in 2 hours"), "relative" ("2 hr, 5
+     * min"), "timer" ("2:05", counting up since or down to it), "offset"
+     * ("+2 hours"), or "time" / "date" / "dateTime" in the user's locale.
+     */
+    dateStyle?: "ago" | "relative" | "timer" | "offset" | "time" | "date" | "dateTime";
     bold?: boolean;
     /** `true`, or the line's color. */
     strikethrough?: boolean | ColorValue;
@@ -612,6 +623,16 @@ type PathBox = {
 
 /** An SVG path (`d="M0 50 L50 0 …"`: M L H V C S Q T A Z, absolute and relative). Strokes with the foreground by default. */
 export const Path = host<ShapeProps & PathBox & { d: string }>("Path");
+
+/**
+ * An empty, error or no-results state, drawn as the system draws them
+ * (SwiftUI's ContentUnavailableView): a symbol, a title, a description, and
+ * the children as actions (`<Button title="Try Again" />`). `search={query}`
+ * is the standard "No Results for …".
+ */
+export const ContentUnavailable = host<
+  Modifiers & WithChildren & { title?: string; systemImage?: string; description?: string; search?: string }
+>("ContentUnavailable");
 
 /** A fill or stroke for `<Canvas>` drawing: a color, or a gradient from `ctx.create…Gradient`. */
 export type CanvasStyle = ColorValue | CanvasGradient;

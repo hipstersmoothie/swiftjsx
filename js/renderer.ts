@@ -11,7 +11,7 @@ import {
   DiscreteEventPriority,
   NoEventPriority,
 } from "react-reconciler/constants";
-import { createContext, type ReactNode } from "react";
+import { createContext, createElement, Fragment, type ReactNode } from "react";
 import type { AnimationSpec } from "./components";
 import { isWorkletProp, jsFunction, retainFunctions, serializeWorkletProp } from "./worklets";
 
@@ -470,8 +470,17 @@ let root: unknown = null;
  * Mount the app. Calling it again (which happens when a hot update re-runs
  * your bundle) is a no-op; React Refresh swaps the components in place.
  */
+/** Mounted next to the app by render() (the toast host). */
+const rootExtras: { key: string; element: ReactNode }[] = [];
+export function addRootElement(key: string, element: ReactNode) {
+  if (!rootExtras.some((e) => e.key === key)) rootExtras.push({ key, element });
+}
+
 export function render(element: ReactNode) {
   if (root) return;
+  if (rootExtras.length) {
+    element = createElement(Fragment, null, element, ...rootExtras.map((e) => createElement(Fragment, { key: e.key }, e.element)));
+  }
   // @types/react-reconciler lags the 0.34 signature, so call it untyped.
   root = (reconciler.createContainer as any)(
     { id: 0 },

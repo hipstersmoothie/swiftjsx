@@ -171,6 +171,24 @@ struct NodeView: View {
         case "Canvas":
             CanvasHost(node: node)
 
+        case "ContentUnavailable":
+            // An empty / error / no-results state, as the system draws it.
+            if let query = node.string("search") {
+                ContentUnavailableView.search(text: query)
+            } else {
+                ContentUnavailableView {
+                    if let image = node.string("systemImage") {
+                        Label(node.string("title") ?? "", systemImage: image)
+                    } else {
+                        Text(node.string("title") ?? "")
+                    }
+                } description: {
+                    if let description = node.string("description") { Text(description) }
+                } actions: {
+                    Children(node: node)
+                }
+            }
+
         case "NativeView":
             NativeViewHost(node: node)
 

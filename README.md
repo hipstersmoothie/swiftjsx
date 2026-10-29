@@ -184,6 +184,18 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
   `<Image src="https://…" contentMode="fill">`. URL images are cached in memory, requested
   once even when several views want them, and decoded off the main thread. They fire
   `onLoad`/`onError`.
+- **App kit.** What every app was writing for itself:
+  - `toast(text, { systemImage, haptic, action })`: over everything (sheets too),
+    queued, read out by VoiceOver; mounted for you.
+  - `<ContentUnavailable systemImage title description>{actions}</ContentUnavailable>` and
+    `search={query}`: empty, error and no-results states as the system draws them.
+  - `<Text date={d} dateStyle="ago" | "timer" | "relative" | "time" …>`: dates that keep
+    themselves current natively (no re-renders).
+  - `useNow("minute")`, `useToday()` (midnight, time zone and clock changes, foreground),
+    `useAppState()`, `useDebouncedValue(v, ms)`, `useDebouncedCallback`,
+    `usePersistentState(key, initial)`.
+  - `format.compact / percent / currency / bytes / duration / count / list /
+    relativeTime / relativeDay`, with the Intl formatters cached (slow to make without a JIT).
 - **Platform services.** `haptic()`, `navigator.clipboard`, `openURL`; local
   `notifications` (permission, `schedule({ title, at | seconds, data })`, cancel, badge,
   action buttons via `setCategories` (text replies too), attachments, time-sensitive

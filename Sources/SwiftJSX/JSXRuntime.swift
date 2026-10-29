@@ -251,6 +251,10 @@ public final class JSXRuntime {
         case "locationClear":
             locator.clear(args)
             engine.resolve(callback: callback, value: NSNull())
+        case "announce":
+            // VoiceOver reads it out (a toast, a finished upload).
+            AccessibilityNotification.Announcement(args["text"] as? String ?? "").post()
+            engine.resolve(callback: callback, value: NSNull())
         case "haptic":
             playHaptic(args["kind"] as? String)
             engine.resolve(callback: callback, value: NSNull())
