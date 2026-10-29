@@ -2,20 +2,23 @@
 // weekly chart. Pushed with just an id (pushed screens keep the props they
 // were pushed with), so everything is read from the store.
 import { useState } from "react";
-import { useNavigation, Screen, ToolbarItem, ScrollView, VStack, HStack, LazyVGrid, Text, Image, Button } from "swiftjsx";
+import {
+  format, useNavigation, Screen, ToolbarItem, ScrollView, VStack, HStack, LazyVGrid, Text, Image, Button, IconTile, ContentUnavailable,
+} from "swiftjsx";
 import { useHabits, countOn } from "./store";
-import { formatTime, orderedWeekdays, useToday, weekdayName } from "./dates";
+import { formatTime, orderedWeekdays, useTodayKey, useWeekStartsOn, weekdayName } from "./dates";
 import { completionRate, describeSchedule, streaks, streakText, totalCompletions } from "./stats";
 import { MonthCalendar } from "./MonthCalendar";
 import { Heatmap } from "./Heatmap";
 import { WeeklyChart } from "./WeeklyChart";
 import { HabitFormSheet } from "./HabitForm";
 import { CompleteButton } from "./HabitRow";
-import { Card, EmptyState, HabitIcon, StatTile } from "./ui";
+import { Card, StatTile } from "./ui";
 
 export function HabitDetail({ habitId }: { habitId: string }) {
   const nav = useNavigation();
-  const today = useToday();
+  const today = useTodayKey();
+  const weekStartsOn = useWeekStartsOn();
   const habit = useHabits((s) => s.habits.find((h) => h.id === habitId));
   const logs = useHabits((s) => s.logs);
   const [editing, setEditing] = useState(false);
@@ -23,15 +26,15 @@ export function HabitDetail({ habitId }: { habitId: string }) {
   if (!habit) {
     return (
       <Screen title="Habit" titleDisplayMode="inline">
-        <EmptyState icon="trash" title="Habit Deleted" message="This habit isn’t around any more." />
+        <ContentUnavailable systemImage="trash" title="Habit Deleted" description="This habit isn’t around any more." />
       </Screen>
     );
   }
 
-  const s = streaks(habit, logs, today);
-  const rate = completionRate(habit, logs, today);
+  const s = streaks(habit, logs, today, weekStartsOn);
+  const rate = completionRate(habit, logs, today, weekStartsOn);
   const total = totalCompletions(habit, logs);
-  const schedule = describeSchedule(habit, (d) => weekdayName(d), orderedWeekdays);
+  const schedule = describeSchedule(habit, (d) => weekdayName(d), orderedWeekdays(weekStartsOn));
 
   return (
     <Screen title={habit.name} titleDisplayMode="inline">
@@ -43,7 +46,7 @@ export function HabitDetail({ habitId }: { habitId: string }) {
         <VStack alignment="leading" spacing={14} padding={{ horizontal: 16, top: 8, bottom: 32 }}>
           <Card>
             <HStack spacing={14}>
-              <HabitIcon icon={habit.icon} color={habit.color} size={56} />
+              <IconTile systemImage={habit.icon} color={habit.color} size={56} />
               <VStack alignment="leading" spacing={3}>
                 <Text font="title2" fontWeight="bold" lineLimit={2}>{habit.name}</Text>
                 <Text font="subheadline" foregroundStyle="secondaryLabel">
@@ -76,11 +79,11 @@ export function HabitDetail({ habitId }: { habitId: string }) {
               icon="percent"
               color={habit.color}
               title="Last 30 Days"
-              value={rate === null ? "–" : `${Math.round(rate * 100)}%`}
+              value={rate === null ? "–" : format.percent(rate)}
               detail={habit.schedule.kind === "weekly" ? "of weekly goals met" : "of scheduled days"}
               accessibilityIdentifier="completion-rate"
             />
-            <StatTile icon="checkmark.seal.fill" color="green" title="Completed" value={String(total)} detail={total === 1 ? "day in all" : "days in all"} />
+            <StatTile icon="checkmark.seal.fill" color="green" title="Completed" value={format.number(total)} detail={format.count(total, { one: "day in all", other: "days in all" })} />
           </LazyVGrid>
 
           <MonthCalendar habit={habit} today={today} />

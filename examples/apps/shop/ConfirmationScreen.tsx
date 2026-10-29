@@ -14,6 +14,7 @@ import {
   RoundedRectangle,
   Capsule,
   Divider,
+  ProgressRing,
   type Color,
 } from "swiftjsx";
 import { format } from "date-fns";
@@ -79,7 +80,7 @@ export function ConfirmationScreen({ order, onDone }: { order: Order; onDone(): 
         <VStack spacing={22} padding={{ horizontal: 24, top: 72, bottom: 40 }}>
           <ZStack>
             <Circle fill={`${ACCENT}/12` as Color} frame={{ width: 128, height: 128 }} scale={drawn ? 1 : 0.6} animation="bouncy" />
-            <Circle stroke="green" lineWidth={6} trim={[0, drawn ? 1 : 0]} rotation={-90} frame={{ width: 104, height: 104 }} />
+            <ProgressRing value={drawn ? 1 : 0} lineWidth={6} color="green" track="clear" frame={{ width: 104, height: 104 }} accessibilityHidden />
             <Image
               systemName="checkmark"
               font={{ size: 46, weight: "bold" }}

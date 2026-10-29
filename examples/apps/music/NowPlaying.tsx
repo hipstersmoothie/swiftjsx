@@ -4,7 +4,7 @@
 import { useRef, useState } from "react";
 import {
   VStack, HStack, ZStack, ScrollView, Text, Image, Button, Slider, Spacer, ProgressView, Capsule, ConfirmationDialog,
-  useSharedValue, useAnimatedStyle, withSpring, runOnJS, type HostInstance,
+  useSharedValue, useAnimatedStyle, withSpring, runOnJS, useEnvironment,
 } from "swiftjsx";
 import { formatTime, type Track } from "./api";
 import { useArtworkTint, type Tint } from "./artwork";
@@ -22,31 +22,20 @@ export function NowPlaying({ onClose }: { onClose(): void }) {
   const track = useCurrentTrack();
   const tint = useArtworkTint(track?.artwork);
   const [showQueue, setShowQueue] = useState(false);
-  // The screen's width, for the artwork: there's no GeometryReader, so measure.
-  const root = useRef<HostInstance>(null);
-  const [width, setWidth] = useState(0);
+  // Full screen, so the window's width is the screen's (for the artwork).
+  const { width } = useEnvironment().window;
   const drag = useSharedValue(0);
   const followFinger = useAnimatedStyle(() => ({ offset: { y: drag.get() } }));
 
-  const measure = (retries = 3) => {
-    drag.set(0);
-    root.current?.measure().then((frame) => {
-      // On the first appearance the frame may not be laid out yet.
-      if (frame.width > 0) setWidth(frame.width);
-      else if (retries > 0) setTimeout(() => measure(retries - 1), 100);
-    });
-  };
-
   return (
     <VStack
-      ref={root}
       spacing={0}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
       background={{ gradient: [tint.top, tint.bottom], start: "top", end: "bottom" }}
       colorScheme="dark"
       foregroundStyle="white"
       animatedStyle={followFinger}
-      onAppear={() => measure()}
+      onAppear={() => drag.set(0)}
     >
       {/* The drag area is the header and artwork, not Up Next: a drag over a ScrollView would fight its scrolling. */}
       <VStack
@@ -66,7 +55,7 @@ export function NowPlaying({ onClose }: { onClose(): void }) {
         }}
       >
         <Header onClose={onClose} showQueue={showQueue} track={track} />
-        {!showQueue && track ? <ArtworkStage track={track} size={width ? Math.min(width - 64, 420) : 300} /> : null}
+        {!showQueue && track ? <ArtworkStage track={track} size={Math.min(width - 64, 420)} /> : null}
       </VStack>
       {showQueue ? <UpNext tint={tint} /> : null}
       {track ? null : <Spacer />}
@@ -173,24 +162,33 @@ function TitleRow({ track, compact }: { track: Track; compact: boolean }) {
 }
 
 /**
- * The progress slider. While the finger moves, it shows the finger's value
- * instead of the player's; the seek happens once the value settles (Slider
- * has no "editing ended" event).
+ * The progress slider. While the finger is down it shows the finger's value
+ * instead of the player's, and seeks when the finger lifts.
  */
 function Scrubber({ accent }: { accent: Tint["accent"] }) {
   const position = usePlayer((s) => s.position);
   const duration = usePlayer((s) => s.duration);
   const buffering = usePlayer((s) => s.buffering);
   const [scrub, setScrub] = useState<number | null>(null);
-  const settle = useRef<number | undefined>(undefined);
+  // The last value and whether the finger is down, for the release handler
+  // (which can arrive before the render with the last onChange).
+  const latest = useRef<number | null>(null);
+  const editing = useRef(false);
   const shown = Math.min(scrub ?? position, duration);
 
+  const commit = (value: number) => {
+    latest.current = null;
+    seek(value).then(() => setScrub(null));
+  };
   const onChange = (value: number) => {
     setScrub(value);
-    clearTimeout(settle.current);
-    settle.current = setTimeout(() => {
-      seek(value).then(() => setScrub(null));
-    }, 250);
+    latest.current = value;
+    // VoiceOver's swipe up / down changes the value without a finger down.
+    if (!editing.current) commit(value);
+  };
+  const onEditingChange = (isEditing: boolean) => {
+    editing.current = isEditing;
+    if (!isEditing && latest.current !== null) commit(latest.current);
   };
 
   return (
@@ -198,6 +196,7 @@ function Scrubber({ accent }: { accent: Tint["accent"] }) {
       <Slider
         value={shown}
         onChange={onChange}
+        onEditingChange={onEditingChange}
         min={0}
         max={Math.max(duration, 1)}
         tint={scrub === null ? "white" : accent}

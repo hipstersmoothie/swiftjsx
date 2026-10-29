@@ -2,10 +2,10 @@
 import { useEffect, useState } from "react";
 import {
   ScrollView, VStack, HStack, ZStack, Text, Image, Label, Button,
-  useSharedValue, useAnimatedStyle, withSpring, withTiming, type SharedValue, type Color,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, useNow, format, type SharedValue, type Color,
 } from "swiftjsx";
-import { bestRun, currentStreak, plural } from "./model";
-import { useFlashcards, useNow } from "./store";
+import { bestRun, currentStreak } from "./model";
+import { useFlashcards } from "./store";
 import type { Theme } from "./theme";
 
 type Props = { theme: Theme; results: boolean[]; onReviewMissed(): void; onDone(): void };
@@ -27,7 +27,7 @@ export function Summary({ theme, results, onReviewMissed, onDone }: Props) {
         <Celebration symbol={verdict.symbol} color={verdict.color} />
         <VStack spacing={6} accessibilityElement="combine">
           <Text font="largeTitle" fontWeight="bold" fontDesign="rounded">{verdict.title}</Text>
-          <Text foregroundStyle="secondary">You knew {correct} of {plural(results.length, "card")}.</Text>
+          <Text foregroundStyle="secondary">You knew {correct} of {format.count(results.length, { one: "# card", other: "# cards" })}.</Text>
         </VStack>
         <HStack spacing={12}>
           <StatTile value={`${score}%`} label="Score" symbol="target" color="blue" />

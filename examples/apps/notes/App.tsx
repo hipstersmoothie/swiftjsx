@@ -38,10 +38,11 @@ export function NotesApp() {
     setColumn("content");
   };
 
-  // Selection highlights. JS can't tell whether the columns are side by side
-  // (no size class), and on iPhone a highlight would linger after going back,
-  // so only highlight what's "ahead" of the column on screen. (On iPad the
-  // column stays where the last selection put it.)
+  // Selection highlights. The size class doesn't say whether the columns are
+  // side by side (iPad portrait overlays them), and on iPhone a highlight
+  // would linger after going back, so only highlight what's "ahead" of the
+  // column on screen. (On iPad the column stays where the last selection put
+  // it.)
   const highlightedNote = column === "detail" ? noteId : null;
   const highlightFolder = column !== "sidebar";
 

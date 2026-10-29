@@ -3,32 +3,33 @@
 import { useState } from "react";
 import {
   withAnimation, haptic, useNavigation, HStack, VStack, ZStack, Text, Image, Button, Circle, Spacer, Label, Divider, ContextMenu, Overlay,
+  IconTile, ProgressRing,
 } from "swiftjsx";
 import { setCount, countOn, useHabits, type Habit } from "./store";
 import { doneInWeek, describeSchedule, streaks } from "./stats";
-import { orderedWeekdays, weekdayName, type DayKey } from "./dates";
-import { withAlpha } from "./theme";
-import { Burst, HabitIcon, Ring } from "./ui";
+import { orderedWeekdays, useWeekStartsOn, weekdayName, type DayKey } from "./dates";
+import { Burst } from "./ui";
 import { HabitDetail } from "./HabitDetail";
 
 export function HabitRow({ habit, day, today, dimmed }: { habit: Habit; day: DayKey; today: DayKey; dimmed?: boolean }) {
   const nav = useNavigation();
   const logs = useHabits((s) => s.logs);
+  const weekStartsOn = useWeekStartsOn();
   const count = countOn(logs, habit.id, day);
   const done = count >= habit.target;
-  const streak = streaks(habit, logs, today);
+  const streak = streaks(habit, logs, today, weekStartsOn);
 
   let detail: string;
   if (habit.target > 1) detail = `${count} of ${habit.target}${habit.unit ? ` ${habit.unit}` : ""}`;
-  else if (habit.schedule.kind === "weekly") detail = `${doneInWeek(habit, logs, day)} of ${habit.schedule.times} this week`;
-  else detail = describeSchedule(habit, (d) => weekdayName(d), orderedWeekdays);
+  else if (habit.schedule.kind === "weekly") detail = `${doneInWeek(habit, logs, day, weekStartsOn)} of ${habit.schedule.times} this week`;
+  else detail = describeSchedule(habit, (d) => weekdayName(d), orderedWeekdays(weekStartsOn));
 
   return (
     <HStack
       spacing={14}
       padding={{ vertical: 12, leading: 14, trailing: 12 }}
       frame={{ maxWidth: "infinity" }}
-      background={done ? withAlpha(habit.color, 0.12) : "secondarySystemGroupedBackground"}
+      background={done ? `${habit.color}/12` : "secondarySystemGroupedBackground"}
       cornerRadius={18}
       opacity={dimmed ? 0.6 : 1}
       animation="smooth"
@@ -36,7 +37,7 @@ export function HabitRow({ habit, day, today, dimmed }: { habit: Habit; day: Day
       accessibilityElement="contain"
       accessibilityIdentifier="habit-row"
     >
-      <HabitIcon icon={habit.icon} color={habit.color} size={42} />
+      <IconTile systemImage={habit.icon} color={habit.color} size={42} />
       <VStack alignment="leading" spacing={3} accessibilityElement="combine" accessibilityHint="Shows history and streaks">
         <Text font="headline" lineLimit={1}>{habit.name}</Text>
         <HStack spacing={8}>
@@ -92,7 +93,7 @@ export function CompleteButton({ habit, day, count, size = 48 }: { habit: Habit;
       accessibilityHint={counted || done ? "Touch and hold to undo or reset" : undefined}
     >
       <ZStack frame={{ width: size, height: size }} contentShape="circle">
-        <Ring progress={count / habit.target} size={size} lineWidth={size * 0.11} color={habit.color} track={withAlpha(habit.color, 0.18)} />
+        <ProgressRing value={count} total={habit.target} frame={{ width: size, height: size }} lineWidth={size * 0.11} color={habit.color} track={`${habit.color}/18`} />
         {/* Always mounted, so finishing animates it in and the bounce plays on a value change. */}
         <ZStack
           frame={{ width: size, height: size }}
@@ -113,7 +114,7 @@ export function CompleteButton({ habit, day, count, size = 48 }: { habit: Habit;
             {count}
           </Text>
         ) : (
-          <Image systemName="plus" font={{ size: size * 0.3, weight: "semibold" }} foregroundStyle={withAlpha(habit.color, 0.5)} transition="opacity" />
+          <Image systemName="plus" font={{ size: size * 0.3, weight: "semibold" }} foregroundStyle={`${habit.color}/50`} transition="opacity" />
         )}
       </ZStack>
       {burst > 0 ? (

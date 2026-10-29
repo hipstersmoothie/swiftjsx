@@ -1,20 +1,14 @@
-// Shared pieces: the measured screen width, avatars with story rings, rich
-// text (@mentions / #hashtags), a ticking clock for relative times, and the toast.
-import { createContext, useContext, useSyncExternalStore, type ComponentProps } from "react";
-import { ZStack, VStack, HStack, Text, Image, Circle, Overlay, type ColorValue, type Gradient } from "swiftjsx";
+// Shared pieces: the window width, avatars with story rings, and rich text
+// (@mentions / #hashtags).
+import { createContext, useContext, type ComponentProps } from "react";
+import { Avatar as KitAvatar, Text, Image, useEnvironment, type ColorValue, type Gradient } from "swiftjsx";
 import { avatarURL, user as getUser, ME, type Story } from "./data";
 import { tokenize } from "./format";
-import { useUI } from "./store";
 
 // MARK: Width
 
-/**
- * The app's width, from `onLayout` on the root (there's no window-size API).
- * Carousel pages and grid cells are sized from it. Until the first layout
- * arrives it's an iPhone's width.
- */
-export const WidthContext = createContext(393);
-export const useWidth = () => useContext(WidthContext);
+/** The window's width: carousel pages and grid cells are sized from it. */
+export const useWidth = () => useEnvironment().window.width;
 
 // MARK: Stories (made once per launch)
 
@@ -39,21 +33,18 @@ type Ring = "none" | "unseen" | "seen";
 export function Avatar({ user, size, ring = "none", badge = false }: { user: string; size: number; ring?: Ring; badge?: boolean }) {
   const u = getUser(user);
   const gap = ring === "none" ? 0 : Math.max(3, size * 0.07);
-  const outer = size + gap * 2;
+  const width = ring === "unseen" ? Math.max(2, size / 28) : 1;
   return (
-    <ZStack frame={{ width: outer, height: outer }}>
-      {ring !== "none" ? (
-        <Circle stroke={ring === "unseen" ? storyRing : "systemGray4"} lineWidth={ring === "unseen" ? Math.max(2, size / 28) : 1} />
-      ) : null}
-      <Image
-        src={avatarURL(u)}
-        contentMode="fill"
-        frame={{ width: size - (ring === "none" ? 0 : 2), height: size - (ring === "none" ? 0 : 2) }}
-        cornerRadius={size / 2}
-        accessibilityHidden
-      />
-      {badge ? (
-        <Overlay alignment="bottomTrailing">
+    <KitAvatar
+      src={avatarURL(u)}
+      name={u.name}
+      // With a ring, the picture shrinks a little inside the same outer size.
+      size={ring === "none" ? size : size - 2}
+      ring={ring === "none" ? undefined : ring === "unseen" ? storyRing : "systemGray4"}
+      ringWidth={width}
+      ringGap={gap + 1 - width}
+      badge={
+        badge ? (
           <Image
             systemName="plus.circle.fill"
             font={{ size: size * 0.3 }}
@@ -62,9 +53,10 @@ export function Avatar({ user, size, ring = "none", badge = false }: { user: str
             background="systemBackground"
             cornerRadius={size}
           />
-        </Overlay>
-      ) : null}
-    </ZStack>
+        ) : undefined
+      }
+      accessibilityHidden
+    />
   );
 }
 
@@ -85,68 +77,31 @@ export function Verified({ size = "caption" }: { size?: "caption" | "footnote" |
 /**
  * Text with @mentions and #hashtags styled as links, optionally led by a
  * bold username (captions and comments). They're runs of one Text so they
- * wrap together; runs can't be tapped, so mentions don't navigate.
+ * wrap together; with `onMention`, tapping a mention calls it with the user.
  */
-export function RichText({ lead, text, ...props }: { lead?: string; text: string } & Omit<ComponentProps<typeof Text>, "children">) {
+export function RichText({
+  lead,
+  text,
+  onMention,
+  ...props
+}: { lead?: string; text: string; onMention?: (user: string) => void } & Omit<ComponentProps<typeof Text>, "children">) {
   return (
     <Text {...props}>
       {lead ? <Text fontWeight="semibold">{`${lead} `}</Text> : null}
       {tokenize(text).map((token, i) =>
-        token.kind === "text" ? <Text key={i}>{token.text}</Text> : <Text key={i} foregroundStyle={linkColor}>{token.text}</Text>,
+        token.kind === "text" ? (
+          <Text key={i}>{token.text}</Text>
+        ) : (
+          <Text
+            key={i}
+            foregroundStyle={linkColor}
+            onPress={token.kind === "mention" && onMention ? () => onMention(token.text.slice(1)) : undefined}
+          >
+            {token.text}
+          </Text>
+        ),
       )}
     </Text>
-  );
-}
-
-// MARK: Clock
-
-// One timer for every relative time on screen, running while anything listens.
-let now = Date.now();
-const listeners = new Set<() => void>();
-let timer: number | undefined;
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  if (timer === undefined) {
-    timer = setInterval(() => {
-      now = Date.now();
-      listeners.forEach((l) => l());
-    }, 30_000);
-  }
-  return () => {
-    listeners.delete(listener);
-    if (!listeners.size && timer !== undefined) {
-      clearInterval(timer);
-      timer = undefined;
-    }
-  };
-}
-
-/** The current time, updated every 30 seconds (for "5m ago" labels). */
-export const useNow = () => useSyncExternalStore(subscribe, () => now);
-
-// MARK: Toast
-
-export function ToastView() {
-  const toast = useUI((s) => s.toast);
-  return (
-    <VStack padding={{ bottom: 100 }} allowsHitTesting={false}>
-      {toast ? (
-        <HStack
-          key={toast.id}
-          spacing={8}
-          padding={{ horizontal: 16, vertical: 11 }}
-          background="regularMaterial"
-          cornerRadius="capsule"
-          shadow={{ radius: 14, y: 4, color: "#00000030" }}
-          transition="move"
-          accessibilityIdentifier="toast"
-        >
-          <Image systemName={toast.icon} font="subheadline" fontWeight="semibold" />
-          <Text font="subheadline" fontWeight="semibold">{toast.text}</Text>
-        </HStack>
-      ) : null}
-    </VStack>
   );
 }
 

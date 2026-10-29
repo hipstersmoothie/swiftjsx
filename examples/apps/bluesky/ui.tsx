@@ -1,11 +1,9 @@
-// Shared pieces: layout constants, avatars, a ticking clock for relative
-// times, skeletons with a shimmer, error and empty states, buttons and the
-// toast. Colors come from the theme (light, dim or dark).
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+// Shared pieces: layout constants, avatars, skeletons with a shimmer, the
+// error state and buttons. Colors come from the theme (light, dim or dark).
+import { useState } from "react";
 import {
-  VStack, HStack, ZStack, Text, Image, Button, Circle, RoundedRectangle, Rectangle, Overlay, ProgressView, Path, useEnvironment,
+  VStack, HStack, ZStack, Text, Image, Button, Circle, RoundedRectangle, Rectangle, Overlay, ProgressView, Path, ContentUnavailable, useEnvironment,
 } from "swiftjsx";
-import { useUI } from "./store";
 import { T, ty, useTheme, type Palette } from "./theme";
 
 export { useTheme, ty, T, type Palette };
@@ -42,27 +40,15 @@ export function useSafeTop(fallback = 0) {
   };
 }
 
-// MARK: Clock
-
-// One timer for every relative time on screen: a tick a minute re-renders
-// only the components that read it.
-let now = Date.now();
-const listeners = new Set<() => void>();
-setInterval(() => {
-  now = Date.now();
-  listeners.forEach((l) => l());
-}, 60_000);
-const subscribe = (l: () => void) => {
-  listeners.add(l);
-  return () => listeners.delete(l);
-};
-export const useNow = () => useSyncExternalStore(subscribe, () => now);
-
 // MARK: Avatar
 
 type AvatarProps = { uri?: string; size: number; label?: string; square?: boolean; full?: boolean };
 
-/** A round avatar (rounded square for feeds and labelers), or Bluesky's default silhouette. */
+/**
+ * A round avatar (rounded square for feeds and labelers), or Bluesky's default silhouette.
+ * Not the kit's <Avatar>: its fallback is initials (no symbol), and it shows that
+ * fallback while loading where Bluesky shows a plain gray disc.
+ */
 export function Avatar({ uri, size, label, square = false, full = false }: AvatarProps) {
   const t = useTheme();
   const radius = square ? Math.max(6, size * 0.2) : size / 2;
@@ -186,32 +172,25 @@ export function Spinner({ height = 72 }: { height?: number }) {
 
 // MARK: States
 
+// Errors and empty lists are the system's ContentUnavailable (SF Pro, a gray
+// symbol, Bluesky's pill for the action). Bluesky draws the symbol in a tinted
+// circle on Inter; close enough. The sign-in prompts (Notifications, Me) stay
+// our own: a brand-tinted tile, the butterfly and two buttons.
+
 export function ErrorView({ error, retry, title = "Oops!" }: { error: unknown; retry(): void; title?: string }) {
   const t = useTheme();
   const message = error instanceof Error ? error.message : String(error);
   return (
-    <VStack spacing={10} padding={{ horizontal: 32, vertical: 40 }} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background={t.bg} accessibilityIdentifier="error-view">
-      <Image systemName="exclamationmark" font={{ size: 24, weight: "bold" }} foregroundStyle={t.textMedium} frame={{ width: 56, height: 56 }} background={t.bg50} cornerRadius="capsule" />
-      <Text font={ty(T.xl, "bold")} foregroundStyle={t.text} padding={{ top: 4 }}>{title}</Text>
-      <Text font={ty(T.md)} foregroundStyle={t.textMedium} textAlignment="center">
-        {message || "Something went wrong. Check your connection and try again."}
-      </Text>
-      <VStack padding={{ top: 8 }}>
-        <PillButton title="Try again" systemImage="arrow.clockwise" onPress={retry} />
-      </VStack>
-    </VStack>
-  );
-}
-
-export function EmptyState({ icon, title, message, children }: { icon: string; title: string; message?: string; children?: ReactNode }) {
-  const t = useTheme();
-  return (
-    <VStack spacing={10} padding={{ horizontal: 32, vertical: 56 }} frame={{ maxWidth: "infinity" }}>
-      <Image systemName={icon} font={{ size: 30, weight: "regular" }} foregroundStyle={t.textLow} frame={{ width: 64, height: 64 }} background={t.bg25} cornerRadius="capsule" />
-      <Text font={ty(T.lg, "bold")} foregroundStyle={t.text} textAlignment="center" padding={{ top: 4 }}>{title}</Text>
-      {message ? <Text font={ty(T.md)} foregroundStyle={t.textMedium} textAlignment="center">{message}</Text> : null}
-      {children}
-    </VStack>
+    <ContentUnavailable
+      systemImage="exclamationmark.circle"
+      title={title}
+      description={message || "Something went wrong. Check your connection and try again."}
+      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+      background={t.bg}
+      accessibilityIdentifier="error-view"
+    >
+      <PillButton title="Try again" systemImage="arrow.clockwise" onPress={retry} />
+    </ContentUnavailable>
   );
 }
 
@@ -221,33 +200,6 @@ export function EndOfFeed() {
   return (
     <VStack padding={{ top: 28, bottom: 120 }} frame={{ maxWidth: "infinity" }} accessibilityIdentifier="end-of-feed">
       <Circle fill={t.border} frame={{ width: 6, height: 6 }} />
-    </VStack>
-  );
-}
-
-// MARK: Toast
-
-export function ToastView() {
-  const toast = useUI((s) => s.toast);
-  const t = useTheme();
-  return (
-    <VStack padding={{ bottom: 70 }} allowsHitTesting={false} animation="snappy">
-      {toast ? (
-        <HStack
-          key={toast.id}
-          spacing={10}
-          padding={{ horizontal: 16, vertical: 12 }}
-          background={t.bg}
-          cornerRadius={12}
-          border={{ color: t.border, width: 1 }}
-          shadow={{ radius: 16, y: 6, color: "black/20" }}
-          transition={{ type: "move", edge: "bottom" }}
-          accessibilityIdentifier="toast"
-        >
-          <Image systemName={toast.icon} font={{ size: 15, weight: "semibold" }} foregroundStyle={t.primary} />
-          <Text font={ty(T.md, "medium")} foregroundStyle={t.text}>{toast.text}</Text>
-        </HStack>
-      ) : null}
     </VStack>
   );
 }

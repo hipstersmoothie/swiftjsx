@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import {
-  useNavigation, Screen, Form, Section, TextField, Toggle, Picker, Button, ConfirmationDialog,
+  useNavigation, useEnvironment, useToday, Screen, Form, Section, TextField, Toggle, Picker, Button, ConfirmationDialog,
 } from "swiftjsx";
 import { useTodos, updateTodo, deleteTodos } from "./store";
-import { dueOptions, useToday } from "./dates";
+import { dueOptions } from "./dates";
 
 /** Edits one todo. Changes save as you make them. */
 export function TodoDetail({ id }: { id: string }) {
   const nav = useNavigation();
   const today = useToday();
+  const { weekStartsOn } = useEnvironment().locale;
   const todo = useTodos((s) => s.todos.find((t) => t.id === id));
   const lists = useTodos((s) => s.lists);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -32,7 +33,7 @@ export function TodoDetail({ id }: { id: string }) {
             label="Due"
             pickerStyle="menu"
             value={todo.due === null ? "none" : String(todo.due)}
-            options={dueOptions(todo.due, today)}
+            options={dueOptions(todo.due, today, weekStartsOn)}
             onChange={(value) => updateTodo(id, { due: value === "none" ? null : Number(value) })}
           />
           <Picker

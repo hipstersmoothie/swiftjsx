@@ -1,4 +1,4 @@
-// Drag and drop for cards, built from what SwiftJSX offers today:
+// Drag and drop for cards:
 //
 // - The finger is tracked on the main thread: a card's `onDrag` worklet writes
 //   the translation into a shared value, and a floating copy of the card (the
@@ -7,10 +7,14 @@
 //   the card is picked up, kept current while the board and the columns
 //   scroll with their `onScroll` offsets.
 // - Auto-scroll steps one column (or one card) at a time with
-//   `scrollTo(ref, { anchor })`: there's no way to scroll by a distance.
+//   `scrollTo(ref, { anchor })`, so a column or card lands fully in view.
+//   (`scrollTo({ x, y })` could scroll by a distance instead, for a
+//   continuous auto-scroll.)
 //
 // The ghost exists because the columns' scroll views clip their cards:
-// `zIndex` only orders siblings, it can't lift a card out of its column.
+// `zIndex` only orders siblings, it can't lift a card out of its column. It's
+// drawn in a ZStack over the board, so it stays under the navigation bar;
+// a `<Portal>` would lift it above everything.
 import { useEffect, useState } from "react";
 import { useSharedValue, withSpring, withAnimation, haptic, type Frame, type HostInstance } from "swiftjsx";
 

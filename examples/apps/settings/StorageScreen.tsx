@@ -1,12 +1,12 @@
 // Storage: a usage bar of colored segments with a legend, a breakdown, and
 // "Clear Cache" behind a confirmation.
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
-  withAnimation, Screen, List, Section, HStack, VStack, Text, Button, ProgressView, Spacer, LazyVGrid, Circle, Rectangle,
-  ConfirmationDialog, type Color, type HostInstance,
+  withAnimation, format, Screen, List, Section, HStack, VStack, Text, Button, ProgressView, Spacer, LazyVGrid, Circle, Rectangle,
+  ConfirmationDialog, IconTile, type Color,
 } from "swiftjsx";
 import { clearCache, update, useAccent, useSettings } from "./store";
-import { IconTile, ToggleRow } from "./ui";
+import { ToggleRow } from "./ui";
 
 export const CAPACITY = 128e9;
 
@@ -28,18 +28,8 @@ export function useCategories(): Category[] {
   ];
 }
 
-/** "23.4 GB", "512 MB", "Zero KB" — decimal units, like iOS. */
-export function formatBytes(bytes: number): string {
-  if (bytes < 1e3) return "Zero KB";
-  const units = ["KB", "MB", "GB", "TB"];
-  let value = bytes / 1e3;
-  let unit = 0;
-  while (value >= 1000 && unit < units.length - 1) {
-    value /= 1000;
-    unit += 1;
-  }
-  return `${value >= 100 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`;
-}
+/** "23.4 GB", "512 MB" (decimal units, like iOS), and "Zero KB" for a cache under a kilobyte. */
+export const formatBytes = (bytes: number) => format.bytes(bytes < 1e3 ? 0 : bytes);
 
 export const usedBytes = (categories: Category[]) => categories.reduce((sum, c) => sum + c.bytes, 0);
 
@@ -91,7 +81,7 @@ export function StorageScreen() {
           footer="Cached images and downloads load faster offline. Clearing them frees space; they’ll download again when needed."
         >
           <HStack spacing={12}>
-            <IconTile icon="archivebox.fill" color="yellow" />
+            <IconTile systemImage="archivebox.fill" color="yellow" />
             <Text>Cached Data</Text>
             <Spacer />
             <Text foregroundStyle="secondaryLabel" monospacedDigit animation="smooth" accessibilityIdentifier="cache-size">{formatBytes(cacheBytes)}</Text>
@@ -135,7 +125,7 @@ export function StorageScreen() {
         <Section header="Breakdown">
           {[...categories].sort((a, b) => b.bytes - a.bytes).map((c) => (
             <HStack key={c.id} spacing={12} accessibilityElement="combine">
-              <IconTile icon={c.icon} color={c.color} />
+              <IconTile systemImage={c.icon} color={c.color} />
               <VStack alignment="leading" spacing={4}>
                 <Text>{c.label}</Text>
                 <ProgressView value={c.bytes} total={used || 1} tint={c.color} frame={{ width: 120 }} animation="smooth" accessibilityHidden />
@@ -145,7 +135,7 @@ export function StorageScreen() {
             </HStack>
           ))}
           <HStack spacing={12} accessibilityElement="combine">
-            <IconTile icon="checkmark.circle.fill" color={accent.color} />
+            <IconTile systemImage="checkmark.circle.fill" color={accent.color} />
             <Text>Available</Text>
             <Spacer />
             <Text foregroundStyle="secondaryLabel" monospacedDigit animation="smooth">{formatBytes(CAPACITY - used)}</Text>
@@ -156,35 +146,21 @@ export function StorageScreen() {
   );
 }
 
-/**
- * Segments sized by share of `capacity`. There's no proportional layout
- * (GeometryReader), so it measures its own width once it's on screen and does
- * the math in points.
- */
+/** Segments sized by share of `capacity`, in points of the bar's own width (from onLayout). */
 function UsageBar({ categories, capacity }: { categories: Category[]; capacity: number }) {
-  const bar = useRef<HostInstance>(null);
   const [width, setWidth] = useState(0);
   const GAP = 2;
-
-  const measure = (attempt = 0) => {
-    bar.current?.measure().then((frame) => {
-      // The frame is zero until the first layout has happened; try again shortly.
-      if (frame.width > 0) setWidth(frame.width);
-      else if (attempt < 10) setTimeout(() => measure(attempt + 1), 50);
-    });
-  };
 
   const visible = categories.filter((c) => c.bytes > 0);
   const room = Math.max(0, width - GAP * visible.length);
 
   return (
     <HStack
-      ref={bar}
       spacing={GAP}
       frame={{ maxWidth: "infinity", height: 22, alignment: "leading" }}
       background="tertiarySystemFill"
       cornerRadius={6}
-      onAppear={() => measure()}
+      onLayout={(size) => setWidth(size.width)}
       accessibilityElement="ignore"
       accessibilityLabel="Storage used"
       accessibilityValue={visible.map((c) => `${c.label} ${formatBytes(c.bytes)}`).join(", ")}

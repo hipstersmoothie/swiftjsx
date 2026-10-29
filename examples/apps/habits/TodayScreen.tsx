@@ -2,19 +2,21 @@
 // widget-like summaries, and that day's habits to check in.
 import { useState } from "react";
 import {
-  withAnimation, Screen, ToolbarItem, ScrollView, VStack, HStack, LazyVGrid, Text, Image, Button, Menu, Spacer, Alert, Label,
-  Chart, BarMark,
+  withAnimation, format, Screen, ToolbarItem, ScrollView, VStack, HStack, LazyVGrid, Text, Image, Button, Menu, Spacer, Alert, Label,
+  Chart, BarMark, ProgressRing, ContentUnavailable,
 } from "swiftjsx";
+import type { Day } from "date-fns";
 import { useHabits, resetToSample } from "./store";
-import { useToday, formatFullDay, relativeDay, weekDays, weekdayName, parseDay, type DayKey } from "./dates";
+import { useTodayKey, useWeekStartsOn, formatFullDay, relativeDay, weekDays, weekdayName, parseDay, type DayKey } from "./dates";
 import { dayProgress, listedOn, perfectDays, started, streaks, streakText } from "./stats";
 import { WeekStrip } from "./WeekStrip";
 import { HabitRow } from "./HabitRow";
 import { HabitFormSheet } from "./HabitForm";
-import { Card, EmptyState, Ring, StatTile } from "./ui";
+import { Card, StatTile } from "./ui";
 
 export function TodayScreen() {
-  const today = useToday();
+  const today = useTodayKey();
+  const weekStartsOn = useWeekStartsOn();
   // null follows today (past midnight too); a day key pins a past day.
   const [picked, setPicked] = useState<DayKey | null>(null);
   const [creating, setCreating] = useState(false);
@@ -24,9 +26,9 @@ export function TodayScreen() {
 
   const day = picked && picked < today ? picked : today;
   const select = (d: DayKey) => setPicked(d === today ? null : d);
-  const listed = habits.filter((h) => listedOn(h, logs, day));
-  const others = habits.filter((h) => started(h, day) && !listedOn(h, logs, day));
-  const progress = dayProgress(habits, logs, day);
+  const listed = habits.filter((h) => listedOn(h, logs, day, weekStartsOn));
+  const others = habits.filter((h) => started(h, day) && !listedOn(h, logs, day, weekStartsOn));
+  const progress = dayProgress(habits, logs, day, weekStartsOn);
 
   return (
     <Screen title={relativeDay(day, today)}>
@@ -54,7 +56,7 @@ export function TodayScreen() {
           {habits.length ? (
             <>
               <ProgressCard done={progress.done} total={progress.total} fraction={progress.fraction} isToday={day === today} />
-              <Widgets today={today} />
+              <Widgets today={today} weekStartsOn={weekStartsOn} />
 
               <Text font="title3" fontWeight="bold" padding={{ top: 6, horizontal: 4 }}>
                 {day === today ? "Today’s Habits" : `Habits on ${relativeDay(day, today)}`}
@@ -80,9 +82,9 @@ export function TodayScreen() {
             </>
           ) : (
             <Card>
-              <EmptyState icon="checklist" title="No Habits Yet" message="Small things, every day. Add the first one.">
+              <ContentUnavailable systemImage="checklist" title="No Habits Yet" description="Small things, every day. Add the first one.">
                 <Button title="New Habit" buttonStyle="borderedProminent" onPress={() => setCreating(true)} />
-              </EmptyState>
+              </ContentUnavailable>
             </Card>
           )}
         </VStack>
@@ -95,7 +97,7 @@ export function TodayScreen() {
         title="Reset sample data?"
         message="This replaces your habits and history with the sample ones."
       >
-        <Button title="Reset" role="destructive" onPress={() => withAnimation("smooth", () => resetToSample())} />
+        <Button title="Reset" role="destructive" onPress={() => withAnimation("smooth", () => resetToSample(weekStartsOn))} />
         <Button title="Cancel" role="cancel" onPress={() => {}} />
       </Alert>
     </Screen>
@@ -114,11 +116,11 @@ function ProgressCard({ done, total, fraction, isToday }: { done: number; total:
   return (
     <Card accessibilityElement="combine" accessibilityIdentifier="day-progress">
       <HStack spacing={18}>
-        <Ring progress={fraction} size={84} lineWidth={11} color={all ? "green" : "accent"} track="quaternarySystemFill">
+        <ProgressRing value={fraction} frame={{ width: 84, height: 84 }} lineWidth={11} color={all ? "green" : "accent"} track="quaternarySystemFill">
           <Text font={{ size: 20, weight: "bold", design: "rounded" }} monospacedDigit animation="snappy">
-            {Math.round(fraction * 100)}%
+            {format.percent(fraction)}
           </Text>
-        </Ring>
+        </ProgressRing>
         <VStack alignment="leading" spacing={4}>
           <Text font={{ size: 22, weight: "bold", design: "rounded" }} monospacedDigit animation="snappy">
             {done} of {total} done
@@ -132,14 +134,14 @@ function ProgressCard({ done, total, fraction, isToday }: { done: number; total:
 }
 
 /** Widget-style tiles: perfect days, the longest current streak, and this week at a glance. */
-function Widgets({ today }: { today: DayKey }) {
+function Widgets({ today, weekStartsOn }: { today: DayKey; weekStartsOn: Day }) {
   const habits = useHabits((s) => s.habits);
   const logs = useHabits((s) => s.logs);
-  const perfect = perfectDays(habits, logs, today);
+  const perfect = perfectDays(habits, logs, today, weekStartsOn);
   const top = habits
-    .map((habit) => ({ habit, streak: streaks(habit, logs, today) }))
+    .map((habit) => ({ habit, streak: streaks(habit, logs, today, weekStartsOn) }))
     .sort((a, b) => b.streak.current - a.streak.current)[0];
-  const week = weekDays(today).map((day) => ({ day, progress: dayProgress(habits, logs, day), future: day > today }));
+  const week = weekDays(today, weekStartsOn).map((day) => ({ day, progress: dayProgress(habits, logs, day, weekStartsOn), future: day > today }));
   const weekDone = week.reduce((n, d) => n + d.progress.done, 0);
   const weekTotal = week.reduce((n, d) => n + (d.future ? 0 : d.progress.total), 0);
 
@@ -150,7 +152,7 @@ function Widgets({ today }: { today: DayKey }) {
         icon="star.fill"
         color="yellow"
         title="Perfect Days"
-        value={String(perfect)}
+        value={format.number(perfect)}
         detail={perfect ? "in a row, everything done" : "Finish everything for one"}
         accessibilityIdentifier="perfect-days"
       />
@@ -180,12 +182,13 @@ function Widgets({ today }: { today: DayKey }) {
           <Text font="caption" fontWeight="semibold" foregroundStyle="secondaryLabel" textCase="uppercase">This Week</Text>
           <Spacer />
           <Text font="caption" foregroundStyle="secondaryLabel" monospacedDigit>
-            {weekTotal ? `${Math.round((weekDone / weekTotal) * 100)}% done` : "Nothing due"}
+            {weekTotal ? `${format.percent(weekDone / weekTotal)} done` : "Nothing due"}
           </Text>
         </HStack>
         {/*
-          Categories are day keys (narrow weekday names repeat: T, T, S, S),
-          so the axis is hidden and the labels are drawn underneath.
+          The weekday labels are drawn underneath rather than as axis labels:
+          today's is bold and in the accent color, and axis labels can't be
+          styled one by one.
         */}
         <Chart frame={{ height: 64 }} xAxis="hidden" yAxis="hidden" yDomain={[0, 1]} legend="hidden">
           {week.map(({ day }) => (

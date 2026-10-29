@@ -1,7 +1,7 @@
 // Notifications: a master switch, per-kind toggles, quiet hours (a from/to
 // time range) and an alert sound.
 import { format } from "date-fns";
-import { useNavigation, withAnimation, Screen, List, Section, Picker, HStack, VStack, Text, Image } from "swiftjsx";
+import { useNavigation, withAnimation, format as formatNumber, Screen, List, Section, TimePicker, HStack, VStack, Text, IconTile, type TimeOfDay } from "swiftjsx";
 import { update, useAccent, useSettings, type PreviewSetting } from "./store";
 import { ChoiceScreen, NavRow, ToggleRow, type Choice } from "./ui";
 
@@ -26,14 +26,15 @@ const labelOf = (options: Choice[], value: string) => options.find((o) => o.valu
 /** "10:00 PM" for 22 * 60. */
 export const timeLabel = (minutes: number) => format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "p");
 
-// Every half hour. (No DatePicker in time mode yet.)
-const times = Array.from({ length: 48 }, (_, i) => ({ value: String(i * 30), label: timeLabel(i * 30) }));
+// Stored as minutes after midnight; picked every half hour.
+const timeOfDay = (minutes: number): TimeOfDay => ({ hour: Math.floor(minutes / 60), minute: minutes % 60 });
+const minutesOf = (time: TimeOfDay) => time.hour * 60 + time.minute;
 
 function quietDuration(from: number, to: number): string {
   const minutes = (to - from + 24 * 60) % (24 * 60) || 24 * 60;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return rest ? `${hours} h ${rest} min` : `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  return rest ? `${hours} h ${rest} min` : formatNumber.count(hours, { one: "# hour", other: "# hours" });
 }
 
 export function notificationsSummary(n: { enabled: boolean; quietHours: boolean }) {
@@ -131,21 +132,19 @@ export function NotificationsScreen() {
               />
               {n.quietHours ? (
                 <>
-                  <Picker
+                  <TimePicker
                     label="From"
-                    pickerStyle="menu"
+                    minuteInterval={30}
                     tint={accent.color}
-                    value={String(n.quietFrom)}
-                    options={times}
-                    onChange={(v) => set("quietFrom", Number(v))}
+                    value={timeOfDay(n.quietFrom)}
+                    onChange={(t) => set("quietFrom", minutesOf(t))}
                   />
-                  <Picker
+                  <TimePicker
                     label="To"
-                    pickerStyle="menu"
+                    minuteInterval={30}
                     tint={accent.color}
-                    value={String(n.quietTo)}
-                    options={times}
-                    onChange={(v) => set("quietTo", Number(v))}
+                    value={timeOfDay(n.quietTo)}
+                    onChange={(t) => set("quietTo", minutesOf(t))}
                   />
                 </>
               ) : null}
@@ -163,7 +162,7 @@ function NotificationPreview({ previews }: { previews: PreviewSetting }) {
   const full = previews === "always" || previews === "unlocked";
   return (
     <HStack spacing={12} padding={12} background="tertiarySystemFill" cornerRadius={14} animation="snappy" accessibilityElement="combine">
-      <Image systemName="bubble.left.fill" font="title3" foregroundStyle="white" frame={{ width: 38, height: 38 }} background={accent.color} cornerRadius={9} />
+      <IconTile systemImage="bubble.left.fill" color={accent.color} size={38} font="title3" />
       <VStack alignment="leading" spacing={2} frame={{ maxWidth: "infinity", alignment: "leading" }}>
         <HStack>
           <Text font="subheadline" fontWeight="semibold">{full ? "Sam Chen" : "Messages"}</Text>

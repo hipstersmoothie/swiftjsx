@@ -10,21 +10,22 @@ import { useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Screen, VirtualList, ScrollView, VStack, HStack, ZStack, Text, Image, Button, Spacer, Rectangle, Menu, Overlay, Label, ShareLink, ToolbarItem,
-  useNavigation, useSharedValue, useAnimatedStyle, useEnvironment, openURL, type SharedValue,
+  ContentUnavailable, useNavigation, useSharedValue, useAnimatedStyle, useEnvironment, openURL, toast, format, type SharedValue,
 } from "swiftjsx";
 import {
   getActorFeeds, getActorLikes, getAuthorFeed, getFollowers, getFollows, getLists, getProfile, profileWebURL, type AuthorFilter,
 } from "./api";
-import { compact, displayName, joinedDate } from "./format";
+import { displayName, joinedDate } from "./format";
 import { FeedList, useFeed } from "./FeedScreen";
 import { RichText } from "./PostText";
 import { ActorListScreen } from "./ActorList";
 import { ThreadScreen } from "./Thread";
 import { FeedRow } from "./Search";
-import { toast, useInteractions, useIsFollowing, useUI } from "./store";
+import { useInteractions, useIsFollowing, useUI } from "./store";
 import { useMyDid } from "./session";
 import { Verified } from "./PostCell";
-import { Avatar, EmptyState, ErrorView, PillButton, Spinner, T, ty, useTheme, useSafeTop, useWindowWidth } from "./ui";
+import { BRAND } from "./theme";
+import { Avatar, ErrorView, PillButton, Spinner, T, ty, useTheme, useSafeTop, useWindowWidth } from "./ui";
 import type { FeedViewPost, ProfileViewBasic, ProfileViewDetailed } from "./types";
 
 type Tab = "posts" | "replies" | "media" | "videos" | "likes" | "feeds" | "lists";
@@ -83,10 +84,10 @@ function ProfileMenu({ profile }: { profile: ProfileViewDetailed }) {
       <ShareLink url={profileWebURL(profile.handle)}>
         <Label title="Share" systemImage="square.and.arrow.up" />
       </ShareLink>
-      <Button onPress={() => navigator.clipboard.writeText(profileWebURL(profile.handle)).then(() => toast("Copied to clipboard", "link"))}>
+      <Button onPress={() => navigator.clipboard.writeText(profileWebURL(profile.handle)).then(() => toast("Copied to clipboard", { systemImage: "link", tint: BRAND }))}>
         <Label title="Copy link to profile" systemImage="link" />
       </Button>
-      <Button onPress={() => navigator.clipboard.writeText(profile.did).then(() => toast("Copied to clipboard", "number"))}>
+      <Button onPress={() => navigator.clipboard.writeText(profile.did).then(() => toast("Copied to clipboard", { systemImage: "number", tint: BRAND }))}>
         <Label title="Copy DID" systemImage="number" />
       </Button>
       <Button onPress={() => openURL(profileWebURL(profile.handle), { inApp: true })}>
@@ -141,7 +142,7 @@ function CollapsedBar({ profile, inset, bannerHeight, scroll }: { profile: Profi
   });
   return (
     <VStack spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "top" }} ignoresSafeArea="top" allowsHitTesting={false} accessibilityHidden>
-      <ZStack alignment="bottom" frame={{ width, height: inset, alignment: "bottom" }} cornerRadius={0.01} opacity={0} animatedStyle={bar}>
+      <ZStack alignment="bottom" frame={{ width, height: inset, alignment: "bottom" }} clipped opacity={0} animatedStyle={bar}>
         {profile?.banner ? (
           <Image src={profile.banner} contentMode="fill" frame={{ width, height: bannerHeight }} background={t.bg50} />
         ) : (
@@ -154,7 +155,7 @@ function CollapsedBar({ profile, inset, bannerHeight, scroll }: { profile: Profi
           <VStack spacing={1} padding={{ horizontal: 80, bottom: 7 }} frame={{ height: 44 }} opacity={0} animatedStyle={title}>
             <Text font={ty(T.md, "bold")} foregroundStyle="white" lineLimit={1}>{displayName(profile)}</Text>
             {profile.postsCount !== undefined ? (
-              <Text font={ty(T.xs, "medium")} foregroundStyle="white/80" lineLimit={1}>{compact(profile.postsCount)} {profile.postsCount === 1 ? "post" : "posts"}</Text>
+              <Text font={ty(T.xs, "medium")} foregroundStyle="white/80" lineLimit={1}>{format.compact(profile.postsCount)} {format.count(profile.postsCount, { one: "post", other: "posts" })}</Text>
             ) : null}
           </VStack>
         ) : null}
@@ -261,7 +262,7 @@ function ProfileHeader({ profile, loading, bannerHeight, inset, scroll }: { prof
           <HStack spacing={14} padding={{ top: 12 }}>
             <Count
               n={profile.followersCount}
-              label={profile.followersCount === 1 ? "follower" : "followers"}
+              label={format.count(profile.followersCount ?? 0, { one: "follower", other: "followers" })}
               id="followers-count"
               onPress={() => nav.push(<ActorListScreen title="Followers" queryKey={["followers", profile.did]} fetchPage={(c, s) => getFollowers(profile.did, c, s)} />)}
             />
@@ -270,7 +271,7 @@ function ProfileHeader({ profile, loading, bannerHeight, inset, scroll }: { prof
               label="following"
               onPress={() => nav.push(<ActorListScreen title="Following" queryKey={["follows", profile.did]} fetchPage={(c, s) => getFollows(profile.did, c, s)} />)}
             />
-            <Count n={profile.postsCount} label={profile.postsCount === 1 ? "post" : "posts"} />
+            <Count n={profile.postsCount} label={format.count(profile.postsCount ?? 0, { one: "post", other: "posts" })} />
           </HStack>
         ) : loading ? (
           <Spinner height={40} />
@@ -297,7 +298,7 @@ function KnownFollowers({ known }: { known: { count: number; followers: ProfileV
   const t = useTheme();
   const names = known.followers.slice(0, 2).map(displayName);
   const others = known.count - names.length;
-  const text = others > 0 ? `${names.join(", ")} and ${others} ${others === 1 ? "other" : "others"} you follow` : names.join(" and ");
+  const text = others > 0 ? `${names.join(", ")} and ${format.count(others, { one: "# other", other: "# others" })} you follow` : names.join(" and ");
   return (
     <HStack spacing={8} padding={{ top: 12 }}>
       <HStack spacing={-6}>
@@ -316,7 +317,7 @@ function Count({ n, label, onPress, id }: { n: number | undefined; label: string
   const t = useTheme();
   const text = (
     <Text font={ty(T.md)} foregroundStyle={t.textMedium}>
-      <Text fontWeight="bold" foregroundStyle={t.text}>{compact(n ?? 0)}</Text>
+      <Text fontWeight="bold" foregroundStyle={t.text}>{format.compact(n ?? 0)}</Text>
       <Text> {label}</Text>
     </Text>
   );
@@ -433,7 +434,7 @@ function MediaGrid({ actor, video, header, strip, onRefresh, scroll }: { actor: 
         ) : query.isError ? (
           <ErrorView error={query.error} retry={() => query.refetch()} />
         ) : cells.length ? null : (
-          <EmptyState icon={video ? "play.rectangle" : "photo.on.rectangle"} title={video ? "No videos yet" : "No media yet"} />
+          <ContentUnavailable systemImage={video ? "play.rectangle" : "photo.on.rectangle"} title={video ? "No videos yet" : "No media yet"} frame={{ minHeight: 280 }} />
         )
       }
       renderItem={(row) => (

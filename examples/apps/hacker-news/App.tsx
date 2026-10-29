@@ -2,9 +2,10 @@
 // refresh, nested comments, links, and saved stories in localStorage.
 import { QueryClient, QueryClientProvider, useInfiniteQuery } from "@tanstack/react-query";
 import {
-  TabView, Tab, Navigator, useNavigation, Screen, VirtualList, VStack, HStack, Text, Image, Button, ProgressView, Spacer, SwipeActions, Label,
+  TabView, Tab, Navigator, useNavigation, Screen, VirtualList, VStack, HStack, Text, Button, ProgressView, Spacer, SwipeActions, Label,
+  ContentUnavailable,
 } from "swiftjsx";
-import { feeds, fetchFeed, ago, domain, type Feed, type Story } from "./api";
+import { feeds, fetchFeed, domain, comments, type Feed, type Story } from "./api";
 import { useSaved, useIsSaved } from "./saved";
 import { StoryScreen } from "./StoryScreen";
 
@@ -48,7 +49,9 @@ function FeedScreen({ feed }: { feed: Feed }) {
       {query.isPending ? (
         <ProgressView frame={{ maxWidth: "infinity", maxHeight: "infinity" }} />
       ) : query.isError ? (
-        <ErrorView message={query.error.message} retry={() => query.refetch()} />
+        <ContentUnavailable systemImage="wifi.exclamationmark" title="Couldn’t Load Stories" description={query.error.message}>
+          <Button title="Try Again" buttonStyle="bordered" onPress={() => query.refetch()} />
+        </ContentUnavailable>
       ) : (
         <VirtualList
           data={stories}
@@ -71,10 +74,7 @@ function SavedScreen() {
       {stories.length ? (
         <VirtualList data={stories} keyExtractor={(s) => s.id} listStyle="list" estimatedItemHeight={76} renderItem={(story) => <StoryRow story={story} />} />
       ) : (
-        <VStack spacing={8} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-          <Image systemName="bookmark" font="largeTitle" foregroundStyle="secondary" />
-          <Text foregroundStyle="secondary">Stories you save show up here.</Text>
-        </VStack>
+        <ContentUnavailable systemImage="bookmark" title="No Saved Stories" description="Stories you save show up here." />
       )}
     </Screen>
   );
@@ -94,7 +94,7 @@ function StoryRow({ story, rank }: { story: Story; rank?: number }) {
           <HStack spacing={4}>
             {site ? <Text font="caption" foregroundStyle="accent" lineLimit={1}>{site}</Text> : null}
             <Text font="caption" foregroundStyle="secondary" lineLimit={1}>
-              {site ? "· " : ""}▲ {story.points} · {story.comments} comments · {ago(story.createdAt)}
+              {site ? "· " : ""}▲ {story.points} · {comments(story.comments)} · <Text date={story.createdAt} dateStyle="ago" />
             </Text>
           </HStack>
         </VStack>
@@ -107,15 +107,5 @@ function StoryRow({ story, rank }: { story: Story; rank?: number }) {
         </Button>
       </SwipeActions>
     </Button>
-  );
-}
-
-function ErrorView({ message, retry }: { message: string; retry(): void }) {
-  return (
-    <VStack spacing={12} padding={24} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-      <Image systemName="wifi.exclamationmark" font="largeTitle" foregroundStyle="secondary" />
-      <Text textAlignment="center" foregroundStyle="secondary">{message}</Text>
-      <Button title="Try again" buttonStyle="bordered" onPress={retry} />
-    </VStack>
   );
 }

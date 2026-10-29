@@ -1,5 +1,6 @@
-// Habit colors (stored as hex, so a custom ColorPicker color works the same
-// as a preset), icons, and the shades the calendar and heatmap use.
+// Habit colors (stored as "#rrggbb", so a custom ColorPicker color works the
+// same as a preset; "#rrggbb/30" is 30% opacity), icons, and the shades the
+// calendar and heatmap use.
 import type { Color } from "swiftjsx";
 
 export type Hex = `#${string}`;
@@ -29,13 +30,6 @@ export const ICONS = [
   "sparkles", "flame.fill", "hand.raised.fill", "face.smiling", "camera.fill", "tree.fill",
 ];
 
-/** A hex color at `alpha` (0–1), as "#rrggbbaa". */
-export function withAlpha(hex: Hex, alpha: number): Color {
-  const base = normalizeHex(hex);
-  const a = Math.round(Math.min(Math.max(alpha, 0), 1) * 255).toString(16).padStart(2, "0");
-  return `${base}${a}` as Color;
-}
-
 /** "#rgb" / "#rrggbb" / "#rrggbbaa" → "#rrggbb" (lowercase). */
 export function normalizeHex(hex: string): Hex {
   let h = hex.replace("#", "").toLowerCase();
@@ -57,5 +51,5 @@ export const paletteName = (hex: Hex) => PALETTE.find((p) => normalizeHex(p.hex)
 export function shade(hex: Hex, fraction: number): Color {
   if (fraction <= 0) return "quaternarySystemFill" as Color;
   if (fraction >= 1) return hex;
-  return withAlpha(hex, 0.25 + 0.5 * fraction);
+  return `${hex}/${Math.round((0.25 + 0.5 * fraction) * 100)}`;
 }

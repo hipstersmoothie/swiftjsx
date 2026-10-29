@@ -33,11 +33,6 @@ export function parseInline(text: string, style: Style = {}): Span[] {
 
 export const spansText = (spans: Span[]) => spans.map((s) => s.text).join("");
 
-export function links(spans: Span[]): string[] {
-  const urls = spans.flatMap((s) => (s.link ? [s.link] : []));
-  return urls.filter((u, i) => urls.indexOf(u) === i);
-}
-
 // MARK: Blocks (one per line)
 
 export type Block =
@@ -113,8 +108,7 @@ export function counts(title: string, body: string): { words: number; characters
 
 // MARK: Line editing (the formatting toolbar)
 //
-// There's no cursor or selection API on TextField, so formatting applies to
-// the whole line being edited.
+// Formatting applies to the whole line being edited.
 
 const PREFIX = /^(\s*(?:#{1,3}\s+|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+\[[ xX]\]$|[-*+]\s+|\d{1,4}[.)]\s+|>\s?)?)(.*)$/;
 

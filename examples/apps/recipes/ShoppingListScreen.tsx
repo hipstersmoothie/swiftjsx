@@ -5,13 +5,13 @@
 import { useState } from "react";
 import {
   useNavigation, Screen, ToolbarItem, List, Section, VStack, HStack, Text, Image, Button, Menu, Label, Divider, Stepper,
-  ConfirmationDialog, haptic,
+  ConfirmationDialog, ContentUnavailable, haptic, toast,
 } from "swiftjsx";
 import { thumbSize } from "./api";
 import { aggregate, type ListItem } from "./quantity";
 import { useRecipes, BASE_SERVINGS } from "./store";
 import { RecipeScreen } from "./RecipeScreen";
-import { ACCENT, EmptyState } from "./ui";
+import { ACCENT } from "./ui";
 
 export function ShoppingListScreen() {
   const list = useRecipes((s) => s.list);
@@ -25,7 +25,6 @@ export function ShoppingListScreen() {
   const removeFromList = useRecipes((s) => s.removeFromList);
   const setListServings = useRecipes((s) => s.setListServings);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [copied, setCopied] = useState(false);
   const nav = useNavigation();
 
   const items = aggregate(list.map((r) => ({ recipeId: r.id, recipeName: r.name, factor: r.servings / BASE_SERVINGS, ingredients: r.ingredients })));
@@ -35,15 +34,13 @@ export function ShoppingListScreen() {
   const copy = async () => {
     const lines = toBuy.map((i) => `• ${i.name}${i.amount ? ` — ${i.amount}` : ""}`);
     await navigator.clipboard.writeText([`Shopping list (${list.map((r) => r.name).join(", ")})`, ...lines].join("\n"));
-    haptic("success");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    toast("Copied", { systemImage: "checkmark", haptic: "success" });
   };
 
   if (!list.length) {
     return (
       <Screen title="Shopping List">
-        <EmptyState icon="cart" title="Your list is empty" message="Open a recipe and tap “Add to List”. Ingredients from several recipes are added up for you." />
+        <ContentUnavailable systemImage="cart" title="Your list is empty" description="Open a recipe and tap “Add to List”. Ingredients from several recipes are added up for you." />
       </Screen>
     );
   }
@@ -53,7 +50,7 @@ export function ShoppingListScreen() {
       <ToolbarItem placement="primaryAction">
         <Menu systemImage="ellipsis.circle" accessibilityLabel="List actions" accessibilityIdentifier="list-actions">
           <Button onPress={() => void copy()}>
-            <Label title={copied ? "Copied" : "Copy List"} systemImage={copied ? "checkmark" : "doc.on.doc"} />
+            <Label title="Copy List" systemImage="doc.on.doc" />
           </Button>
           <Button onPress={uncheckAll} disabled={!inBasket.length}>
             <Label title="Uncheck All" systemImage="arrow.uturn.backward" />

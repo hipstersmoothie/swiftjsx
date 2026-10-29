@@ -1,14 +1,14 @@
 // People: a row (avatar, name, handle, bio, Follow), and a paged screen of
 // them (followers, following, likes, reposts).
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Screen, VirtualList, VStack, HStack, Text, Button, Spacer, useNavigation } from "swiftjsx";
+import { Screen, VirtualList, VStack, HStack, Text, Button, Spacer, ContentUnavailable, useNavigation } from "swiftjsx";
 import type { ActorPage } from "./api";
 import { displayName } from "./format";
 import { ProfileScreen } from "./Profile";
 import { Verified } from "./PostCell";
 import { useInteractions, useIsFollowing } from "./store";
 import { useMyDid } from "./session";
-import { Avatar, EmptyState, ErrorView, PillButton, ProfileRowSkeleton, Separator, Spinner, T, ty, useTheme } from "./ui";
+import { Avatar, ErrorView, PillButton, ProfileRowSkeleton, Separator, Spinner, T, ty, useTheme } from "./ui";
 import type { ProfileView } from "./types";
 
 export function ActorRow({ actor, showBio = true }: { actor: ProfileView; showBio?: boolean }) {
@@ -83,7 +83,7 @@ export function ActorListScreen({ title, queryKey, fetchPage }: ActorListProps) 
           keyExtractor={(a) => a.did}
           estimatedItemHeight={88}
           renderItem={(actor) => <ActorRow actor={actor} />}
-          footer={query.hasNextPage ? <Spinner height={64} /> : actors.length ? null : <EmptyState icon="person.2" title="Nobody here yet" />}
+          footer={query.hasNextPage ? <Spinner height={64} /> : actors.length ? null : <ContentUnavailable systemImage="person.2" title="Nobody here yet" frame={{ minHeight: 280 }} />}
           onEndReached={() => {
             if (query.hasNextPage && !query.isFetchingNextPage) query.fetchNextPage();
           }}

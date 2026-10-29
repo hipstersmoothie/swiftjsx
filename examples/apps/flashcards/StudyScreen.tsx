@@ -1,14 +1,13 @@
 import { useRef, useState } from "react";
 import {
-  useNavigation, Screen, VStack, HStack, Text, Label, Button, ProgressView, withAnimation,
+  useNavigation, Screen, VStack, HStack, Text, Label, Button, ProgressView, ContentUnavailable, withAnimation, useNow, format,
 } from "swiftjsx";
-import { dueCards, dueIn, plural, shuffle, type Card, type Deck } from "./model";
-import { useDeck, useFlashcards, useNow } from "./store";
+import { dueCards, dueIn, shuffle, type Card, type Deck } from "./model";
+import { useDeck, useFlashcards } from "./store";
 import { themeOf, type Theme } from "./theme";
 import { CardStack, FLY_DURATION, type Exit } from "./CardStack";
 import { Summary } from "./Summary";
 import { DeckScreen } from "./DeckScreen";
-import { EmptyState } from "./ui";
 
 /** Studies a deck's due cards (or all of them with `practiceAll`). */
 export function StudyScreen({ deckId, practiceAll = false }: { deckId: string; practiceAll?: boolean }) {
@@ -48,7 +47,9 @@ function Session({ deck, cards, onRestart }: { deck: Deck; cards: Card[]; onRest
     review(deck.id, cards[index].id, knewIt);
     setResults((r) => [...r, knewIt]);
     setExit({ knewIt, fling });
-    // Animations have no completion callback: wait out the fly-off, then advance.
+    // The fly-off is a shared-value animation (started in CardStack's swipe
+    // worklet or its effect), not a React commit, so withAnimation's
+    // completion doesn't see it: wait out its duration, then advance.
     setTimeout(() => {
       answering.current = false;
       withAnimation("smooth", () => {
@@ -124,21 +125,21 @@ function NothingDue({ deck, onStart }: { deck: Deck; onStart(cards: Card[]): voi
 
   if (!deck.cards.length) {
     return (
-      <EmptyState symbol="rectangle.stack.badge.plus" title="No cards yet" message="Add a few cards to start studying this deck.">
+      <ContentUnavailable systemImage="rectangle.stack.badge.plus" title="No cards yet" description="Add a few cards to start studying this deck.">
         <Button title="Add Cards" buttonStyle="borderedProminent" onPress={() => nav.push(<DeckScreen deckId={deck.id} />)} />
-      </EmptyState>
+      </ContentUnavailable>
     );
   }
   if (due.length) {
     return (
-      <EmptyState symbol="play.circle" title={`${plural(due.length, "card")} ready`} message="New and missed cards are due today.">
+      <ContentUnavailable systemImage="play.circle" title={`${format.count(due.length, { one: "# card", other: "# cards" })} ready`} description="New and missed cards are due today.">
         <Button title="Start" buttonStyle="borderedProminent" onPress={() => onStart(due)} />
-      </EmptyState>
+      </ContentUnavailable>
     );
   }
   return (
-    <EmptyState symbol="checkmark.seal.fill" title="All caught up" message={`Your next review is ${dueIn(nextDue, now)}. Practicing now won't hurt, though.`}>
+    <ContentUnavailable systemImage="checkmark.seal.fill" title="All caught up" description={`Your next review is ${dueIn(nextDue, now)}. Practicing now won't hurt, though.`}>
       <Button title="Practice All Cards" buttonStyle="borderedProminent" onPress={() => onStart(deck.cards)} />
-    </EmptyState>
+    </ContentUnavailable>
   );
 }

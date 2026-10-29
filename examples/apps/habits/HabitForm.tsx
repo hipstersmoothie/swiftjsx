@@ -7,13 +7,12 @@ import { set as setTime, startOfToday } from "date-fns";
 import { z } from "zod";
 import {
   withAnimation, haptic, Navigator, Screen, ToolbarItem, Form, Section, SectionFooter, VStack, HStack, LazyVGrid, Text, Image, TextField,
-  Button, Picker, Stepper, Toggle, ColorPicker, Spacer, Sheet, Alert, ConfirmationDialog, DatePicker,
+  Button, Picker, Stepper, Toggle, ColorPicker, Spacer, Sheet, Alert, ConfirmationDialog, DatePicker, IconTile, format,
 } from "swiftjsx";
 import { addHabit, deleteHabit, updateHabit, useHabits, type Habit, type HabitInput, type Schedule } from "./store";
-import { formatTime, orderedWeekdays, useToday, weekdayName } from "./dates";
+import { formatTime, orderedWeekdays, useTodayKey, useWeekStartsOn, weekdayName } from "./dates";
 import { describeSchedule } from "./stats";
 import { ICONS, PALETTE, normalizeHex, paletteName, type Hex } from "./theme";
-import { HabitIcon } from "./ui";
 
 type Draft = {
   name: string;
@@ -119,7 +118,8 @@ function HabitForm({ habit, onClose, onDelete, discardAsks }: {
   /** Bumped when the user swipes the dirty sheet down. */
   discardAsks: number;
 }) {
-  const today = useToday();
+  const today = useTodayKey();
+  const weekdays = orderedWeekdays(useWeekStartsOn());
   const habits = useHabits((s) => s.habits);
   const [initial] = useState(() => draftFrom(habit));
   const [draft, setDraft] = useState(initial);
@@ -178,7 +178,7 @@ function HabitForm({ habit, onClose, onDelete, discardAsks }: {
       <Form>
         <Section>
           <VStack spacing={14} padding={{ vertical: 8 }} frame={{ maxWidth: "infinity" }}>
-            <HabitIcon icon={draft.icon} color={draft.color} size={84} />
+            <IconTile systemImage={draft.icon} color={draft.color} size={84} />
             <TextField
               value={draft.name}
               onChange={(name) => update({ name })}
@@ -196,7 +196,7 @@ function HabitForm({ habit, onClose, onDelete, discardAsks }: {
               accessibilityIdentifier="habit-name"
             />
             <Text font="footnote" foregroundStyle="secondaryLabel">
-              {describeSchedule(preview, (d) => weekdayName(d), orderedWeekdays)}
+              {describeSchedule(preview, (d) => weekdayName(d), weekdays)}
               {draft.target > 1 ? ` · ${draft.target} ${draft.unit.trim() || "times"} a day` : ""}
               {draft.reminderOn ? ` · ${formatTime(draft.hour, draft.minute)}` : ""}
             </Text>
@@ -275,7 +275,7 @@ function HabitForm({ habit, onClose, onDelete, discardAsks }: {
           {draft.kind === "weekdays" ? (
             <VStack spacing={10} padding={{ vertical: 4 }}>
               <HStack spacing={0}>
-                {orderedWeekdays.map((d) => {
+                {weekdays.map((d) => {
                   const on = draft.days.includes(d);
                   return (
                     <Text
@@ -313,7 +313,7 @@ function HabitForm({ habit, onClose, onDelete, discardAsks }: {
               min={1}
               max={6}
               onChange={(times) => update({ times }, "schedule")}
-              label={draft.times === 1 ? "Once a week" : `${draft.times} times a week`}
+              label={format.count(draft.times, { one: "Once a week", other: "# times a week" })}
               accessibilityIdentifier="times-per-week"
             />
           ) : null}
@@ -338,7 +338,7 @@ function HabitForm({ habit, onClose, onDelete, discardAsks }: {
             min={1}
             max={99}
             onChange={(target) => update({ target }, "target")}
-            label={draft.target === 1 ? "Once a day" : `${draft.target} times a day`}
+            label={format.count(draft.target, { one: "Once a day", other: "# times a day" })}
             accessibilityIdentifier="daily-target"
           />
           {draft.target > 1 ? (

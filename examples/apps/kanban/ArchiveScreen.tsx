@@ -1,8 +1,8 @@
 // Archived cards and columns of a board: restore or delete them.
-import { List, Section, Screen, HStack, VStack, Text, Button, Label, SwipeActions, withAnimation } from "swiftjsx";
-import { archivedCards, plural } from "./model";
+import { List, Section, Screen, HStack, VStack, Text, Button, Label, SwipeActions, ContentUnavailable, withAnimation, format } from "swiftjsx";
+import { archivedCards } from "./model";
 import { deleteCard, deleteColumn, setCardArchived, setColumnArchived, useBoard } from "./store";
-import { Dot, EmptyState } from "./ui";
+import { Dot } from "./ui";
 
 export function ArchiveScreen({ boardId }: { boardId: string }) {
   const board = useBoard(boardId);
@@ -22,7 +22,7 @@ export function ArchiveScreen({ boardId }: { boardId: string }) {
                   <Dot color={column.color} size={10} />
                   <VStack alignment="leading" spacing={2}>
                     <Text font="body">{column.name}</Text>
-                    <Text font="caption" foregroundStyle="secondary">{plural(column.cardIds.length, "card")}</Text>
+                    <Text font="caption" foregroundStyle="secondary">{format.count(column.cardIds.length, { one: "# card", other: "# cards" })}</Text>
                   </VStack>
                   <SwipeActions edge="leading">
                     <Button tint="green" onPress={() => withAnimation("default", () => setColumnArchived(boardId, column.id, false))}>
@@ -60,7 +60,7 @@ export function ArchiveScreen({ boardId }: { boardId: string }) {
           ) : null}
         </List>
       ) : (
-        <EmptyState symbol="archivebox" title="Nothing archived" message="Archived cards and columns show up here, ready to restore." />
+        <ContentUnavailable systemImage="archivebox" title="Nothing archived" description="Archived cards and columns show up here, ready to restore." />
       )}
     </Screen>
   );

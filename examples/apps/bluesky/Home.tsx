@@ -89,10 +89,7 @@ export function HomeScreen() {
     haptic("selection");
     pager.current?.scrollTo(index);
   };
-  // The page the pager shows (set before React re-renders with it).
-  const shownPage = useRef(0);
   const onPage = (index: number) => {
-    shownPage.current = index;
     setPage(index);
     showHeader();
   };
@@ -113,11 +110,6 @@ export function HomeScreen() {
             spacing={0}
             showsIndicators={false}
             onScrollIndexChange={onPage}
-            // A scroll view replays its last scrollTo when it reappears (back from a thread):
-            // at rest, make that the page we're on, not the tab tapped a while ago.
-            onScrollPhaseChange={(phase) => {
-              if (phase === "idle") pager.current?.scrollTo(shownPage.current, { animated: false });
-            }}
             scrollOffset={pagerOffset}
             frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
             ignoresSafeArea="top"

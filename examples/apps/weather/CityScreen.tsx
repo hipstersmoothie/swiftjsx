@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { Screen, ToolbarItem, ScrollView, VStack, Text, Label, Button } from "swiftjsx";
+import { Screen, ToolbarItem, ScrollView, VStack, Text, Label, Button, ProgressView, ContentUnavailable } from "swiftjsx";
 import { forecastQuery, type City, type Forecast } from "./api";
 import { conditionGradient, conditionLabel, conditionSymbol } from "./conditions";
 import { useTemperature } from "./format";
 import { useIsSaved, useSettings } from "./store";
 import { HourlyForecast, DailyForecast, DetailTiles, dim } from "./Forecast";
-import { Loading, ErrorView } from "./Status";
 
 /** One city's forecast. From search results it's a preview with an Add button. */
 export function CityScreen({ city, onAdded }: { city: City; onAdded?(): void }) {
@@ -40,7 +39,13 @@ export function CityScreen({ city, onAdded }: { city: City; onAdded?(): void }) 
           ) : (
             <>
               <Text font="largeTitle" padding={{ top: 32 }}>{city.name}</Text>
-              {error ? <ErrorView message={error.message} retry={() => refetch()} color="white" /> : <Loading tint="white" />}
+              {error ? (
+                <ContentUnavailable systemImage="wifi.exclamationmark" title="Couldn’t Load the Forecast" description={error.message} frame={{ minHeight: 320 }}>
+                  <Button title="Try Again" buttonStyle="bordered" tint="white" onPress={() => refetch()} />
+                </ContentUnavailable>
+              ) : (
+                <ProgressView tint="white" frame={{ maxWidth: "infinity", minHeight: 320 }} />
+              )}
             </>
           )}
         </VStack>

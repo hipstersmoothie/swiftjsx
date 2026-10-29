@@ -17,7 +17,8 @@ export const STAGE_COLORS: Record<Stage, Color> = {
 
 export const STAGE_NAMES: Record<Stage, string> = { awake: "Awake", rem: "REM", core: "Core", deep: "Deep" };
 
-export const WORKOUTS: Record<WorkoutType, { name: string; icon: string; color: Color }> = {
+// Hex, so `${color}/18` (18% opacity) is still a Color.
+export const WORKOUTS: Record<WorkoutType, { name: string; icon: string; color: `#${string}` }> = {
   run: { name: "Outdoor Run", icon: "figure.run", color: "#A6FF00" },
   walk: { name: "Outdoor Walk", icon: "figure.walk", color: "#FFD60A" },
   cycle: { name: "Outdoor Cycle", icon: "figure.outdoor.cycle", color: "#64D2FF" },

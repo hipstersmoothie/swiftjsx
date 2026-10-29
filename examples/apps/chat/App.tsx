@@ -2,13 +2,13 @@
 // zustand + localStorage, delivery receipts, offline queueing with reconnect,
 // typing indicators, reactions and context menus.
 import {
-  Navigator, useNavigation, Screen, ToolbarItem, List, HStack, VStack, Text, Button, Label, Spacer, SwipeActions,
+  Navigator, useNavigation, useNow, Screen, ToolbarItem, List, HStack, VStack, Text, Button, Label, Spacer, SwipeActions,
 } from "swiftjsx";
 import { lastMessage, useChat, type Conversation } from "./store";
 import { useChatSocket } from "./socket";
-import { listTime, useNow } from "./format";
+import { listTime } from "./format";
 import { ConversationScreen } from "./ConversationScreen";
-import { Avatar, NavTitle } from "./ui";
+import { ContactAvatar, NavTitle } from "./ui";
 
 export function ChatApp() {
   useChatSocket();
@@ -52,7 +52,7 @@ function ConversationRow({ conversation, now }: { conversation: Conversation; no
     <Button buttonStyle="plain" onPress={() => nav.push(<ConversationScreen contactId={contact.id} />)} accessibilityIdentifier="conversation-row">
       <HStack spacing={10} padding={{ vertical: 4 }}>
         <VStack frame={{ width: 10, height: 10 }} background={unread ? "blue" : "clear"} cornerRadius={5} accessibilityHidden />
-        <Avatar contact={contact} size={48} />
+        <ContactAvatar contact={contact} size={48} />
         <VStack alignment="leading" spacing={3}>
           <HStack>
             <Text font="headline" lineLimit={1}>{contact.name}</Text>

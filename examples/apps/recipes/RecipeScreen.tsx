@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Screen, ToolbarItem, ScrollView, VStack, HStack, ZStack, Text, Image, Button, Stepper, Rectangle, Flow, Divider, Label,
-  Sheet, haptic, openURL,
+  Sheet, Chip, haptic, openURL,
 } from "swiftjsx";
 import { recipeQuery, thumbSize, type Recipe, type RecipeSummary } from "./api";
 import { useIsFavorite, useIsOnList, useRecipes, useServings, BASE_SERVINGS } from "./store";
@@ -14,7 +14,7 @@ import { useTimers } from "./timers";
 import { IngredientList } from "./Ingredients";
 import { CookingMode } from "./CookingMode";
 import { TimerButton } from "./TimerButton";
-import { ACCENT, Chip, ErrorView, Loading, SectionTitle } from "./ui";
+import { ACCENT, ErrorView, Loading, SectionTitle } from "./ui";
 
 export function RecipeScreen({ id, preview }: { id: string; preview?: RecipeSummary }) {
   const query = useQuery(recipeQuery(id));
@@ -88,9 +88,10 @@ function Hero({ recipe, preview }: { recipe?: Recipe; preview?: RecipeSummary })
       )}
       <Rectangle fill={{ gradient: ["clear", "black/30", "black/80"], start: "center", end: "bottom" }} frame={{ maxWidth: "infinity", height: 300 }} allowsHitTesting={false} />
       <VStack alignment="leading" spacing={8} padding={20}>
+        {/* White on translucent white over the photo: Chip's `selected` look with a white/20 tint (they're not buttons, so nothing reads as selected). */}
         <HStack spacing={6}>
-          {category ? <Chip title={category} color="white/20" foreground="white" /> : null}
-          {area && area !== "Unknown" ? <Chip title={area} systemImage="globe" color="white/20" foreground="white" /> : null}
+          {category ? <Chip label={category} selected tint="white/20" /> : null}
+          {area && area !== "Unknown" ? <Chip label={area} systemImage="globe" selected tint="white/20" /> : null}
         </HStack>
         <Text font={{ size: 32, weight: "bold", design: "serif" }} foregroundStyle="white" lineLimit={3} minimumScaleFactor={0.7} shadow={{ radius: 6, color: "black/40" }}>
           {name}
@@ -187,7 +188,7 @@ function RecipeBody({ recipe, checked, onToggle, onCook }: {
           <SectionTitle title="Tags" />
           <Flow spacing={8} lineSpacing={8}>
             {recipe.tags.map((tag) => (
-              <Chip key={tag} title={tag} systemImage="tag" />
+              <Chip key={tag} label={tag} systemImage="tag" />
             ))}
           </Flow>
         </VStack>

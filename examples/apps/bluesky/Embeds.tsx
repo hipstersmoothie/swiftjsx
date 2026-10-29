@@ -3,12 +3,12 @@
 // posts that are gone or blocked. Labeled media hides behind a warning.
 import { useRef, useState, type ReactNode } from "react";
 import {
-  VStack, HStack, ZStack, Text, Image, Button, Overlay, Video, Spacer, Rectangle, useNavigation, openURL, type HostInstance,
+  VStack, HStack, ZStack, Text, Image, Button, Overlay, Video, Spacer, Rectangle, useNavigation, openURL, useNow, format, type HostInstance,
 } from "swiftjsx";
 import { useUI } from "./store";
 import { useSettings } from "./session";
-import { ago, displayName, hostOf } from "./format";
-import { Avatar, T, ty, useNow, useTheme } from "./ui";
+import { displayName, hostOf } from "./format";
+import { Avatar, T, ty, useTheme } from "./ui";
 import { Verified } from "./PostCell";
 import { ThreadScreen } from "./Thread";
 import { FeedScreen } from "./FeedScreen";
@@ -319,7 +319,7 @@ function QuotePost({ record, width }: { record: Extract<EmbedRecord, { $type: "a
             </HStack>
           ) : null}
           <Text font={ty(T.md)} foregroundStyle={t.textMedium} lineLimit={1} padding={{ leading: 4 }}>@{record.author.handle}</Text>
-          <Text font={ty(T.md)} foregroundStyle={t.textMedium} fixedSize padding={{ leading: 4 }}>{`· ${ago(record.value.createdAt ?? record.indexedAt, now)}`}</Text>
+          <Text font={ty(T.md)} foregroundStyle={t.textMedium} fixedSize padding={{ leading: 4 }}>{`· ${format.relativeTime(Date.parse(record.value.createdAt ?? record.indexedAt), { now })}`}</Text>
           <Spacer minLength={0} />
         </HStack>
         {record.value.text ? <Text font={ty(T.md)} foregroundStyle={t.text} lineSpacing={2} lineLimit={20}>{record.value.text}</Text> : null}

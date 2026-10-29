@@ -5,15 +5,16 @@
 // Mentions, links and #tags are highlighted as you type and become facets.
 import { useState } from "react";
 import {
-  Sheet, Screen, Navigator, ScrollView, VStack, HStack, Text, Image, Button, Spacer, Circle, TextField, ProgressView,
-  ConfirmationDialog, haptic,
+  Sheet, Screen, Navigator, ScrollView, VStack, HStack, Text, Image, Button, Spacer, TextField, ProgressView, ProgressRing,
+  ConfirmationDialog, haptic, toast,
 } from "swiftjsx";
 import { createPost, resolveHandle } from "./api";
 import { displayName } from "./format";
 import { MAX_GRAPHEMES, detect, facetsFor, graphemeLength } from "./richtext";
-import { toast, useUI, type ComposeTarget } from "./store";
+import { useUI, type ComposeTarget } from "./store";
 import { useSession } from "./session";
 import { useMyProfile } from "./Me";
+import { BRAND } from "./theme";
 import { Avatar, Separator, T, ty, useTheme } from "./ui";
 import type { PostView, StrongRef } from "./types";
 
@@ -78,17 +79,17 @@ function Composer({ target, onClose }: { target: ComposeTarget; onClose(): void 
     const error = await publish(text, target);
     if (error === null) {
       haptic("success");
-      toast(replyTo ? "Reply sent" : "Posted", "checkmark.circle.fill");
+      toast(replyTo ? "Reply sent" : "Posted", { systemImage: "checkmark.circle.fill", tint: BRAND });
       onClose();
     } else {
       haptic("error");
-      toast(error, "exclamationmark.triangle");
+      toast(error, { systemImage: "exclamationmark.triangle", tint: BRAND });
       setPosting(false);
     }
   };
 
   const cancel = () => (text.trim() ? setConfirmDiscard(true) : onClose());
-  const unsupported = () => toast("Attachments aren't available in this example", "paperclip");
+  const unsupported = () => toast("Attachments aren't available in this example", { systemImage: "paperclip", tint: BRAND });
 
   return (
     <Screen title={replyTo ? "Reply" : quote ? "Quote" : "New post"} navigationBar="hidden" interactiveDismissDisabled={!!text.trim()}>
@@ -185,15 +186,11 @@ function Highlights({ text }: { text: string }) {
 function CharacterRing({ length }: { length: number }) {
   const t = useTheme();
   const left = MAX_GRAPHEMES - length;
-  const progress = Math.min(1, length / MAX_GRAPHEMES);
   const color = left < 0 ? t.negative : left <= 20 ? "orange" : t.primary;
   return (
     <HStack spacing={8} accessibilityElement="combine" accessibilityLabel={`${left} characters left`} accessibilityIdentifier="char-count">
       {left <= 20 ? <Text font="footnote" fontWeight="semibold" foregroundStyle={color} monospacedDigit>{left}</Text> : null}
-      <VStack frame={{ width: 22, height: 22 }}>
-        <Circle stroke={t.border} lineWidth={3} />
-        <Circle stroke={color} lineWidth={3} trim={[0, progress]} rotation={-90} animation="snappy" />
-      </VStack>
+      <ProgressRing value={length} total={MAX_GRAPHEMES} lineWidth={3} color={color} track={t.border} frame={{ width: 22, height: 22 }} animation="snappy" />
     </HStack>
   );
 }

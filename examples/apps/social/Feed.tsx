@@ -1,7 +1,7 @@
 // Home: the stories row and an endless feed of posts (VirtualList), with
 // pull to refresh for new posts and infinite loading. Plus the Liked screen.
 import { useState } from "react";
-import { useNavigation, Screen, ToolbarItem, VirtualList, VStack, Text, Image, Button, ProgressView } from "swiftjsx";
+import { useNavigation, Screen, ToolbarItem, VirtualList, VStack, Text, Image, Button, ProgressView, ContentUnavailable } from "swiftjsx";
 import { feedPost, freshPost, type Post } from "./data";
 import { PostView } from "./Post";
 import { StoriesRow } from "./Stories";
@@ -92,11 +92,7 @@ function LikedScreen() {
       {posts.length ? (
         <VirtualList data={posts} keyExtractor={(p) => p.id} estimatedItemHeight={width + 190} renderItem={(post) => <PostView post={post} />} />
       ) : (
-        <VStack spacing={12} padding={32} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-          <Image systemName="heart" font={{ size: 40, weight: "light" }} frame={{ width: 84, height: 84 }} border={{ color: "label", width: 2 }} cornerRadius="capsule" />
-          <Text font="title3" fontWeight="bold">No likes yet</Text>
-          <Text font="subheadline" foregroundStyle="secondary" textAlignment="center">Double tap a photo, or tap the heart, and it shows up here.</Text>
-        </VStack>
+        <ContentUnavailable systemImage="heart" title="No likes yet" description="Double tap a photo, or tap the heart, and it shows up here." />
       )}
     </Screen>
   );

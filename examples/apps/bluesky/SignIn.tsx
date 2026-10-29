@@ -6,11 +6,12 @@ import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Sheet, Screen, Navigator, ScrollView, TextField, Button, Text, VStack, HStack, Image, ProgressView, Spacer,
-  openURL, haptic,
+  openURL, haptic, toast,
 } from "swiftjsx";
 import { createSession, DEFAULT_PDS, XrpcError } from "./api";
 import { useSession } from "./session";
-import { toast, useUI } from "./store";
+import { useUI } from "./store";
+import { BRAND } from "./theme";
 import { Butterfly, T, ty, useTheme } from "./ui";
 import type { Session } from "./types";
 
@@ -65,7 +66,7 @@ function SignInForm({ reason, onDone }: { reason: string; onDone(): void }) {
     setSession(result);
     client.clear();
     haptic("success");
-    toast(`Signed in as @${result.handle}`, "person.crop.circle.badge.checkmark");
+    toast(`Signed in as @${result.handle}`, { systemImage: "person.crop.circle.badge.checkmark", tint: BRAND });
     onDone();
   };
 

@@ -22,9 +22,10 @@ import {
   Stepper,
   Flow,
   Circle,
-  TabView,
-  Tab,
   Label,
+  Chip,
+  Pager,
+  toast,
   type HostInstance,
   type Frame,
 } from "swiftjsx";
@@ -32,7 +33,7 @@ import { hasDiscount, productQuery, relatedQuery, salePrice, stockLevel, type Pr
 import { money, plural, titleCase, toCents, variantSurcharge, variantsFor } from "./format";
 import { MAX_PER_LINE, useShop } from "./store";
 import { formatDistanceToNow } from "date-fns";
-import { ACCENT, CartButton, Chip, DiscountBadge, HeartButton, PriceTag, ProductCard, RatingStars, StockBadge } from "./ui";
+import { ACCENT, CartButton, DiscountBadge, HeartButton, PriceTag, ProductCard, RatingStars, StockBadge } from "./ui";
 
 const FLYER = 88;
 
@@ -48,9 +49,9 @@ export function ProductScreen({ product: initial }: { product: Product }) {
   const [size, setSize] = useState<string | null>(null);
   const [color, setColor] = useState(variants.colors[0]?.name ?? null);
   const [quantity, setQuantity] = useState(1);
-  const [page, setPage] = useState("0");
+  const [page, setPage] = useState(0);
   const [sizeMissing, setSizeMissing] = useState(false);
-  const [shake, setShake] = useState(0);
+  const [shakes, setShakes] = useState(0);
   const [added, setAdded] = useState(0);
   const [flight, setFlight] = useState<Flight | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -68,6 +69,7 @@ export function ProductScreen({ product: initial }: { product: Product }) {
   const landed = () => {
     setAdded((n) => n + 1);
     haptic("success");
+    toast("Added to Cart", { systemImage: "checkmark.circle.fill", tint: "green" });
   };
 
   const flyToCart = async () => {
@@ -77,27 +79,28 @@ export function ProductScreen({ product: initial }: { product: Product }) {
     const target = to && to.width > 0 ? center(to) : { x: frame.x + frame.width - 28, y: frame.y - 22 };
     const start = center(from);
     setFlight({
-      image: images[Number(page)] ?? product.thumbnail,
+      image: images[page] ?? product.thumbnail,
       from: { x: start.x - frame.x - FLYER / 2, y: start.y - frame.y - FLYER / 2 },
       to: { x: target.x - frame.x - FLYER / 2, y: target.y - frame.y - FLYER / 2 },
       launched: false,
     });
-    // Mount at the start first, then animate in a later commit (a change in
-    // the same commit as the mount doesn't animate).
-    setTimeout(() => withAnimation({ type: "easeIn", duration: 0.55 }, () => setFlight((f) => (f ? { ...f, launched: true } : f))), 40);
-    // No completion callbacks: wait out the duration.
-    setTimeout(() => {
-      setFlight(null);
-      landed();
-    }, 620);
   };
+  // Once the thumbnail is up at the start, it flies; it lands when the animation ends.
+  const launch = () =>
+    withAnimation(
+      { type: "easeIn", duration: 0.55 },
+      () => setFlight((f) => (f ? { ...f, launched: true } : f)),
+      () => {
+        setFlight(null);
+        landed();
+      },
+    );
 
   const addToCart = () => {
     if (needsSize) {
       haptic("error");
       setSizeMissing(true);
-      withAnimation({ type: "linear", duration: 0.06, repeatCount: 5, autoreverses: true }, () => setShake(10));
-      setTimeout(() => withAnimation("snappy", () => setShake(0)), 320);
+      setShakes((n) => n + 1);
       return;
     }
     haptic("medium");
@@ -115,53 +118,34 @@ export function ProductScreen({ product: initial }: { product: Product }) {
         <ScrollView>
           <VStack alignment="leading" spacing={18} padding={{ bottom: 24 }}>
             <ZStack alignment="bottom" ref={gallery}>
-              <TabView
-                tabViewStyle="page"
-                selection={page}
-                onSelectionChange={setPage}
+              <Pager
+                onPageChange={setPage}
+                // The dots would vanish on these light photo backgrounds: "1 / 3" on a dark pill.
+                indicator="counter"
+                indicatorAlignment="bottomTrailing"
                 frame={{ height: 340 }}
                 background={{ light: "#f4f4f6", dark: "#1f1f23" }}
               >
                 {images.map((src, i) => (
-                  <Tab key={src} value={String(i)}>
-                    <Image
-                      src={src}
-                      contentMode="fit"
-                      padding={{ horizontal: 24, top: 16, bottom: 44 }}
-                      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-                      accessibilityLabel={`${product.title}, photo ${i + 1} of ${images.length}`}
-                      onDoubleTap={() => {
-                        if (!useShop.getState().wishlist.some((p) => p.id === product.id)) {
-                          haptic("success");
-                          useShop.getState().toggleWishlist(product);
-                        }
-                      }}
-                    />
-                  </Tab>
+                  <Image
+                    key={src}
+                    src={src}
+                    contentMode="fit"
+                    padding={{ horizontal: 24, top: 16, bottom: 44 }}
+                    frame={{ maxWidth: "infinity", height: 340 }}
+                    accessibilityLabel={`${product.title}, photo ${i + 1} of ${images.length}`}
+                    onDoubleTap={() => {
+                      if (!useShop.getState().wishlist.some((p) => p.id === product.id)) {
+                        haptic("success");
+                        useShop.getState().toggleWishlist(product);
+                      }
+                    }}
+                  />
                 ))}
-              </TabView>
+              </Pager>
               <Overlay alignment="topTrailing" padding={14}>
                 <HeartButton product={product} size={18} />
               </Overlay>
-              {/* The pager's own dots are white, and vanish on these light photo backgrounds. */}
-              {images.length > 1 ? (
-                <Overlay alignment="bottomTrailing" padding={{ trailing: 16, bottom: 14 }}>
-                  <Text
-                    font="caption"
-                    fontWeight="semibold"
-                    monospacedDigit
-                    foregroundStyle="white"
-                    padding={{ horizontal: 9, vertical: 4 }}
-                    background="#00000066"
-                    cornerRadius="capsule"
-                    contentTransition="numericText"
-                    animation="snappy"
-                    accessibilityHidden
-                  >
-                    {Number(page) + 1} / {images.length}
-                  </Text>
-                </Overlay>
-              ) : null}
               {hasDiscount(product) ? (
                 <Overlay alignment="topLeading" padding={14}>
                   <DiscountBadge percent={product.discountPercentage} large />
@@ -222,13 +206,19 @@ export function ProductScreen({ product: initial }: { product: Product }) {
                 value={size ?? undefined}
                 error={sizeMissing && needsSize ? `Choose a ${variants.sizeLabel.toLowerCase()}` : undefined}
               >
-                <Flow spacing={8} offset={{ x: shake }}>
+                <Flow
+                  spacing={8}
+                  keyframes={{ trigger: shakes, steps: [{ x: -10, duration: 0.06 }, { x: 10, duration: 0.06 }, { x: -6, duration: 0.06 }, { x: 6, duration: 0.06 }, { x: 0 }] }}
+                >
                   {variants.sizes.map((s) => (
                     <Chip
                       key={s}
                       label={variantSurcharge(s) ? `${s} · +${money(variantSurcharge(s))}` : s}
                       selected={size === s}
-                      identifier="size-chip"
+                      tint={ACCENT}
+                      pressedScale={0.94}
+                      animation="snappy"
+                      accessibilityIdentifier="size-chip"
                       onPress={() => {
                         haptic("selection");
                         setSize(s);
@@ -313,6 +303,7 @@ export function ProductScreen({ product: initial }: { product: Product }) {
               offset={flight.launched ? flight.to : flight.from}
               scale={flight.launched ? 0.18 : 1}
               opacity={flight.launched ? 0.4 : 1}
+              onAppear={launch}
               accessibilityHidden
             />
           ) : null}
@@ -339,20 +330,6 @@ function AddBar({
   added: number;
   onAdd(): void;
 }) {
-  // "Added" shows for a moment after each add.
-  const [justAdded, setJustAdded] = useState(false);
-  const [lastAdded, setLastAdded] = useState(added);
-  if (added !== lastAdded) {
-    setLastAdded(added);
-    setJustAdded(true);
-  }
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const press = () => {
-    onAdd();
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => withAnimation("smooth", () => setJustAdded(false)), 1800);
-  };
-
   return (
     <HStack spacing={14} padding={{ horizontal: 20, top: 12, bottom: 8 }} background="bar">
       <VStack alignment="leading" spacing={1}>
@@ -365,7 +342,7 @@ function AddBar({
       </VStack>
       <Spacer />
       <Button
-        onPress={press}
+        onPress={onAdd}
         disabled={!available}
         pressedScale={0.95}
         accessibilityIdentifier="add-to-cart"
@@ -374,20 +351,19 @@ function AddBar({
         <HStack
           spacing={8}
           padding={{ horizontal: 22, vertical: 14 }}
-          background={!available ? "systemGray3" : justAdded ? "green" : { gradient: ["#5e5ce6", "#7d3cff"], start: "leading", end: "trailing" }}
+          background={!available ? "systemGray3" : { gradient: ["#5e5ce6", "#7d3cff"], start: "leading", end: "trailing" }}
           cornerRadius="capsule"
           shadow={available ? { radius: 8, y: 4, color: "#5e5ce655" } : undefined}
-          scale={justAdded ? 1.04 : 1}
-          animation="bouncy"
+          keyframes={{ trigger: added, steps: [{ scale: 1.06, duration: 0.12 }, { scale: 1 }] }}
         >
           <Image
-            systemName={justAdded ? "checkmark" : "bag.badge.plus"}
+            systemName="bag.badge.plus"
             fontWeight="semibold"
             foregroundStyle="white"
             symbolEffect={{ type: "bounce", value: added }}
           />
           <Text font="headline" foregroundStyle="white">
-            {!available ? "Sold Out" : justAdded ? "Added" : "Add to Cart"}
+            {!available ? "Sold Out" : "Add to Cart"}
           </Text>
         </HStack>
       </Button>

@@ -1,9 +1,10 @@
 // The key grid. Keys are capsules sized from the measured width (a circle
-// when one column wide, the 0 key spans two). Press feedback runs on the main
-// thread: a drag gesture with no minimum distance is the "touch down", and
-// worklets scale the key and fade in a highlight in the same frame, with no
-// React render. Lifting the finger over the key presses it (runOnJS).
-import { ZStack, VStack, HStack, Capsule, Text, Image, useSharedValue, useAnimatedStyle, withTiming, runOnJS, type Color } from "swiftjsx";
+// when one column wide, the 0 key spans two). Each key is a Button: it
+// shrinks natively while pressed (`pressedScale`), a highlight fades in on
+// `onPressIn`, sliding off the key un-highlights it, and lifting the finger
+// over the key presses it, like a UIButton.
+import { useState } from "react";
+import { Button, ZStack, VStack, HStack, Capsule, Text, Image, type Color } from "swiftjsx";
 import type { KeyKind, KeySpec } from "./keys";
 
 type Palette = { background: Color; foreground: Color; highlight: Color };
@@ -30,43 +31,35 @@ type KeyProps = {
 };
 
 function Key({ spec, size, spacing, selected, onPress }: KeyProps) {
-  const pressed = useSharedValue(false);
-  // Two nodes, two styles: the whole key shrinks a little, the highlight fades in.
-  const shrink = useAnimatedStyle(() => ({ scale: pressed.get() ? 0.93 : 1 }));
-  const glow = useAnimatedStyle(() => ({ opacity: pressed.get() ? 1 : 0 }));
+  // The highlight is drawn over the key's own fill, which `pressedBackground`
+  // (a rectangle behind the label) can't do, so it follows the press in state.
+  const [pressed, setPressed] = useState(false);
 
   const palette = (selected && selectedPalettes[spec.kind]) || palettes[spec.kind];
   const width = spec.wide ? size * 2 + spacing : size;
   const height = size;
   const fontSize = spec.kind === "digit" ? size * 0.45 : spec.kind === "scientific" ? size * 0.34 : size * 0.38;
-  const press = () => onPress(spec);
 
   return (
-    <ZStack
-      frame={{ width, height }}
-      animatedStyle={shrink}
-      dragMinimumDistance={0}
-      onDrag={(e) => {
-        "worklet";
-        // Sliding off the key un-highlights it, like a UIButton.
-        const inside = Math.abs(e.translation.x) < width * 0.8 && Math.abs(e.translation.y) < height * 0.8;
-        if (inside !== pressed.get()) pressed.set(inside ? withTiming(true, { duration: 0.05 }) : withTiming(false, { duration: 0.25 }));
-      }}
-      onDragEnd={(e) => {
-        "worklet";
-        const inside = Math.abs(e.translation.x) < width * 0.8 && Math.abs(e.translation.y) < height * 0.8;
-        pressed.set(withTiming(false, { duration: 0.35, easing: "easeOut" }));
-        if (inside) runOnJS(press)();
-      }}
-      accessibilityElement="ignore"
+    <Button
+      onPress={() => onPress(spec)}
+      pressedScale={0.93}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       accessibilityLabel={spec.label}
-      accessibilityTraits={selected ? ["button", "selected"] : "button"}
+      accessibilityTraits={selected ? ["selected"] : undefined}
       accessibilityIdentifier={`key-${spec.id}`}
     >
-      <Capsule fill={palette.background} animation={{ type: "easeOut", duration: 0.2 }} />
-      <Capsule fill={palette.highlight} opacity={0} animatedStyle={glow} />
-      <KeyLabel spec={spec} size={size} fontSize={fontSize} color={palette.foreground} />
-    </ZStack>
+      <ZStack frame={{ width, height }}>
+        <Capsule fill={palette.background} animation={{ type: "easeOut", duration: 0.2 }} />
+        <Capsule
+          fill={palette.highlight}
+          opacity={pressed ? 1 : 0}
+          animation={pressed ? { type: "easeOut", duration: 0.05 } : { type: "easeOut", duration: 0.35 }}
+        />
+        <KeyLabel spec={spec} size={size} fontSize={fontSize} color={palette.foreground} />
+      </ZStack>
+    </Button>
   );
 }
 

@@ -1,36 +1,34 @@
 // Search: recent searches and genres when the field is empty; artists,
 // albums and songs for a query (iTunes Search, debounced).
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Screen, List, Section, ScrollView, LazyVGrid, HStack, VStack, Text, Image, Button, ProgressView, Spacer, Divider,
-  useNavigation,
+  ContentUnavailable, useNavigation, useDebouncedValue,
 } from "swiftjsx";
 import { genres, searchSongs, type Track } from "./api";
 import { useLibrary } from "./library";
 import { playTracks } from "./player";
 import { RegisterNavigation } from "./router";
-import { Artwork, EmptyState, ErrorView, TrackRow } from "./ui";
+import { Artwork, ErrorView, TrackRow } from "./ui";
 import { AlbumScreen } from "./AlbumScreen";
 import { ArtistScreen } from "./ArtistScreen";
 import { NativeNotice } from "./NativeNotice";
 
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(timer);
-  }, [value, ms]);
-  return debounced;
-}
-
 export function SearchScreen() {
   const [text, setText] = useState("");
-  const term = useDebounced(text.trim(), 350);
+  const [term] = useDebouncedValue(text.trim(), 350);
   const showResults = text.trim() !== "";
+  const addSearch = useLibrary((s) => s.addSearch);
 
   return (
-    <Screen title="Search" searchText={text} onSearchTextChange={setText} searchPrompt="Artists, Songs, Albums">
+    <Screen
+      title="Search"
+      searchText={text}
+      onSearchTextChange={setText}
+      searchPrompt="Artists, Songs, Albums"
+      onSearchSubmit={addSearch}
+    >
       <RegisterNavigation tab="search" />
       {showResults ? <Results term={term} /> : <Browse onPick={setText} />}
     </Screen>
@@ -104,10 +102,10 @@ function Results({ term }: { term: string }) {
 
   if (isPending) return <ProgressView frame={{ maxWidth: "infinity", maxHeight: "infinity" }} />;
   if (isError) return <ErrorView message={error.message} retry={() => refetch()} />;
-  if (!data.length) return <EmptyState icon="magnifyingglass" title={`No results for “${term}”`} message="Check the spelling, or try a new search." />;
+  if (!data.length) return <ContentUnavailable search={term} />;
 
-  // There's no "search submitted" event, so a search counts as "recent" once
-  // the user picks something from its results.
+  // A search counts as "recent" when it's submitted, or when the user picks
+  // something from its results.
   const remember = () => addSearch(term);
   const artists = uniqueBy(data, (t) => t.artistId).slice(0, 3);
   const albums = uniqueBy(data, (t) => t.albumId).slice(0, 10);

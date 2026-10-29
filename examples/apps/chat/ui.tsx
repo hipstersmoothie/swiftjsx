@@ -1,24 +1,15 @@
-import { HStack, VStack, Text, type Color, type Font } from "swiftjsx";
+import { Avatar, HStack, VStack, Text, type Color } from "swiftjsx";
 import { useConnection } from "./socket";
 import { queuedMessages, useChat, type Contact } from "./store";
 
-export function Avatar({ contact, size }: { contact: Contact; size: 30 | 48 | 72 }) {
-  const initials = contact.name.split(" ").map((word) => word[0]).join("").slice(0, 2).toUpperCase();
-  // Fonts are named sizes only, so pick one per avatar size.
-  const font: Font = size === 30 ? "caption" : size === 48 ? "title3" : "title";
+export function ContactAvatar({ contact, size }: { contact: Contact; size: number }) {
   return (
-    <Text
-      font={font}
-      fontWeight="semibold"
-      fontDesign="rounded"
-      foregroundStyle="white"
-      frame={{ width: size, height: size }}
-      background={{ gradient: contact.colors, start: "topLeading", end: "bottomTrailing" }}
-      cornerRadius="capsule"
+    <Avatar
+      name={contact.name}
+      size={size}
+      color={{ gradient: contact.colors, start: "topLeading", end: "bottomTrailing" }}
       accessibilityHidden
-    >
-      {initials}
-    </Text>
+    />
   );
 }
 
@@ -33,7 +24,7 @@ export function NavTitle({ title, contact, typing }: { title: string; contact?: 
 
   return (
     <HStack spacing={8}>
-      {contact ? <Avatar contact={contact} size={30} /> : null}
+      {contact ? <ContactAvatar contact={contact} size={30} /> : null}
       <VStack spacing={1} alignment={contact ? "leading" : "center"}>
         <Text font="headline" lineLimit={1}>{title}</Text>
         <HStack spacing={4} accessibilityElement="combine" accessibilityIdentifier="connection-status">

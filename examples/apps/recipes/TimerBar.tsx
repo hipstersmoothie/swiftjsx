@@ -1,21 +1,21 @@
 // The running timers, docked to the bottom of every screen (and of cooking
 // mode) with <SafeAreaInset>: a horizontal strip of chips with a progress
-// ring, the time left, pause/resume and a menu.
+// ring, the time left (ticking natively: <Text date dateStyle="timer">),
+// pause/resume and a menu.
 //
 // The <SafeAreaInset> that holds this is always mounted; when there are no
 // timers this renders nothing. (Mounting/unmounting the attachment itself
 // rebuilds the view it's attached to, which would pop a navigation stack.)
 import {
-  VStack, HStack, ZStack, Text, Image, Button, Menu, Divider, Circle, ScrollView, Label, openURL,
+  VStack, HStack, Text, Image, Button, Menu, Divider, ScrollView, Label, ProgressRing, openURL, useNow,
 } from "swiftjsx";
-import { useTimers, useNow, secondsLeft, formatClock, type KitchenTimer } from "./timers";
+import { useTimers, secondsLeft, formatClock, type KitchenTimer } from "./timers";
 import { formatDuration } from "./steps";
 import { ACCENT } from "./ui";
 
 export function TimerBar({ dark }: { dark?: boolean }) {
   const timers = useTimers((s) => s.timers);
   const permission = useTimers((s) => s.permission);
-  const now = useNow(timers.length > 0);
   if (!timers.length) return null;
 
   return (
@@ -31,14 +31,16 @@ export function TimerBar({ dark }: { dark?: boolean }) {
       ) : null}
       <ScrollView axis="horizontal" showsIndicators={false} spacing={8} contentMargins={{ horizontal: 12 }}>
         {timers.map((timer) => (
-          <TimerChip key={timer.id} timer={timer} now={now} dark={dark} />
+          <TimerChip key={timer.id} timer={timer} dark={dark} />
         ))}
       </ScrollView>
     </VStack>
   );
 }
 
-function TimerChip({ timer, now, dark }: { timer: KitchenTimer; now: number; dark?: boolean }) {
+function TimerChip({ timer, dark }: { timer: KitchenTimer; dark?: boolean }) {
+  // Each second, for the ring and VoiceOver's value (the shown time ticks by itself).
+  const now = useNow("second");
   const pause = useTimers((s) => s.pause);
   const resume = useTimers((s) => s.resume);
   const addTime = useTimers((s) => s.addTime);
@@ -60,16 +62,23 @@ function TimerChip({ timer, now, dark }: { timer: KitchenTimer; now: number; dar
       accessibilityIdentifier={`timer-${timer.n}`}
       accessibilityElement="contain"
     >
-      <ZStack frame={{ width: 34, height: 34 }} accessibilityHidden>
-        <Circle stroke={done ? "white/30" : dark ? "white/15" : "systemGray5"} lineWidth={4} />
-        <Circle stroke={ring} lineWidth={4} trim={[0, progress]} rotation={-90} animation="linear" />
+      <ProgressRing
+        value={progress}
+        lineWidth={4}
+        lineCap="butt"
+        color={ring}
+        track={done ? "white/30" : dark ? "white/15" : "systemGray5"}
+        animation="linear"
+        frame={{ width: 34, height: 34 }}
+        accessibilityHidden
+      >
         <Image
           systemName={done ? "bell.fill" : timer.state === "paused" ? "pause.fill" : "timer"}
           font="caption2"
           foregroundStyle={done ? "white" : "secondary"}
           symbolEffect={{ type: "wiggle", active: done }}
         />
-      </ZStack>
+      </ProgressRing>
       <VStack
         alignment="leading"
         spacing={0}
@@ -81,7 +90,13 @@ function TimerChip({ timer, now, dark }: { timer: KitchenTimer; now: number; dar
           {timer.label} · {timer.recipeName}
         </Text>
         <Text font={{ size: 20, weight: "semibold", design: "rounded" }} monospacedDigit foregroundStyle={done ? "white" : "primary"}>
-          {done ? `Done ${formatClock(left)}` : formatClock(left)}
+          {done ? (
+            <>Done +<Text date={timer.doneAt ?? now} dateStyle="timer" /></>
+          ) : timer.state === "running" && timer.endsAt != null ? (
+            <Text date={timer.endsAt} dateStyle="timer" />
+          ) : (
+            formatClock(left)
+          )}
         </Text>
       </VStack>
       {done ? (

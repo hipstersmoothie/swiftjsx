@@ -5,11 +5,11 @@
 import { useState, type ReactElement } from "react";
 import {
   Navigator, useNavigation, withAnimation, Screen, List, Section, HStack, VStack, Text, Image, Button, Spacer,
-  ConfirmationDialog, type Color,
+  ConfirmationDialog, ContentUnavailable, type Color,
 } from "swiftjsx";
 import { signIn, signOut, useAccent, useColorScheme, useSettings } from "./store";
-import { initials, pronounsLabel } from "./profile";
-import { Avatar, Chevron, NavRow } from "./ui";
+import { pronounsLabel } from "./profile";
+import { Chevron, NavRow, ProfileAvatar } from "./ui";
 import { ProfileEditorSheet } from "./ProfileEditor";
 import { NotificationsScreen, notificationsSummary } from "./NotificationsScreen";
 import { AppearanceScreen, themeLabels } from "./AppearanceScreen";
@@ -78,10 +78,10 @@ function RootScreen() {
   const theme = useSettings((s) => s.appearance.theme);
   const categories = useCategories();
   const [search, setSearch] = useState("");
-  const [editor, setEditor] = useState({ open: false, key: 0 });
+  const [editing, setEditing] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
 
-  const openEditor = () => setEditor((e) => ({ open: true, key: e.key + 1 }));
+  const openEditor = () => setEditing(true);
   const go = (to: Destination | "profile") => (to === "profile" ? openEditor() : nav.push(screens[to]()));
 
   const values: Record<Destination, string> = {
@@ -118,11 +118,7 @@ function RootScreen() {
                 />
               ))
             ) : (
-              <VStack spacing={8} padding={{ vertical: 24 }} frame={{ maxWidth: "infinity" }}>
-                <Image systemName="magnifyingglass" font="largeTitle" foregroundStyle="tertiaryLabel" />
-                <Text font="headline">No Results for “{search.trim()}”</Text>
-                <Text font="subheadline" foregroundStyle="secondaryLabel">Check the spelling or try a new search.</Text>
-              </VStack>
+              <ContentUnavailable search={search.trim()} />
             )}
           </Section>
         </List>
@@ -138,7 +134,7 @@ function RootScreen() {
                 accessibilityHint="Edits your profile"
               >
                 <HStack spacing={14} padding={{ vertical: 4 }}>
-                  <Avatar initials={initials(profile.name)} size={60} />
+                  <ProfileAvatar name={profile.name} size={60} />
                   <VStack alignment="leading" spacing={3}>
                     <Text font="title3" fontWeight="semibold" foregroundStyle="label" lineLimit={1}>{profile.name || "Add Your Name"}</Text>
                     <Text font="subheadline" foregroundStyle="secondaryLabel" lineLimit={1}>{profile.email}</Text>
@@ -177,7 +173,7 @@ function RootScreen() {
         </List>
       )}
 
-      <ProfileEditorSheet isPresented={editor.open} formKey={editor.key} onClose={() => setEditor((e) => ({ ...e, open: false }))} />
+      <ProfileEditorSheet isPresented={editing} onClose={() => setEditing(false)} />
     </Screen>
   );
 }

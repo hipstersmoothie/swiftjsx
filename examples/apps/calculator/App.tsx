@@ -1,12 +1,12 @@
 // Calculator: an iOS-style calculator. Exact decimal arithmetic (BigInt),
 // immediate-execution chaining, a scientific mode with three extra columns,
-// keys sized from the measured screen (onLayout), press feedback on the main
-// thread (worklets), swipe the display to delete a digit, long-press it to
-// copy or paste, and a history sheet persisted in localStorage.
+// keys sized from the measured screen (onLayout), swipe the display to delete
+// a digit, long-press it to copy or paste, and a history sheet persisted in
+// localStorage.
 import { useEffect, useReducer, useRef, useState } from "react";
 import {
   Navigator, Screen, ToolbarItem, Button, Menu, Picker, Divider, VStack, Text, Image, Label, Spacer, Sheet, ContextMenu,
-  Overlay, withAnimation, haptic, type DragEvent,
+  Overlay, withAnimation, haptic, toast, type DragEvent,
 } from "swiftjsx";
 import {
   reduce, initialState, displayText, displayPlain, showsClearEntry, activeOp, maxDigits, decode,
@@ -82,7 +82,6 @@ function layoutFor({ width, height }: Size, scientific: boolean) {
 function CalculatorScreen() {
   const [state, dispatch] = useReducer(reduce, undefined, () => initialState(load()));
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [toast, setToast] = useState<{ text: string; id: number } | null>(null);
   // The space the calculator has (below the navigation bar), from onLayout.
   const [size, setSize] = useState<Size | null>(null);
   usePersisted(state);
@@ -96,19 +95,14 @@ function CalculatorScreen() {
   const op = activeOp(state);
   const activeKey = op === null ? null : op === "pow" ? "x^y" : op;
 
-  const show = (text: string) => {
-    const id = Date.now();
-    withAnimation("snappy", () => setToast({ text, id }));
-    setTimeout(() => withAnimation("easeOut", () => setToast((t) => (t?.id === id ? null : t))), 1400);
-  };
   const press = (spec: KeySpec) => dispatch(spec.action());
   const send = (action: Action) => dispatch(action);
 
   const copy = (text: string | null) => {
     if (text === null) return;
     copyText(text).then(
-      () => show(clipboardKind() === "system" ? "Copied" : "Copied (in app)"),
-      () => show("Couldn't copy"),
+      () => toast(clipboardKind() === "system" ? "Copied" : "Copied (in app)"),
+      () => toast("Couldn't copy"),
     );
   };
   const paste = () => {
@@ -116,9 +110,9 @@ function CalculatorScreen() {
       (text) => {
         const value = text ? parse(delocalize(text)) : null;
         if (value) send({ type: "recall", value });
-        else show(text ? "Not a number" : "Nothing to paste");
+        else toast(text ? "Not a number" : "Nothing to paste");
       },
-      () => show("Couldn't paste"),
+      () => toast("Couldn't paste"),
     );
   };
 
@@ -174,11 +168,10 @@ function CalculatorScreen() {
             angle={state.scientific ? state.angle : null}
             width={layout.padWidth}
             fontSize={layout.displayFont}
-            toast={toast?.text ?? null}
             onBackspace={() => {
-            haptic("selection");
-            send({ type: "backspace" });
-          }}
+              haptic("selection");
+              send({ type: "backspace" });
+            }}
             onCopy={() => copy(displayPlain(state))}
             onPaste={paste}
           />
@@ -221,14 +214,13 @@ type DisplayProps = {
   angle: "deg" | "rad" | null;
   width: number;
   fontSize: number;
-  toast: string | null;
   onBackspace(): void;
   onCopy(): void;
   onPaste(): void;
 };
 
 /** Swipe sideways to delete the last digit; long-press for Copy and Paste. */
-function Display({ text, expression, angle, width, fontSize, toast, onBackspace, onCopy, onPaste }: DisplayProps) {
+function Display({ text, expression, angle, width, fontSize, onBackspace, onCopy, onPaste }: DisplayProps) {
   // One digit per swipe: remember that this drag already deleted.
   const swiped = useRef(false);
   const onDrag = (e: DragEvent) => {
@@ -289,22 +281,6 @@ function Display({ text, expression, angle, width, fontSize, toast, onBackspace,
         {angle ? (
           <Text font="footnote" fontWeight="semibold" foregroundStyle="#8E8E93" padding={{ leading: 6, top: 6 }} accessibilityIdentifier="angle-mode">
             {angle === "deg" ? "Deg" : "Rad"}
-          </Text>
-        ) : null}
-      </Overlay>
-      <Overlay alignment="top">
-        {toast ? (
-          <Text
-            transition="opacity"
-            font="subheadline"
-            fontWeight="semibold"
-            foregroundStyle="white"
-            padding={{ horizontal: 14, vertical: 7 }}
-            background="#3A3A3C"
-            cornerRadius="capsule"
-            accessibilityIdentifier="toast"
-          >
-            {toast}
           </Text>
         ) : null}
       </Overlay>

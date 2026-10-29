@@ -7,8 +7,8 @@
 // Outside an app bundle there are no notifications; a notice says so.
 import { useEffect, useRef, useState } from "react";
 import {
-  VStack, HStack, ZStack, Text, Image, Button, ScrollView, Spacer, Capsule, Circle, Menu, Label, Section, Sheet,
-  SafeAreaInset, Flow, haptic, type HostInstance,
+  VStack, HStack, ZStack, Text, Image, Button, ScrollView, Spacer, Circle, Menu, Label, Section, Sheet,
+  SafeAreaInset, Flow, PageIndicator, haptic, type HostInstance,
 } from "swiftjsx";
 import { thumbSize, type Recipe } from "./api";
 import { findDurations, formatDuration, type Duration } from "./steps";
@@ -215,11 +215,8 @@ function Header({ recipe, page, pageCount, handsFree, onToggleHandsFree, speechA
           />
         ) : null}
       </HStack>
-      <HStack spacing={4} accessibilityHidden>
-        {Array.from({ length: pageCount - 1 }, (_, i) => (
-          <Capsule key={i} fill={i <= page ? ACCENT : "white/20"} frame={{ maxWidth: "infinity", height: 4 }} animation="smooth" />
-        ))}
-      </HStack>
+      {/* One segment per step, filled up to this one (the "Enjoy" page fills them all). */}
+      <PageIndicator count={pageCount - 1} page={page} style="segments" dotSize={4} tint={ACCENT} inactive="white/20" animation="smooth" accessibilityHidden />
     </VStack>
   );
 }

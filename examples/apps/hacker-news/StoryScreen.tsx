@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Screen, ToolbarItem, VirtualList, VStack, HStack, Text, Button, Image, ProgressView, Spacer, openURL,
 } from "swiftjsx";
-import { fetchItem, ago, domain, htmlToText, type Comment, type Story } from "./api";
+import { fetchItem, domain, htmlToText, comments, points, type Comment, type Story } from "./api";
 import { useSaved, useIsSaved } from "./saved";
 
 type Row = { kind: "header" } | { kind: "comment"; comment: Comment; depth: number; hidden: number };
@@ -65,7 +65,7 @@ function Header({ story, loading, error }: { story: Story; loading: boolean; err
     <VStack alignment="leading" spacing={10} padding={16}>
       <Text font="title3" fontWeight="semibold">{story.title}</Text>
       <Text font="footnote" foregroundStyle="secondary">
-        {story.points} points · {story.author} · {ago(story.createdAt)} · {story.comments} comments
+        {points(story.points)} · {story.author} · <Text date={story.createdAt} dateStyle="ago" /> · {comments(story.comments)}
       </Text>
       {story.text ? <Text font="callout">{htmlToText(story.text)}</Text> : null}
       {story.url ? (
@@ -90,7 +90,7 @@ function CommentRow({ comment, depth, hidden, onToggle }: { comment: Comment; de
       <VStack alignment="leading" spacing={4} onTapGesture={onToggle} accessibilityHint="Tap to collapse or expand">
         <HStack spacing={6}>
           <Text font="footnote" fontWeight="semibold">{comment.author}</Text>
-          <Text font="footnote" foregroundStyle="secondary">{ago(comment.createdAt)}</Text>
+          <Text date={comment.createdAt} dateStyle="ago" font="footnote" foregroundStyle="secondary" />
           <Spacer />
           {hidden ? <Text font="caption" foregroundStyle="secondary">+{hidden}</Text> : null}
         </HStack>

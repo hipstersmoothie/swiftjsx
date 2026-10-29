@@ -4,11 +4,10 @@
 // stays the same day across DST changes and when you travel, and day math
 // goes through date-fns (addDays, differenceInCalendarDays), never through
 // 86,400,000 ms (a DST day is 23 or 25 hours long).
-import { useSyncExternalStore } from "react";
 import {
-  addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, endOfWeek, isValid, startOfMonth,
-  startOfToday, startOfTomorrow, startOfWeek, type Day,
+  addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, isValid, startOfMonth, startOfToday, startOfWeek, type Day,
 } from "date-fns";
+import { format, useEnvironment, useToday } from "swiftjsx";
 
 /** A calendar day, "yyyy-MM-dd". */
 export type DayKey = string;
@@ -54,52 +53,24 @@ export const locale: string = (() => {
   }
 })();
 
-// Regions whose week starts on Sunday (CLDR), for engines without weekInfo.
-const SUNDAY_REGIONS = new Set([
-  "US", "CA", "MX", "BR", "JP", "KR", "TW", "HK", "MO", "CN", "IL", "IN", "PH", "TH", "ZA", "AU", "NZ", "SA", "AR", "CO",
-  "PE", "VE", "GT", "HN", "NI", "PA", "PR", "DO", "SV", "PY", "BO", "EC", "ID", "KE", "ET", "ZW", "BW", "PK", "BD", "NP",
-]);
-const SATURDAY_REGIONS = new Set(["AE", "AF", "BH", "DJ", "DZ", "EG", "IQ", "IR", "JO", "KW", "LY", "OM", "QA", "SD", "SY"]);
+/** The first day of the week (0 = Sunday), from the user's settings: pass it to the week helpers. */
+export const useWeekStartsOn = (): Day => useEnvironment().locale.weekStartsOn;
 
-/**
- * First day of the week for the locale, as date-fns counts (0 = Sunday).
- * Intl.Locale's week info (getWeekInfo(), or the older weekInfo getter) when
- * the engine has it, else CLDR's regions.
- */
-export const weekStartsOn: Day = (() => {
-  try {
-    const loc = new Intl.Locale(locale) as Intl.Locale & {
-      getWeekInfo?: () => { firstDay: number };
-      weekInfo?: { firstDay: number };
-      maximize(): Intl.Locale;
-    };
-    const info = loc.getWeekInfo?.() ?? loc.weekInfo;
-    // Intl counts 1 = Monday … 7 = Sunday.
-    if (info && info.firstDay >= 1 && info.firstDay <= 7) return (info.firstDay % 7) as Day;
-    const region = loc.region ?? loc.maximize().region ?? "US";
-    return SUNDAY_REGIONS.has(region) ? 0 : SATURDAY_REGIONS.has(region) ? 6 : 1;
-  } catch {
-    return 0;
-  }
-})();
-
-const weekOptions = { weekStartsOn };
-export const weekStart = (date: Date | number) => startOfWeek(date, weekOptions);
-export const weekEnd = (date: Date | number) => endOfWeek(date, weekOptions);
-export const weekStartKey = (key: DayKey) => dayKey(weekStart(parseDay(key)));
+export const weekStart = (date: Date | number, weekStartsOn: Day) => startOfWeek(date, { weekStartsOn });
+export const weekStartKey = (key: DayKey, weekStartsOn: Day) => dayKey(weekStart(parseDay(key), weekStartsOn));
 
 /** The 7 days of the week containing `key`, in locale order. */
-export function weekDays(key: DayKey): DayKey[] {
-  const start = weekStart(parseDay(key));
+export function weekDays(key: DayKey, weekStartsOn: Day): DayKey[] {
+  const start = weekStart(parseDay(key), weekStartsOn);
   return Array.from({ length: 7 }, (_, i) => dayKey(addDays(start, i)));
 }
 
 /** 0 = Sunday … 6 = Saturday, in the locale's order (Mon…Sun in Germany). */
-export const orderedWeekdays: number[] = Array.from({ length: 7 }, (_, i) => (weekStartsOn + i) % 7);
+export const orderedWeekdays = (weekStartsOn: Day): number[] => Array.from({ length: 7 }, (_, i) => (weekStartsOn + i) % 7);
 
 /** The month grid around `month`: always 6 rows of 7, so pages line up. */
-export function monthGrid(month: Date): DayKey[][] {
-  const first = weekStart(startOfMonth(month));
+export function monthGrid(month: Date, weekStartsOn: Day): DayKey[][] {
+  const first = weekStart(startOfMonth(month), weekStartsOn);
   return Array.from({ length: 6 }, (_, row) => Array.from({ length: 7 }, (_, col) => dayKey(addDays(first, row * 7 + col))));
 }
 
@@ -122,14 +93,12 @@ const monthYear = new Intl.DateTimeFormat(locale, { month: "long", year: "numeri
 const monthShort = new Intl.DateTimeFormat(locale, { month: "short" });
 const dayMonth = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" });
 const fullDay = new Intl.DateTimeFormat(locale, { weekday: "long", month: "long", day: "numeric" });
-const mediumDay = new Intl.DateTimeFormat(locale, { weekday: "short", month: "short", day: "numeric" });
 const time = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
 
 export const formatMonthYear = (date: Date) => monthYear.format(date);
 export const formatMonthShort = (date: Date) => monthShort.format(date);
 export const formatDayMonth = (key: DayKey) => dayMonth.format(parseDay(key));
 export const formatFullDay = (key: DayKey) => fullDay.format(parseDay(key));
-export const formatMediumDay = (key: DayKey) => mediumDay.format(parseDay(key));
 export const formatTime = (hour: number, minute: number) => time.format(new Date(2024, 0, 1, hour, minute));
 
 /** "Oct 6 – 12", or "Sep 29 – Oct 5" (Intl's range format, so it reads right in every locale). */
@@ -141,42 +110,10 @@ export function formatWeekRange(startKey: DayKey): string {
   return `${dayMonth.format(start)} – ${dayMonth.format(end)}`;
 }
 
-/** "Today", "Yesterday", or a weekday and date. */
-export function relativeDay(key: DayKey, today: DayKey): string {
-  const diff = daysBetween(key, today);
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Yesterday";
-  if (diff === -1) return "Tomorrow";
-  return formatMediumDay(key);
-}
+/** "Today", "Yesterday", a weekday within the past week, else "Oct 6". */
+export const relativeDay = (key: DayKey, today: DayKey) => format.relativeDay(parseDay(key), { now: +parseDay(today) });
 
 // MARK: Today, kept current
 
-// The snapshot is a string, so recomputing it on every read is fine. React
-// re-reads it just after midnight and when the app comes back to the
-// foreground (the time zone may have changed while it was away).
-function subscribe(onChange: () => void) {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const schedule = () => {
-    timer = setTimeout(() => {
-      onChange();
-      schedule();
-    }, startOfTomorrow().getTime() - Date.now() + 1000);
-  };
-  schedule();
-  const wake = () => {
-    clearTimeout(timer);
-    onChange();
-    schedule();
-  };
-  addEventListener("visibilitychange", wake);
-  addEventListener("focus", wake);
-  return () => {
-    clearTimeout(timer);
-    removeEventListener("visibilitychange", wake);
-    removeEventListener("focus", wake);
-  };
-}
-
-/** Today's day key, updated at midnight. */
-export const useToday = (): DayKey => useSyncExternalStore(subscribe, () => dayKey(Date.now()));
+/** Today's day key, updated at midnight (and when the time zone changes). */
+export const useTodayKey = (): DayKey => dayKey(useToday());

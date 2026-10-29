@@ -1,9 +1,8 @@
 // Statistics per board size (pushed screen; reads the store itself, since a
 // pushed screen keeps the props it was pushed with).
 import { useState, type ReactNode } from "react";
-import { Screen, List, Section, HStack, Text, Spacer, Button, Picker, ConfirmationDialog } from "swiftjsx";
+import { format, Screen, List, Section, HStack, Text, Spacer, Button, Picker, ConfirmationDialog } from "swiftjsx";
 import { useGame, BOARD_SIZES, type BoardSize } from "./store";
-import { formatTime } from "./ui";
 import { tileStyle } from "./theme";
 
 export function StatsScreen() {
@@ -11,7 +10,7 @@ export function StatsScreen() {
   const slot = useGame((s) => s.slots[s.size]);
   const [confirming, setConfirming] = useState(false);
   const { stats } = slot;
-  const winRate = stats.played > 0 ? Math.round((stats.won / stats.played) * 100) : 0;
+  const winRate = stats.played > 0 ? stats.won / stats.played : 0;
   const best = tileStyle(stats.bestTile);
 
   return (
@@ -30,7 +29,7 @@ export function StatsScreen() {
         <Section header={`${size} × ${size}`}>
           <Row label="Games played" id="stat-played">{stats.played}</Row>
           <Row label="Wins" id="stat-wins">{stats.won}</Row>
-          <Row label="Win rate" id="stat-win-rate">{`${winRate}%`}</Row>
+          <Row label="Win rate" id="stat-win-rate">{format.percent(winRate)}</Row>
           <Row label="Best score" id="stat-best-score">{stats.bestScore}</Row>
           <Row label="Highest tile" id="stat-best-tile">
             {stats.bestTile > 0 ? (
@@ -48,7 +47,7 @@ export function StatsScreen() {
             )}
           </Row>
           <Row label="Moves" id="stat-moves">{stats.totalMoves}</Row>
-          <Row label="Fastest 2048" id="stat-fastest">{stats.fastestWinMs == null ? "—" : formatTime(stats.fastestWinMs)}</Row>
+          <Row label="Fastest 2048" id="stat-fastest">{stats.fastestWinMs == null ? "—" : format.duration(Math.floor(stats.fastestWinMs / 1000))}</Row>
         </Section>
         <Section footer="Swipe on the board (or use the arrow buttons) to slide every tile. Two tiles with the same number merge into one. Reach 2048 to win.">
           <Button role="destructive" onPress={() => setConfirming(true)} accessibilityIdentifier="reset-stats">

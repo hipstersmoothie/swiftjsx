@@ -1,9 +1,9 @@
 // Metrics, time ranges, and turning days into chart series and summaries.
 import { addDays, addHours, addMinutes, format, isSameDay, startOfHour, startOfWeek, differenceInCalendarDays } from "date-fns";
-import type { CalendarUnit, Color } from "swiftjsx";
+import { format as fmt, type CalendarUnit, type Color } from "swiftjsx";
 import { getData, GOALS, STAGES, type Day, type Stage } from "./data";
 import { STAGE_COLORS, STAGE_NAMES } from "./theme";
-import { compact, dateRange, hoursMinutes, int, percentChange } from "./format";
+import { dateRange, hoursMinutes, int, percentChange } from "./format";
 
 export type Range = "D" | "W" | "M" | "6M";
 export const RANGES: { value: Range; label: string }[] = [
@@ -329,7 +329,7 @@ export function comparison(metric: Metric, range: Range): Comparison {
   const what =
     metric.id === "heart-rate" ? "resting heart rate" : metric.id === "sleep" ? "time asleep" : metric.id === "stand" ? "stand hours" : metric.title.toLowerCase();
   const plural = metric.id === "steps" || metric.id === "exercise" || metric.id === "stand";
-  const direction = Math.abs(change) < 2 ? "about the same as" : change > 0 ? `${Math.abs(change)}% higher than` : `${Math.abs(change)}% lower than`;
+  const direction = Math.abs(change) < 2 ? "about the same as" : change > 0 ? `${fmt.percent(Math.abs(change) / 100)} higher than` : `${fmt.percent(Math.abs(change) / 100)} lower than`;
   const period = range === "W" ? "this week" : `over the ${now.toLowerCase()}`;
   return {
     sentence:
@@ -414,8 +414,8 @@ export function stats(metric: Metric, range: Range): Stat[] {
   return [
     { title: "Best Day", value: `${metric.text(metric.daily(hi))} ${metric.unit}`, detail: when(hi), icon: "trophy.fill", color: "#FFD60A" },
     { title: "Lowest Day", value: `${metric.text(metric.daily(lo))} ${metric.unit}`, detail: when(lo), icon: "arrow.down.circle.fill", color: "gray" },
-    { title: "Goal Reached", value: `${reached} of ${days.length} days`, detail: `${compact(goal)} ${metric.unit} goal`, icon: "target", color: "#30D158" },
-    { title: "Total", value: `${compact(Math.round(sum(days.map(metric.daily))))} ${metric.unit}`, detail: `${days.length} days`, icon: "sum", color: metric.color },
+    { title: "Goal Reached", value: `${reached} of ${days.length} days`, detail: `${fmt.compact(goal)} ${metric.unit} goal`, icon: "target", color: "#30D158" },
+    { title: "Total", value: `${fmt.compact(Math.round(sum(days.map(metric.daily))))} ${metric.unit}`, detail: `${days.length} days`, icon: "sum", color: metric.color },
   ];
 }
 

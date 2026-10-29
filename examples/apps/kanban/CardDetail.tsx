@@ -1,15 +1,14 @@
 // The card sheet: edit everything about a card. Changes save as you type.
 import { useState } from "react";
-import { addDays, differenceInCalendarDays, format, startOfDay } from "date-fns";
+import { addDays, differenceInCalendarDays, format as formatDate, startOfDay } from "date-fns";
 import {
   Screen, ToolbarItem, Form, Section, TextField, Picker, Toggle, DatePicker, Button, HStack, Text, Image, ProgressView, Flow,
-  SwipeActions, ConfirmationDialog, Label, withAnimation, type Color,
+  SwipeActions, ConfirmationDialog, Label, withAnimation, useToday, format, type Color,
 } from "swiftjsx";
 import { activeColumns, dueLabel, members, type ChecklistItem } from "./model";
 import {
   addChecklistItem, deleteCard, moveCard, removeChecklistItem, setCardArchived, toggleLabel, updateCard, updateChecklistItem, useBoard,
 } from "./store";
-import { useToday } from "./today";
 
 type Props = { boardId: string; cardId: string; onClose(): void };
 
@@ -128,7 +127,7 @@ export function CardDetail({ boardId, cardId, onClose }: Props) {
           <NewChecklistItem onAdd={(text) => addChecklistItem(boardId, cardId, text)} />
         </Section>
 
-        <Section footer={`Created ${format(card.createdAt, "PPP 'at' p")}`}>
+        <Section footer={`Created ${formatDate(card.createdAt, "PPP 'at' p")}`}>
           {card.archived ? (
             <Button onPress={() => setCardArchived(boardId, cardId, false)} accessibilityIdentifier="restore-card">
               <Label title="Restore to Board" systemImage="tray.and.arrow.up" />
@@ -180,7 +179,7 @@ function DueDate({ due, today, onChange }: { due: number | null; today: number; 
           <Text>Due date</Text>
           {due !== null ? (
             <Text font="caption" foregroundStyle={label?.tone === "overdue" ? "red" : "secondary"}>
-              {days === 0 ? "today" : days > 0 ? `in ${days} day${days === 1 ? "" : "s"}` : `${-days} day${days === -1 ? "" : "s"} overdue`}
+              {days === 0 ? "today" : days > 0 ? format.count(days, { one: "in # day", other: "in # days" }) : format.count(-days, { one: "# day overdue", other: "# days overdue" })}
             </Text>
           ) : null}
         </HStack>

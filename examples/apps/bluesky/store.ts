@@ -1,10 +1,11 @@
 // In-memory app state shared across tabs: optimistic likes, reposts and
 // follows (overriding what the AppView said until the next fetch), and UI
-// that any screen can open (image viewer, composer, sign-in, toast).
+// that any screen can open (image viewer, composer, sign-in).
 import { create } from "zustand";
-import { hot, haptic, type Frame } from "swiftjsx";
+import { hot, haptic, toast, type Frame } from "swiftjsx";
 import * as api from "./api";
 import { useSession } from "./session";
+import { BRAND } from "./theme";
 import type { ImageView, PostView, ProfileViewBasic } from "./types";
 
 // MARK: Interactions
@@ -42,7 +43,7 @@ const makeInteractions = () =>
             await api.undo(like);
           } catch {
             patch(post.uri, { like, likeCount: count });
-            toast("Couldn't remove your like", "exclamationmark.triangle");
+            toast("Couldn't remove your like", { systemImage: "exclamationmark.triangle", tint: BRAND });
           }
         } else {
           haptic("light");
@@ -52,7 +53,7 @@ const makeInteractions = () =>
             patch(post.uri, { like: ref.uri });
           } catch {
             patch(post.uri, { like: null, likeCount: count });
-            toast("Couldn't like that post", "exclamationmark.triangle");
+            toast("Couldn't like that post", { systemImage: "exclamationmark.triangle", tint: BRAND });
           }
         }
       },
@@ -69,7 +70,7 @@ const makeInteractions = () =>
             await api.undo(repost);
           } catch {
             patch(post.uri, { repost, repostCount: count });
-            toast("Couldn't undo the repost", "exclamationmark.triangle");
+            toast("Couldn't undo the repost", { systemImage: "exclamationmark.triangle", tint: BRAND });
           }
         } else {
           haptic("medium");
@@ -77,10 +78,10 @@ const makeInteractions = () =>
           try {
             const ref = await api.repost({ uri: post.uri, cid: post.cid });
             patch(post.uri, { repost: ref.uri });
-            toast("Reposted", "arrow.2.squarepath");
+            toast("Reposted", { systemImage: "arrow.2.squarepath", tint: BRAND });
           } catch {
             patch(post.uri, { repost: null, repostCount: count });
-            toast("Couldn't repost", "exclamationmark.triangle");
+            toast("Couldn't repost", { systemImage: "exclamationmark.triangle", tint: BRAND });
           }
         }
       },
@@ -97,7 +98,7 @@ const makeInteractions = () =>
             await api.undo(following);
           } catch {
             setFollow(following);
-            toast("Couldn't unfollow", "exclamationmark.triangle");
+            toast("Couldn't unfollow", { systemImage: "exclamationmark.triangle", tint: BRAND });
           }
         } else {
           haptic("success");
@@ -107,7 +108,7 @@ const makeInteractions = () =>
             setFollow(ref.uri);
           } catch {
             setFollow(null);
-            toast("Couldn't follow", "exclamationmark.triangle");
+            toast("Couldn't follow", { systemImage: "exclamationmark.triangle", tint: BRAND });
           }
         }
       },
@@ -150,7 +151,6 @@ type UI = {
   tab: TabName;
   compose: ComposeTarget | undefined;
   signIn: string | null;
-  toast: { id: number; text: string; icon: string } | null;
   openImages(images: ImageView[], index: number, origin?: Frame | null, radius?: Corners): void;
   setDrawerOpen(open: boolean): void;
   setDrawerPeek(peek: boolean): void;
@@ -160,11 +160,10 @@ type UI = {
   closeCompose(): void;
   openSignIn(reason?: string): void;
   closeSignIn(): void;
-  showToast(text: string, icon: string): void;
 };
 
 const makeUI = () =>
-  create<UI>()((set, get) => ({
+  create<UI>()((set) => ({
     viewer: null,
     drawerOpen: false,
     drawerPeek: false,
@@ -184,18 +183,9 @@ const makeUI = () =>
     closeCompose: () => set({ compose: undefined }),
     openSignIn: (reason = "") => set({ signIn: reason }),
     closeSignIn: () => set({ signIn: null }),
-    showToast: (text, icon) => {
-      const id = (get().toast?.id ?? 0) + 1;
-      set({ toast: { id, text, icon } });
-      setTimeout(() => {
-        if (get().toast?.id === id) set({ toast: null });
-      }, 2200);
-    },
   }));
 
 export const useUI: ReturnType<typeof makeUI> = (hot.data.blueskyUI ??= makeUI());
-
-export const toast = (text: string, icon: string) => useUI.getState().showToast(text, icon);
 
 /** True when signed in; otherwise asks the user to sign in (to `reason`) and returns false. */
 export function requireSignIn(reason: string): boolean {

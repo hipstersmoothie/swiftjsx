@@ -6,7 +6,7 @@ import { useChat, type Contact } from "./store";
 import { sendMessage } from "./socket";
 import { groupByDay, endsCluster } from "./format";
 import { DayHeader, MessageBubble, TypingBubble } from "./MessageBubble";
-import { Avatar, NavTitle } from "./ui";
+import { ContactAvatar, NavTitle } from "./ui";
 
 export function ConversationScreen({ contactId }: { contactId: string }) {
   const { contact, messages, unread } = useChat((s) => s.conversations[contactId]);
@@ -34,7 +34,7 @@ export function ConversationScreen({ contactId }: { contactId: string }) {
       <ScrollView
         ref={scroller}
         frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-        onAppear={() => scroller.current?.scrollTo("end", { animated: false })}
+        defaultScrollAnchor="bottom"
         onTapGesture={() => input.current?.blur()}
       >
         {messages.length === 0 && !typing ? <EmptyConversation contact={contact} /> : null}
@@ -99,10 +99,11 @@ function Composer({ input, onSend, onFocus }: { input: RefObject<HostInstance | 
   );
 }
 
+// Not a ContentUnavailable: it shows the contact's avatar, and that only takes a symbol.
 function EmptyConversation({ contact }: { contact: Contact }) {
   return (
     <VStack spacing={8} padding={{ top: 80 }} frame={{ maxWidth: "infinity" }}>
-      <Avatar contact={contact} size={72} />
+      <ContactAvatar contact={contact} size={72} />
       <Text font="title3" fontWeight="semibold">{contact.name}</Text>
       <Text font="subheadline" foregroundStyle="secondary">No messages yet. Say hi 👋</Text>
     </VStack>

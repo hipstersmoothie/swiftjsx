@@ -45,9 +45,6 @@ export function conditionSymbol(code: number, isDay = true) {
   return isDay ? condition.day : condition.night;
 }
 
-/** SwiftJSX has no multicolor symbols, so color the sun the way iOS does and leave the rest white. */
-export const symbolColor = (symbol: string): Color => (symbol === "sun.max.fill" ? "yellow" : "white");
-
 const gradients: Record<Kind, { day: Color[]; night: Color[] }> = {
   clear: { day: ["#2f6fc4", "#6aa8e8"], night: ["#0b1026", "#2b3a67"] },
   cloudy: { day: ["#56718f", "#8fa5bb"], night: ["#1c2533", "#424f62"] },

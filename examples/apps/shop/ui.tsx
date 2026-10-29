@@ -1,23 +1,24 @@
-// Building blocks shared by the screens: price tags, stars, badges, chips,
-// the heart button, product cards and the cart button with its badge.
+// Building blocks shared by the screens: price tags, stars, badges, the heart
+// button, product cards and the cart button with its badge.
 import { createContext, useContext, type ReactNode, type Ref } from "react";
 import {
   useNavigation,
   haptic,
   VStack,
   HStack,
-  ZStack,
   Text,
   Image,
   Button,
-  Spacer,
   ProgressView,
   Overlay,
   ContextMenu,
   Label,
   LazyVGrid,
   LabeledContent,
+  LabeledContentLabel,
   RoundedRectangle,
+  ContentUnavailable,
+  Badge,
   type Color,
   type HostInstance,
 } from "swiftjsx";
@@ -120,51 +121,6 @@ export function StockBadge({ stock }: { stock: number }) {
         {level.label}
       </Text>
     </HStack>
-  );
-}
-
-// MARK: Chips
-
-export function Chip({
-  label,
-  selected,
-  onPress,
-  icon,
-  disabled,
-  identifier,
-  chipRef,
-}: {
-  label: string;
-  selected: boolean;
-  onPress(): void;
-  icon?: string;
-  disabled?: boolean;
-  identifier?: string;
-  chipRef?: Ref<HostInstance>;
-}) {
-  return (
-    <Button
-      ref={chipRef}
-      onPress={onPress}
-      disabled={disabled}
-      pressedScale={0.94}
-      accessibilityIdentifier={identifier}
-      accessibilityTraits={selected ? ["button", "selected"] : "button"}
-    >
-      <HStack
-        spacing={5}
-        padding={{ horizontal: 14, vertical: 8 }}
-        background={selected ? ACCENT : "secondarySystemFill"}
-        cornerRadius="capsule"
-        opacity={disabled ? 0.4 : 1}
-        animation="snappy"
-      >
-        {icon ? <Image systemName={icon} font="footnote" foregroundStyle={selected ? "white" : "label"} /> : null}
-        <Text font="subheadline" fontWeight={selected ? "semibold" : "regular"} foregroundStyle={selected ? "white" : "label"} lineLimit={1}>
-          {label}
-        </Text>
-      </HStack>
-    </Button>
   );
 }
 
@@ -302,19 +258,7 @@ export function CartButton({ buttonRef, bounce }: { buttonRef?: Ref<HostInstance
       >
         {count ? (
           <Overlay alignment="topTrailing">
-            <Text
-              font={{ size: 11, weight: "bold" }}
-              monospacedDigit
-              foregroundStyle="white"
-              padding={{ horizontal: 5, vertical: 1 }}
-              frame={{ minWidth: 17 }}
-              background="red"
-              cornerRadius="capsule"
-              animation="bouncy"
-              accessibilityIdentifier="cart-badge"
-            >
-              {count > 99 ? "99+" : String(count)}
-            </Text>
+            <Badge value={count} animation="bouncy" accessibilityIdentifier="cart-badge" />
           </Overlay>
         ) : null}
       </Image>
@@ -337,31 +281,11 @@ export function Loading({ label }: { label?: string }) {
   );
 }
 
-export function EmptyState({ icon, title, message, children }: { icon: string; title: string; message?: string; children?: ReactNode }) {
-  return (
-    <VStack spacing={12} padding={{ horizontal: 32, vertical: 48 }} frame={{ maxWidth: "infinity" }}>
-      <ZStack>
-        <Image systemName="circle.fill" font={{ size: 96 }} foregroundStyle={`${ACCENT}/10` as Color} />
-        <Image systemName={icon} font={{ size: 40, weight: "medium" }} foregroundStyle={ACCENT} symbolRenderingMode="hierarchical" />
-      </ZStack>
-      <Text font="title3" fontWeight="semibold" textAlignment="center">
-        {title}
-      </Text>
-      {message ? (
-        <Text font="subheadline" foregroundStyle="secondaryLabel" textAlignment="center">
-          {message}
-        </Text>
-      ) : null}
-      {children}
-    </VStack>
-  );
-}
-
 export function ErrorState({ message, retry }: { message: string; retry(): void }) {
   return (
-    <EmptyState icon="wifi.exclamationmark" title="Couldn't load the store" message={message}>
+    <ContentUnavailable systemImage="wifi.exclamationmark" title="Couldn't load the store" description={message}>
       <Button title="Try Again" buttonStyle="borderedProminent" tint={ACCENT} onPress={retry} />
-    </EmptyState>
+    </ContentUnavailable>
   );
 }
 
@@ -379,24 +303,22 @@ export function SummaryRow({
   color?: Color;
   identifier?: string;
 }) {
-  if (!emphasis) {
-    return (
-      <LabeledContent label={title} font="subheadline" accessibilityIdentifier={identifier}>
-        <Text foregroundStyle={color ?? "label"} monospacedDigit animation="snappy">
-          {value}
-        </Text>
-      </LabeledContent>
-    );
-  }
-  // LabeledContent's label is a plain string: the total's bigger type needs a hand-built row.
   return (
-    <HStack accessibilityElement="combine" accessibilityIdentifier={identifier}>
-      <Text font="headline">{title}</Text>
-      <Spacer />
-      <Text font={{ size: 20, weight: "bold", design: "rounded" }} foregroundStyle={color ?? "label"} monospacedDigit animation="snappy">
+    <LabeledContent label={emphasis ? undefined : title} font="subheadline" accessibilityIdentifier={identifier}>
+      {emphasis ? (
+        <LabeledContentLabel>
+          <Text font="headline">{title}</Text>
+        </LabeledContentLabel>
+      ) : null}
+      <Text
+        font={emphasis ? { size: 20, weight: "bold", design: "rounded" } : undefined}
+        foregroundStyle={color ?? "label"}
+        monospacedDigit
+        animation="snappy"
+      >
         {value}
       </Text>
-    </HStack>
+    </LabeledContent>
   );
 }
 

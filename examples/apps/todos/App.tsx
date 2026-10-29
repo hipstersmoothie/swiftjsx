@@ -2,12 +2,11 @@
 // menus, due dates, and everything persisted with zustand + localStorage.
 import { useState } from "react";
 import {
-  Navigator, useNavigation, withAnimation, Screen, ToolbarItem, List, Section, HStack, Text, Image, Label, Button, Spacer,
-  SwipeActions, Alert, type Color,
+  Navigator, useNavigation, useToday, format, withAnimation, Screen, ToolbarItem, List, Section, HStack, Text, Image, IconTile, Label,
+  Button, Spacer, SwipeActions, Alert, ContentUnavailable, type Color,
 } from "swiftjsx";
 import { useTodos, deleteList, inScope, matchesSearch, smartLists, sortTodos, INBOX, type Scope, type TodoList } from "./store";
-import { useToday } from "./dates";
-import { TodosScreen, EmptyState } from "./TodosScreen";
+import { TodosScreen } from "./TodosScreen";
 import { TodoRow } from "./TodoRow";
 import { NewListSheet } from "./NewListSheet";
 
@@ -26,7 +25,7 @@ function HomeScreen() {
   const todos = useTodos((s) => s.todos);
   const [search, setSearch] = useState("");
   const [scope, setScope] = useState<SearchScope>("all");
-  const [newList, setNewList] = useState({ open: false, key: 0 });
+  const [addingList, setAddingList] = useState(false);
   // The alert keeps showing the list's name while it animates away, so the
   // list and the "presented" flag are separate state.
   const [deleting, setDeleting] = useState<TodoList | null>(null);
@@ -50,7 +49,7 @@ function HomeScreen() {
       onSearchActiveChange={(active) => !active && setScope("all")}
     >
       <ToolbarItem placement="primaryAction">
-        <Button onPress={() => setNewList((n) => ({ open: true, key: n.key + 1 }))} accessibilityLabel="Add list">
+        <Button onPress={() => setAddingList(true)} accessibilityLabel="Add list">
           <Image systemName="folder.badge.plus" />
         </Button>
       </ToolbarItem>
@@ -97,12 +96,12 @@ function HomeScreen() {
         </List>
       )}
 
-      <NewListSheet isPresented={newList.open} formKey={newList.key} onClose={() => setNewList((n) => ({ ...n, open: false }))} />
+      <NewListSheet isPresented={addingList} onClose={() => setAddingList(false)} />
       <Alert
         isPresented={confirmingDelete}
         onDismiss={() => setConfirmingDelete(false)}
         title={`Delete “${deleting?.name}”?`}
-        message={deletingCount ? `This also deletes its ${deletingCount} ${deletingCount === 1 ? "todo" : "todos"}.` : undefined}
+        message={deletingCount ? `This also deletes its ${format.count(deletingCount, { one: "# todo", other: "# todos" })}.` : undefined}
       >
         <Button title="Delete" role="destructive" onPress={() => deleting && withAnimation("snappy", () => deleteList(deleting.id))} />
         <Button title="Cancel" role="cancel" onPress={() => {}} />
@@ -122,15 +121,7 @@ function ListRow({ name, icon, color, count, onPress, onDelete }: {
   return (
     <Button onPress={onPress} accessibilityLabel={name} accessibilityValue={`${count} remaining`} accessibilityIdentifier="list-row">
       <HStack spacing={12}>
-        <Image
-          systemName={icon}
-          font="subheadline"
-          fontWeight="semibold"
-          foregroundStyle="white"
-          frame={{ width: 30, height: 30 }}
-          background={color}
-          cornerRadius={15}
-        />
+        <IconTile systemImage={icon} color={color} size={30} shape="circle" font="subheadline" fontWeight="semibold" />
         <Text foregroundStyle="primary">{name}</Text>
         <Spacer />
         <Text foregroundStyle="secondary" monospacedDigit animation="snappy">{count}</Text>
@@ -181,7 +172,7 @@ function SearchResults({ query, scope, today }: { query: string; scope: SearchSc
         ))
       ) : (
         <Section>
-          <EmptyState icon="magnifyingglass" title="No Results" message={`Nothing matches “${query}”.`} />
+          <ContentUnavailable search={query} />
         </Section>
       )}
     </List>

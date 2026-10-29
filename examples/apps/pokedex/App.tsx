@@ -3,11 +3,10 @@
 // favorites in localStorage (context menu, toolbar filter).
 import { useState } from "react";
 import { QueryClient, QueryClientProvider, useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Navigator, Screen, ToolbarItem, Button, Image, Text, ProgressView } from "swiftjsx";
+import { Navigator, Screen, ToolbarItem, Button, Image, Text, ProgressView, VStack, ContentUnavailable, format } from "swiftjsx";
 import { fetchPage, indexQuery, searchEntries, PAGE_SIZE } from "./api";
 import { useFavorites } from "./favorites";
 import { PokemonGrid } from "./PokemonGrid";
-import { Loading, ErrorView, EmptyState } from "./States";
 
 // Pokémon don't change: fetch each thing once per launch.
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: 1 } } });
@@ -65,7 +64,13 @@ function AllPokemon() {
 
   if (query.isPending) return <Loading label="Loading Pokédex…" />;
   // Not isError: a failed next page is an error too, but keeps the pages we have.
-  if (query.isLoadingError) return <ErrorView message={query.error.message} retry={() => query.refetch()} />;
+  if (query.isLoadingError) {
+    return (
+      <ContentUnavailable systemImage="wifi.exclamationmark" title="Couldn’t Load Pokémon" description={query.error.message}>
+        <Button title="Try Again" buttonStyle="bordered" onPress={() => query.refetch()} />
+      </ContentUnavailable>
+    );
+  }
 
   const entries = query.data.pages.flatMap((page) => page.entries);
   const footer = query.isFetchNextPageError ? (
@@ -73,7 +78,7 @@ function AllPokemon() {
   ) : query.hasNextPage ? (
     <ProgressView />
   ) : (
-    <Text font="footnote" foregroundStyle="secondary">{query.data.pages[0].count.toLocaleString()} Pokémon</Text>
+    <Text font="footnote" foregroundStyle="secondary">{format.count(query.data.pages[0].count, { other: "# Pokémon" })}</Text>
   );
 
   return (
@@ -91,17 +96,21 @@ function SearchResults({ term }: { term: string }) {
   const [limit, setLimit] = useState(PAGE_SIZE);
 
   if (index.isPending) return <Loading label="Loading Pokémon names…" />;
-  if (index.isError) return <ErrorView message={index.error.message} retry={() => index.refetch()} />;
+  if (index.isError) {
+    return (
+      <ContentUnavailable systemImage="wifi.exclamationmark" title="Couldn’t Load Pokémon" description={index.error.message}>
+        <Button title="Try Again" buttonStyle="bordered" onPress={() => index.refetch()} />
+      </ContentUnavailable>
+    );
+  }
 
   const matches = searchEntries(index.data, term);
-  if (!matches.length) {
-    return <EmptyState icon="magnifyingglass" title="No Pokémon found" message={`Nothing matches “${term}”. Try a name or a number.`} />;
-  }
+  if (!matches.length) return <ContentUnavailable search={term} />;
   return (
     <PokemonGrid
       entries={matches.slice(0, limit)}
       onEndReached={() => setLimit((l) => l + PAGE_SIZE)}
-      footer={<Text font="footnote" foregroundStyle="secondary">{matches.length === 1 ? "1 match" : `${matches.length} matches`}</Text>}
+      footer={<Text font="footnote" foregroundStyle="secondary">{format.count(matches.length, { one: "# match", other: "# matches" })}</Text>}
     />
   );
 }
@@ -111,10 +120,19 @@ function FavoritesGrid({ term }: { term: string }) {
   const shown = term ? searchEntries(favorites, term) : favorites;
 
   if (!favorites.length) {
-    return <EmptyState icon="heart" title="No favorites yet" message="Tap the heart on a Pokémon, or touch and hold its card." />;
+    return <ContentUnavailable systemImage="heart" title="No Favorites Yet" description="Tap the heart on a Pokémon, or touch and hold its card." />;
   }
-  if (!shown.length) {
-    return <EmptyState icon="magnifyingglass" title="No favorites found" message={`None of your favorites match “${term}”.`} />;
-  }
+  if (!shown.length) return <ContentUnavailable search={term} />;
   return <PokemonGrid entries={shown} />;
+}
+
+// ContentUnavailable has no spinner, and ProgressView's `label` only shows on
+// determinate bars, so a spinner gets a Text.
+function Loading({ label }: { label: string }) {
+  return (
+    <VStack spacing={10} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
+      <ProgressView />
+      <Text font="footnote" foregroundStyle="secondary">{label}</Text>
+    </VStack>
+  );
 }

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
+import { format as kitFormat } from "swiftjsx";
 import { useSettings } from "./store";
 
 /** Formats °C from the API in the unit the user picked. */
@@ -11,7 +11,10 @@ export function useTemperature() {
 /** Formats km/h from the API; mph alongside °F, like the system Weather app. */
 export function useWindSpeed() {
   const unit = useSettings((s) => s.unit);
-  return (kmh: number) => (unit === "fahrenheit" ? `${Math.round(kmh / 1.609)} mph` : `${Math.round(kmh)} km/h`);
+  return (kmh: number) =>
+    unit === "fahrenheit"
+      ? kitFormat.number(kmh / 1.609, { style: "unit", unit: "mile-per-hour", maximumFractionDigits: 0 })
+      : kitFormat.number(kmh, { style: "unit", unit: "kilometer-per-hour", maximumFractionDigits: 0 });
 }
 
 // Open-Meteo's times are the city's wall clock without an offset, so parseISO
@@ -24,24 +27,4 @@ export const weekday = (date: string) => format(parseISO(date), "EEE");
 export function cityClock(now: number, utcOffsetSeconds: number) {
   const deviceOffset = new Date(now).getTimezoneOffset() * 60_000;
   return format(new Date(now + deviceOffset + utcOffsetSeconds * 1000), "h:mm a");
-}
-
-/** `Date.now()`, updated every minute. */
-export function useNow() {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
-/** `value`, once it has stopped changing for `delay` ms. */
-export function useDebounced<T>(value: T, delay: number) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced;
 }

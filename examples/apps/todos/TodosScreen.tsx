@@ -1,10 +1,9 @@
 import { useRef, useState } from "react";
 import {
-  withAnimation, Screen, ToolbarItem, List, Section, Picker, HStack, VStack, Text, Image, TextField, Button,
-  ConfirmationDialog, type Color, type HostInstance,
+  useToday, format, withAnimation, Screen, ToolbarItem, List, Section, Picker, HStack, Image, TextField, Button,
+  ConfirmationDialog, ContentUnavailable, type Color, type HostInstance,
 } from "swiftjsx";
 import { useTodos, addTodo, deleteTodos, inScope, matchesSearch, scopeName, smartLists, sortTodos, type Scope } from "./store";
-import { useToday } from "./dates";
 import { TodoRow } from "./TodoRow";
 
 type Filter = "all" | "active" | "done";
@@ -39,7 +38,7 @@ export function TodosScreen({ scope }: { scope: Scope }) {
           <ConfirmationDialog
             isPresented={confirmingClear}
             onDismiss={() => setConfirmingClear(false)}
-            title={`Delete ${completed.length} completed ${completed.length === 1 ? "todo" : "todos"}?`}
+            title={`Delete ${format.count(completed.length, { one: "# completed todo", other: "# completed todos" })}?`}
           >
             <Button title="Clear Completed" role="destructive" onPress={clearCompleted} />
             <Button title="Cancel" role="cancel" onPress={() => {}} />
@@ -60,13 +59,13 @@ export function TodosScreen({ scope }: { scope: Scope }) {
         {visible.length ? null : (
           <Section>
             {query ? (
-              <EmptyState icon="magnifyingglass" title="No Results" message={`Nothing matches “${search.trim()}”.`} />
+              <ContentUnavailable search={search.trim()} transition="opacity" />
             ) : !scoped.length ? (
-              <EmptyState icon="checklist" title="No Todos" message="Add one above to get started." />
+              <ContentUnavailable systemImage="checklist" title="No Todos" description="Add one above to get started." transition="opacity" />
             ) : filter === "active" ? (
-              <EmptyState icon="checkmark.circle" title="All Done" message="Nothing left to do here. Nice work." />
+              <ContentUnavailable systemImage="checkmark.circle" title="All Done" description="Nothing left to do here. Nice work." transition="opacity" />
             ) : (
-              <EmptyState icon="circle.dashed" title="Nothing Completed" message="Todos you finish show up here." />
+              <ContentUnavailable systemImage="circle.dashed" title="Nothing Completed" description="Todos you finish show up here." transition="opacity" />
             )}
           </Section>
         )}
@@ -106,12 +105,3 @@ function NewTodoField({ scope, today, color }: { scope: Scope; today: number; co
   );
 }
 
-export function EmptyState({ icon, title, message }: { icon: string; title: string; message: string }) {
-  return (
-    <VStack spacing={8} padding={{ vertical: 24 }} frame={{ maxWidth: "infinity" }} transition="opacity" accessibilityElement="combine">
-      <Image systemName={icon} font="largeTitle" foregroundStyle="secondary" />
-      <Text font="headline">{title}</Text>
-      <Text font="subheadline" foregroundStyle="secondary" textAlignment="center">{message}</Text>
-    </VStack>
-  );
-}

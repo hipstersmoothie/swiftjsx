@@ -1,8 +1,8 @@
 // The queue: what's playing, what's next (swipe to remove), what played.
-import { Screen, ToolbarItem, List, Section, Button, Label, SwipeActions, HStack, VStack, Text, Spacer } from "swiftjsx";
+import { Screen, ToolbarItem, List, Section, Button, Label, SwipeActions, HStack, VStack, Text, Spacer, ContentUnavailable } from "swiftjsx";
 import { clearUpcoming, cycleRepeat, jumpTo, removeFromQueue, shuffleUpcoming, usePlayer } from "./player";
 import { RegisterNavigation, useRouter } from "./router";
-import { EmptyState, TrackRow } from "./ui";
+import { TrackRow } from "./ui";
 
 export function QueueScreen() {
   const queue = usePlayer((s) => s.queue);
@@ -20,7 +20,7 @@ export function QueueScreen() {
         </ToolbarItem>
       ) : null}
       {index < 0 ? (
-        <EmptyState icon="list.bullet" title="Nothing Queued" message="Play something from Search or your Library, then long-press songs to add them here." />
+        <ContentUnavailable systemImage="list.bullet" title="Nothing Queued" description="Play something from Search or your Library, then long-press songs to add them here." />
       ) : (
         <QueueList />
       )}

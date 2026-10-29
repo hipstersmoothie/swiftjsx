@@ -2,8 +2,7 @@
 // relative to today on first launch (so the sample always looks current).
 // Streaky on purpose: a good day makes the next one likelier, weekends are
 // weaker, and there's a two-week slump about six weeks ago.
-import { getDay } from "date-fns";
-// weekStartKey follows the locale, so "this week" matches the week strip.
+import { getDay, type Day } from "date-fns";
 import { addDayKeys, dayKey, dayRange, parseDay, weekStartKey, type DayKey } from "./dates";
 import type { Habit, Logs, State } from "./store";
 
@@ -19,7 +18,8 @@ function random(seed: number) {
   };
 }
 
-export function seed(): State {
+/** `weekStartsOn` (the locale's, so "this week" matches the week strip) shapes the workouts. */
+export function seed(weekStartsOn: Day): State {
   const today = dayKey(Date.now());
   const ago = (n: number) => addDayKeys(today, -n);
   const slump = (day: DayKey) => day >= ago(48) && day <= ago(36);
@@ -67,13 +67,13 @@ export function seed(): State {
   // Workouts: 2–4 sessions most weeks (never more than 5), on random days.
   const perWeek: Record<DayKey, number> = {};
   for (const day of dayRange(habits[2].createdAt, ago(1))) {
-    const week = weekStartKey(day);
+    const week = weekStartKey(day, weekStartsOn);
     if ((perWeek[week] ?? 0) >= 5 || rand() >= (slump(day) ? 0.15 : 0.47)) continue;
     perWeek[week] = (perWeek[week] ?? 0) + 1;
     logs.workout[day] = 1;
   }
   // One done already this week, unless the week started today.
-  const thisWeek = weekStartKey(today);
+  const thisWeek = weekStartKey(today, weekStartsOn);
   if (thisWeek < today) logs.workout[thisWeek] = 1;
 
   // Meditation: weekday mornings, very regular lately.

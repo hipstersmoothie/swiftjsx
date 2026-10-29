@@ -3,13 +3,13 @@
 import { useState } from "react";
 import {
   Screen, ScrollView, VStack, HStack, LazyVGrid, Text, Picker, ProgressView, RoundedRectangle, Circle, Spacer, Divider,
-  withAnimation, haptic,
+  withAnimation, haptic, format,
 } from "swiftjsx";
 import { METRICS, RANGES, series, headline, selectionHeadline, comparison, stats, stageBreakdown, type MetricId, type Range, type ChartData, type Metric } from "./model";
 import { Chart, Legend } from "./Chart";
 import { Card, ChangeBadge, SectionTitle, StatTile, ValueText } from "./ui";
 import { STAGE_COLORS, STAGE_NAMES } from "./theme";
-import { compact, hoursMinutes } from "./format";
+import { hoursMinutes } from "./format";
 
 export function MetricScreen({ metricId }: { metricId: MetricId }) {
   const metric = METRICS[metricId];
@@ -89,7 +89,7 @@ function ChartLegend({ metricId, data }: { metricId: MetricId; data: ChartData }
   if (metricId === "heart-rate") {
     return <Legend items={[{ name: "Range", color: "#FF375F60" }, { name: "Average", color: data.color }]} />;
   }
-  if (data.goal !== undefined) return <Legend items={[{ name: `Goal ${compact(data.goal)}`, color: "secondaryLabel" }]} />;
+  if (data.goal !== undefined) return <Legend items={[{ name: `Goal ${format.compact(data.goal)}`, color: "secondaryLabel" }]} />;
   return null;
 }
 

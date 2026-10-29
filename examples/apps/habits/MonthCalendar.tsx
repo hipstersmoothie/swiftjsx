@@ -2,14 +2,15 @@
 // TabView) or use the chevrons. Days are colored by completion, today is
 // outlined, future days are dimmed; tap a past day to fix its check-in.
 import { useState } from "react";
-import { addMonths, differenceInCalendarMonths, startOfMonth } from "date-fns";
+import { addMonths, differenceInCalendarMonths, startOfMonth, type Day } from "date-fns";
 import {
-  withAnimation, haptic, TabView, Tab, VStack, HStack, ZStack, Grid, GridRow, Text, Button, Image, Circle, Spacer,
+  withAnimation, haptic, TabView, Tab, VStack, HStack, ZStack, Grid, GridRow, Text, Button, Image, Circle, Spacer, type Color,
 } from "swiftjsx";
 import { setCount, useHabits, countOn, type Habit, type Logs } from "./store";
-import { formatFullDay, formatMonthYear, isInMonth, monthGrid, orderedWeekdays, parseDay, weekdayName, type DayKey } from "./dates";
+import {
+  formatFullDay, formatMonthYear, isInMonth, monthGrid, orderedWeekdays, parseDay, useWeekStartsOn, weekdayName, type DayKey,
+} from "./dates";
 import { dayStatus, type DayStatus } from "./stats";
-import { withAlpha } from "./theme";
 import { Card } from "./ui";
 
 const CELL = 38;
@@ -17,6 +18,7 @@ const ROW_SPACING = 6;
 
 export function MonthCalendar({ habit, today }: { habit: Habit; today: DayKey }) {
   const logs = useHabits((s) => s.logs);
+  const weekStartsOn = useWeekStartsOn();
   const first = startOfMonth(parseDay(habit.createdAt < today ? habit.createdAt : today));
   const count = differenceInCalendarMonths(parseDay(today), first) + 1;
   const months = Array.from({ length: count }, (_, i) => addMonths(first, i));
@@ -49,7 +51,7 @@ export function MonthCalendar({ habit, today }: { habit: Habit; today: DayKey })
       </HStack>
 
       <HStack spacing={0}>
-        {orderedWeekdays.map((d) => (
+        {orderedWeekdays(weekStartsOn).map((d) => (
           <Text key={d} font="caption2" fontWeight="semibold" foregroundStyle="secondaryLabel" frame={{ maxWidth: "infinity" }} textCase="uppercase">
             {weekdayName(d, "short")}
           </Text>
@@ -67,7 +69,7 @@ export function MonthCalendar({ habit, today }: { habit: Habit; today: DayKey })
       >
         {months.map((month, i) => (
           <Tab key={i} value={String(i)}>
-            <MonthPage month={month} habit={habit} logs={logs} today={today} />
+            <MonthPage month={month} weekStartsOn={weekStartsOn} habit={habit} logs={logs} today={today} />
           </Tab>
         ))}
       </TabView>
@@ -76,14 +78,14 @@ export function MonthCalendar({ habit, today }: { habit: Habit; today: DayKey })
   );
 }
 
-function MonthPage({ month, habit, logs, today }: { month: Date; habit: Habit; logs: Logs; today: DayKey }) {
+function MonthPage({ month, weekStartsOn, habit, logs, today }: { month: Date; weekStartsOn: Day; habit: Habit; logs: Logs; today: DayKey }) {
   return (
     <VStack frame={{ maxHeight: "infinity", alignment: "top" }}>
       <Grid horizontalSpacing={0} verticalSpacing={ROW_SPACING}>
-        {monthGrid(month).map((week) => (
+        {monthGrid(month, weekStartsOn).map((week) => (
           <GridRow key={week[0]}>
             {week.map((day) => (
-              <DayCell key={day} day={day} inMonth={isInMonth(day, month)} habit={habit} logs={logs} today={today} />
+              <DayCell key={day} day={day} inMonth={isInMonth(day, month)} weekStartsOn={weekStartsOn} habit={habit} logs={logs} today={today} />
             ))}
           </GridRow>
         ))}
@@ -103,17 +105,24 @@ const STATUS_LABEL: Record<DayStatus, string> = {
   optional: "free day",
 };
 
-function DayCell({ day, inMonth, habit, logs, today }: { day: DayKey; inMonth: boolean; habit: Habit; logs: Logs; today: DayKey }) {
-  const status = dayStatus(habit, logs, day, today);
+function DayCell({ day, inMonth, weekStartsOn, habit, logs, today }: {
+  day: DayKey;
+  inMonth: boolean;
+  weekStartsOn: Day;
+  habit: Habit;
+  logs: Logs;
+  today: DayKey;
+}) {
+  const status = dayStatus(habit, logs, day, today, weekStartsOn);
   const count = countOn(logs, habit.id, day);
   const isToday = day === today;
   const editable = inMonth && status !== "future" && status !== "before";
   const date = parseDay(day);
 
-  const fill =
+  const fill: Color =
     status === "done" ? habit.color
-    : status === "partial" ? withAlpha(habit.color, 0.3)
-    : status === "missed" ? withAlpha(habit.color, 0.08)
+    : status === "partial" ? `${habit.color}/30`
+    : status === "missed" ? `${habit.color}/8`
     : "clear";
   const textColor =
     status === "done" ? "white"
@@ -151,10 +160,10 @@ function DayCell({ day, inMonth, habit, logs, today }: { day: DayKey; inMonth: b
 }
 
 function Legend({ color }: { color: Habit["color"] }) {
-  const items: { label: string; fill: ReturnType<typeof withAlpha> | Habit["color"] }[] = [
+  const items: { label: string; fill: Color }[] = [
     { label: "Done", fill: color },
-    { label: "Partly", fill: withAlpha(color, 0.3) },
-    { label: "Missed", fill: withAlpha(color, 0.08) },
+    { label: "Partly", fill: `${color}/30` },
+    { label: "Missed", fill: `${color}/8` },
   ];
   return (
     <HStack spacing={14} padding={{ horizontal: 4, bottom: 10 }} accessibilityHidden>

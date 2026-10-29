@@ -1,6 +1,7 @@
 // The iTunes Search and Lookup APIs (no key): songs with 30-second AAC previews.
 // https://performance-partners.apple.com/search-api
 import { z } from "zod";
+import { format } from "swiftjsx";
 
 export type Track = {
   id: number;
@@ -140,17 +141,14 @@ export async function lookupArtist(id: number, signal?: AbortSignal): Promise<{ 
 /** The same artwork at another size (the CDN renders any `NxNbb`). */
 export const art = (url: string, size: number) => url.replace(/\/\d+x\d+bb\./, `/${size}x${size}bb.`);
 
-/** 83 → "1:23". */
+/** 83 → "1:23"; a time not known yet → "–:––". Floored: a clock doesn't round up. */
 export function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "–:––";
-  const s = Math.floor(seconds);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  return format.duration(Math.floor(seconds));
 }
 
-export function formatMinutes(ms: number): string {
-  const minutes = Math.round(ms / 60_000);
-  return minutes >= 60 ? `${Math.floor(minutes / 60)} hr ${minutes % 60} min` : `${minutes} min`;
-}
+/** "42 min", "1 hr 5 min". */
+export const formatMinutes = (ms: number) => format.duration(Math.max(ms, 60_000) / 1000, "abbreviated");
 
 export const genres: { title: string; term: string; colors: [`#${string}`, `#${string}`] }[] = [
   { title: "Pop", term: "pop hits", colors: ["#ff2d55", "#ff6b3d"] },

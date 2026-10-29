@@ -2,9 +2,9 @@
 // that filters by name and a sort menu.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Screen, ToolbarItem, ScrollView, VStack, Text, Button, LazyVGrid, Menu, Picker } from "swiftjsx";
+import { Screen, ToolbarItem, ScrollView, VStack, Text, Button, LazyVGrid, Menu, Picker, ContentUnavailable } from "swiftjsx";
 import { filterQuery, type RecipeFilter } from "./api";
-import { EmptyState, ErrorView, Loading, RecipeCard } from "./ui";
+import { ErrorView, Loading, RecipeCard } from "./ui";
 
 type Sort = "az" | "za";
 
@@ -39,7 +39,7 @@ export function FilterScreen({ filter, description }: { filter: RecipeFilter; de
       ) : query.isError ? (
         <ErrorView message={query.error.message} retry={() => query.refetch()} />
       ) : !recipes.length ? (
-        <EmptyState icon="magnifyingglass" title="No recipes" message={term ? `Nothing in ${filter.value} matches “${search.trim()}”.` : "TheMealDB has nothing here yet."} />
+        <ContentUnavailable systemImage="magnifyingglass" title="No recipes" description={term ? `Nothing in ${filter.value} matches “${search.trim()}”.` : "TheMealDB has nothing here yet."} />
       ) : (
         <ScrollView>
           <VStack alignment="leading" spacing={16} padding={{ horizontal: 16, bottom: 24 }}>

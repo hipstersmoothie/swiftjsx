@@ -1,11 +1,10 @@
 // What the user did, persisted with zustand + localStorage: likes and saves
 // (as post snapshots, so the Liked and Saved screens can show them), follows,
 // stories seen, and their own comments. Plus a small in-memory UI store for
-// the toast and the story viewer, which several screens open.
+// the story viewer and comments sheet, which several screens open.
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { nanoid } from "nanoid";
-import { withAnimation } from "swiftjsx";
 import { ME, type Comment, type Post } from "./data";
 
 type Social = {
@@ -82,12 +81,9 @@ export const useMyCommentCount = (postId: string) => useSocial((s) => s.comments
 
 // MARK: UI
 
-export type Toast = { id: number; text: string; icon: string };
 export type Viewer = { users: string[]; index: number };
 
 type UI = {
-  toast: Toast | null;
-  showToast(text: string, icon: string): void;
   /** The story viewer: whose stories, in order, and where it starts. */
   viewer: Viewer | null;
   openStories(users: string[], index: number): void;
@@ -98,17 +94,7 @@ type UI = {
   closeComments(): void;
 };
 
-let toastId = 0;
-
-export const useUI = create<UI>()((set, get) => ({
-  toast: null,
-  showToast: (text, icon) => {
-    const id = ++toastId;
-    withAnimation("snappy", () => set({ toast: { id, text, icon } }));
-    setTimeout(() => {
-      if (get().toast?.id === id) withAnimation("easeOut", () => set({ toast: null }));
-    }, 1800);
-  },
+export const useUI = create<UI>()((set) => ({
   viewer: null,
   openStories: (users, index) => set({ viewer: { users, index } }),
   closeStories: () => set({ viewer: null }),

@@ -1,10 +1,10 @@
 // Library: liked songs (swipe to remove) and recently played.
 import { useState } from "react";
-import { Screen, ToolbarItem, List, Section, Button, Image, Label, Picker, SwipeActions, VStack } from "swiftjsx";
+import { Screen, ToolbarItem, List, Section, Button, Image, Label, Picker, SwipeActions, VStack, ContentUnavailable } from "swiftjsx";
 import { useLibrary } from "./library";
 import { playTracks, shuffleTracks } from "./player";
 import { RegisterNavigation } from "./router";
-import { EmptyState, PlayShuffle, TrackRow } from "./ui";
+import { PlayShuffle, TrackRow } from "./ui";
 
 type Shelf = "liked" | "recent";
 
@@ -57,9 +57,9 @@ export function LibraryScreen() {
             </Section>
           </List>
         ) : shelf === "liked" ? (
-          <EmptyState icon="heart" title="No Liked Songs" message="Tap the heart in Now Playing, or long-press a song and choose Love." />
+          <ContentUnavailable systemImage="heart" title="No Liked Songs" description="Tap the heart in Now Playing, or long-press a song and choose Love." />
         ) : (
-          <EmptyState icon="clock" title="Nothing Played Yet" message="Songs you play show up here." />
+          <ContentUnavailable systemImage="clock" title="Nothing Played Yet" description="Songs you play show up here." />
         )}
       </VStack>
     </Screen>

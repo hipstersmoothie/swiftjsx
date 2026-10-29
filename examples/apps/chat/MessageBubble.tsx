@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { HStack, VStack, ZStack, Text, Image, Button, Label, Spacer, ContextMenu, withAnimation } from "swiftjsx";
+import { HStack, VStack, ZStack, Text, Image, Button, Label, Spacer, ContextMenu, Overlay, withAnimation } from "swiftjsx";
 import { useChat, type Message } from "./store";
 import { clockTime } from "./format";
 
@@ -87,14 +86,8 @@ export function DayHeader({ label }: { label: string }) {
   );
 }
 
-/** Three dots that bob in turn, like iMessage. */
+/** Three dots that light up and bob in turn, like iMessage. */
 export function TypingBubble() {
-  const [phase, setPhase] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setPhase((p) => (p + 1) % 3), 300);
-    return () => clearInterval(id);
-  }, []);
-
   return (
     <HStack transition="move">
       <HStack
@@ -106,18 +99,28 @@ export function TypingBubble() {
         accessibilityLabel="Typing"
       >
         {[0, 1, 2].map((dot) => (
-          <VStack
-            key={dot}
-            frame={{ width: 8, height: 8 }}
-            background="gray"
-            cornerRadius={4}
-            opacity={phase === dot ? 1 : 0.4}
-            offset={{ y: phase === dot ? -3 : 0 }}
-            animation={{ type: "easeInOut", duration: 0.3 }}
-          />
+          <VStack key={dot} frame={{ width: 8, height: 8 }} background="gray" cornerRadius={4} keyframes={turn(dot, { y: -3 })}>
+            {/* Keyframes start and end at the view's own props, so the dimming
+                is a bubble-colored cover that clears on the dot's turn. */}
+            <Overlay>
+              <VStack background={THEIRS} cornerRadius={4} opacity={0.6} keyframes={turn(dot, { opacity: 0 })} />
+            </Overlay>
+          </VStack>
         ))}
       </HStack>
       <Spacer />
     </HStack>
   );
 }
+
+/** A 1 s loop where `dot` (of three) is `lit` in turn. The waits nudge y a hair so each one takes its time. */
+const turn = (dot: number, lit: { y?: number; opacity?: number }) => ({
+  repeat: true,
+  settle: { type: "linear" as const, duration: 0.01 },
+  steps: [
+    { y: 0.01, duration: 0.25 * dot + 0.01 },
+    { ...lit, duration: 0.25 },
+    { y: 0.02, duration: 0.25 },
+    { y: 0.03, duration: 0.25 * (2 - dot) + 0.01 },
+  ],
+});

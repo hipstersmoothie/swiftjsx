@@ -1,6 +1,6 @@
 // Score boxes with floating "+N", the clock, buttons and the end-of-game cards.
 import { useEffect, useState, type ReactNode } from "react";
-import { VStack, HStack, Text, Image, Button, Overlay } from "swiftjsx";
+import { format, VStack, HStack, Text, Image, Button, Overlay } from "swiftjsx";
 import { palette } from "./theme";
 
 // MARK: Score
@@ -78,27 +78,24 @@ function FloatingGain({ amount }: { amount: number }) {
 
 // MARK: Clock
 
-export function formatTime(ms: number): string {
-  const total = Math.floor(ms / 1000);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = String(total % 60).padStart(2, "0");
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
-}
-
-/** Committed time plus the running segment (since `since`), ticking while running. */
+/**
+ * The game's time. While the clock runs it's a native timer, counting up from
+ * when the game would have started without its pauses (nothing re-renders);
+ * paused, it's the time committed to the game.
+ */
 export function Clock({ elapsedMs, since }: { elapsedMs: number; since: number | null }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (since == null) return;
-    const id = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(id);
-  }, [since]);
-  const ms = elapsedMs + (since == null ? 0 : Math.max(0, now - since));
+  const font = { size: 15, weight: "semibold" } as const;
   return (
-    <Stat icon="timer" accessibilityIdentifier="timer" label={`Time ${formatTime(ms)}`}>
-      {formatTime(ms)}
-    </Stat>
+    <HStack spacing={4} accessibilityElement="combine" accessibilityIdentifier="timer">
+      <Image systemName="timer" font={{ size: 13, weight: "semibold" }} foregroundStyle={palette.subtext} accessibilityLabel="Time" />
+      {since == null ? (
+        <Text font={font} foregroundStyle={palette.text} monospacedDigit>
+          {format.duration(Math.floor(elapsedMs / 1000))}
+        </Text>
+      ) : (
+        <Text font={font} foregroundStyle={palette.text} monospacedDigit date={since - elapsedMs} dateStyle="timer" />
+      )}
+    </HStack>
   );
 }
 

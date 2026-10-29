@@ -5,17 +5,18 @@
 import { useState } from "react";
 import {
   VStack, HStack, ZStack, Text, Image, Button, Menu, MenuLabel, Label, Divider, Spacer, Background, Overlay, Rectangle, ShareLink, Canvas,
-  useNavigation, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring, openURL,
+  useNavigation, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring, openURL, toast, useNow, format,
 } from "swiftjsx";
 import { postWebURL } from "./api";
-import { ago, agoSpoken, compact, displayName } from "./format";
+import { displayName } from "./format";
 import { RichText } from "./PostText";
 import { Embed, ContentHider, mediaWarning } from "./Embeds";
 import { ThreadScreen } from "./Thread";
 import { ProfileScreen } from "./Profile";
 import { useSession } from "./session";
-import { toast, usePostState, useInteractions, useUI } from "./store";
-import { AVATAR, Avatar, GUTTER, H_PADDING, T, ty, useContentWidth, useNow, useTheme } from "./ui";
+import { usePostState, useInteractions, useUI } from "./store";
+import { BRAND } from "./theme";
+import { AVATAR, Avatar, GUTTER, H_PADDING, T, ty, useContentWidth, useTheme } from "./ui";
 import type { Color } from "swiftjsx";
 import type { FeedViewPost, PostView, ProfileViewBasic } from "./types";
 
@@ -102,7 +103,7 @@ export function PostCell({ post, repostedBy, replyingTo, lineAbove = false, line
           <Avatar uri={author.avatar} size={AVATAR} />
         </Button>
         <VStack alignment="leading" spacing={0} frame={{ maxWidth: "infinity", alignment: "leading" }}>
-          <HStack spacing={0} padding={{ bottom: 2 }} accessibilityElement="combine" accessibilityLabel={`${displayName(author)}, @${author.handle}, ${agoSpoken(post.indexedAt, now)}`}>
+          <HStack spacing={0} padding={{ bottom: 2 }} accessibilityElement="combine" accessibilityLabel={`${displayName(author)}, @${author.handle}, ${format.relativeTime(Date.parse(post.indexedAt), { now, style: "long" })}`}>
             <Text font={ty(T.md, "bold")} foregroundStyle={t.text} lineLimit={1} layoutPriority={1}>{displayName(author)}</Text>
             {author.verification?.verifiedStatus === "valid" ? (
               <HStack padding={{ leading: 3 }}>
@@ -110,7 +111,7 @@ export function PostCell({ post, repostedBy, replyingTo, lineAbove = false, line
               </HStack>
             ) : null}
             <Text font={ty(T.md)} foregroundStyle={t.textMedium} lineLimit={1} padding={{ leading: 4 }}>@{author.handle}</Text>
-            <Text font={ty(T.md)} foregroundStyle={t.textMedium} fixedSize padding={{ leading: 4 }}>{`· ${ago(post.record.createdAt ?? post.indexedAt, now)}`}</Text>
+            <Text font={ty(T.md)} foregroundStyle={t.textMedium} fixedSize padding={{ leading: 4 }}>{`· ${format.relativeTime(Date.parse(post.record.createdAt ?? post.indexedAt), { now })}`}</Text>
             <Spacer minLength={0} />
           </HStack>
           {replyingTo ? (
@@ -204,10 +205,10 @@ export function ActionBar({ post, large = false }: { post: PostView; large?: boo
         <MenuLabel>
           <Image systemName="ellipsis" font={{ size: size - 2, weight: "semibold" }} foregroundStyle={t.textLow} padding={{ vertical: 9, leading: 12 }} contentShape="rectangle" />
         </MenuLabel>
-        <Button onPress={() => navigator.clipboard.writeText(post.record.text).then(() => toast("Copied to clipboard", "doc.on.doc"))}>
+        <Button onPress={() => navigator.clipboard.writeText(post.record.text).then(() => toast("Copied to clipboard", { systemImage: "doc.on.doc", tint: BRAND }))}>
           <Label title="Copy post text" systemImage="doc.on.doc" />
         </Button>
-        <Button onPress={() => navigator.clipboard.writeText(url).then(() => toast("Copied to clipboard", "link"))}>
+        <Button onPress={() => navigator.clipboard.writeText(url).then(() => toast("Copied to clipboard", { systemImage: "link", tint: BRAND }))}>
           <Label title="Copy link to post" systemImage="link" />
         </Button>
         <Button onPress={() => openURL(url, { inApp: true })}>
@@ -225,7 +226,7 @@ export function ActionBar({ post, large = false }: { post: PostView; large?: boo
 function Count({ n, color, bold = false }: { n: number; color: Color; bold?: boolean }) {
   return (
     <Text font={ty(T.sm, bold ? "semibold" : "regular")} foregroundStyle={color} monospacedDigit animation="snappy" lineLimit={1}>
-      {n ? compact(n) : ""}
+      {n ? format.compact(n) : ""}
     </Text>
   );
 }

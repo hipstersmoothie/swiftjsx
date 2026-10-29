@@ -3,9 +3,9 @@
 import { useState, type ReactNode } from "react";
 import {
   useNavigation, Screen, ToolbarItem, VirtualList, VStack, HStack, ZStack, Text, Image, Button, Menu, Label, Rectangle,
-  Spacer, openURL,
+  ContentUnavailable, openURL, toast,
 } from "swiftjsx";
-import { ME, photoURL, postCount, profilePost, user as getUser, type Post } from "./data";
+import { ME, others, photoURL, postCount, profilePost, user as getUser, type Post } from "./data";
 import { compact } from "./format";
 import { PostScreen } from "./Post";
 import { useIsFollowing, useSocial, useUI } from "./store";
@@ -23,7 +23,6 @@ export function ProfileScreen({ userId }: { userId: string }) {
   const total = postCount(userId);
   const [shown, setShown] = useState(Math.min(PAGE, total));
   const saves = useSocial((s) => s.saves);
-  const toast = useUI((s) => s.showToast);
 
   const posts =
     tab === "saved" ? Object.values(saves) : Array.from({ length: shown }, (_, n) => profilePost(userId, n, epoch));
@@ -32,45 +31,45 @@ export function ProfileScreen({ userId }: { userId: string }) {
     <Screen title={userId} titleDisplayMode="inline">
       <ToolbarItem placement="primaryAction">
         <Menu systemImage="ellipsis" tint="primary" accessibilityLabel="Profile options">
-          <Button onPress={() => navigator.clipboard.writeText(`https://social.example/${userId}`).then(() => toast("Profile link copied", "link"))}>
+          <Button onPress={() => navigator.clipboard.writeText(`https://social.example/${userId}`).then(() => toast("Profile link copied", { systemImage: "link" }))}>
             <Label title="Copy profile URL" systemImage="link" />
           </Button>
           {isMe ? null : (
-            <Button role="destructive" onPress={() => toast(`Muted ${userId}`, "speaker.slash")}>
+            <Button role="destructive" onPress={() => toast(`Muted ${userId}`, { systemImage: "speaker.slash" })}>
               <Label title="Mute" systemImage="speaker.slash" />
             </Button>
           )}
         </Menu>
       </ToolbarItem>
-      {/* VirtualList has no header slot (and a grid would put a header in one cell), so the header sits above the grid and doesn't scroll away. */}
-      <VStack spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "top" }}>
-        <ProfileHeader userId={userId} total={total} />
-        {isMe ? (
-          <GridTabs<"posts" | "saved">
-            tab={tab}
-            onChange={setTab}
-            tabs={[
-              { value: "posts", icon: "square.grid.3x3", label: "Posts" },
-              { value: "saved", icon: "bookmark", label: "Saved" },
-            ]}
-          />
-        ) : (
-          <GridTabs tab="posts" onChange={() => {}} tabs={[{ value: "posts", icon: "square.grid.3x3", label: "Posts" }]} />
-        )}
-        <PostGrid
-          // A fresh list per tab, starting at the top.
-          key={tab}
-          posts={posts}
-          onEndReached={tab === "posts" && shown < total ? () => setShown((n) => Math.min(total, n + PAGE)) : undefined}
-          empty={
-            tab === "saved" ? (
-              <Empty icon="bookmark" title="Save what you want to see again" message="Tap the bookmark on any post. Only you can see what you've saved." />
-            ) : (
-              <Empty icon="camera" title="No posts yet" message={`When ${u.name} shares photos, you'll see them here.`} />
-            )
-          }
-        />
-      </VStack>
+      <PostGrid
+        // A fresh list per tab, starting at the top.
+        key={tab}
+        posts={posts}
+        onEndReached={tab === "posts" && shown < total ? () => setShown((n) => Math.min(total, n + PAGE)) : undefined}
+        header={<ProfileHeader userId={userId} total={total} />}
+        // The tabs pin under the navigation bar as the grid scrolls.
+        stickyHeader={
+          isMe ? (
+            <GridTabs<"posts" | "saved">
+              tab={tab}
+              onChange={setTab}
+              tabs={[
+                { value: "posts", icon: "square.grid.3x3", label: "Posts" },
+                { value: "saved", icon: "bookmark", label: "Saved" },
+              ]}
+            />
+          ) : (
+            <GridTabs tab="posts" onChange={() => {}} tabs={[{ value: "posts", icon: "square.grid.3x3", label: "Posts" }]} />
+          )
+        }
+        empty={
+          tab === "saved" ? (
+            <ContentUnavailable systemImage="bookmark" title="Save what you want to see again" description="Tap the bookmark on any post. Only you can see what you've saved." padding={{ top: 24 }} />
+          ) : (
+            <ContentUnavailable systemImage="camera" title="No posts yet" description={`When ${u.name} shares photos, you'll see them here.`} padding={{ top: 24 }} />
+          )
+        }
+      />
     </Screen>
   );
 }
@@ -79,11 +78,11 @@ function ProfileHeader({ userId, total }: { userId: string; total: number }) {
   const u = getUser(userId);
   const isMe = userId === ME;
   const following = useIsFollowing(userId);
+  const nav = useNavigation();
   const toggleFollow = useSocial((s) => s.toggleFollow);
   const seen = useSocial((s) => s.seen);
   const ring = useRing(userId, seen);
   const openStories = useUI((s) => s.openStories);
-  const toast = useUI((s) => s.showToast);
   // The seed data has you following everyone you see; unfollowing takes one off.
   const followers = isMe ? u.followers : u.followers - (following ? 0 : 1);
 
@@ -111,7 +110,13 @@ function ProfileHeader({ userId, total }: { userId: string; total: number }) {
           <Text font="subheadline" fontWeight="semibold">{u.name}</Text>
           {u.verified ? <Verified size="footnote" /> : null}
         </HStack>
-        <RichText text={u.bio} font="subheadline" />
+        <RichText
+          text={u.bio}
+          font="subheadline"
+          onMention={(id) => {
+            if (id !== userId && (id === ME || others.includes(id))) nav.push(<ProfileScreen userId={id} />);
+          }}
+        />
         {u.link ? (
           <Button buttonStyle="plain" onPress={() => openURL(`https://${u.link}`, { inApp: true })}>
             <Text font="subheadline" fontWeight="semibold" foregroundStyle={linkColor}>
@@ -123,8 +128,8 @@ function ProfileHeader({ userId, total }: { userId: string; total: number }) {
       <HStack spacing={6}>
         {isMe ? (
           <>
-            <ProfileButton title="Edit profile" onPress={() => toast("Editing isn't in this demo", "pencil")} />
-            <ProfileButton title="Share profile" onPress={() => navigator.clipboard.writeText(`https://social.example/${userId}`).then(() => toast("Profile link copied", "link"))} />
+            <ProfileButton title="Edit profile" onPress={() => toast("Editing isn't in this demo", { systemImage: "pencil" })} />
+            <ProfileButton title="Share profile" onPress={() => navigator.clipboard.writeText(`https://social.example/${userId}`).then(() => toast("Profile link copied", { systemImage: "link" }))} />
           </>
         ) : (
           <>
@@ -135,7 +140,7 @@ function ProfileHeader({ userId, total }: { userId: string; total: number }) {
               onPress={() => toggleFollow(userId)}
               identifier="follow-button"
             />
-            <ProfileButton title="Message" onPress={() => toast("Messages aren't in this demo", "paperplane")} />
+            <ProfileButton title="Message" onPress={() => toast("Messages aren't in this demo", { systemImage: "paperplane" })} />
           </>
         )}
       </HStack>
@@ -167,7 +172,7 @@ type GridTab<T extends string> = { value: T; icon: string; label: string };
 
 function GridTabs<T extends string>({ tab, onChange, tabs }: { tab: T; onChange(tab: T): void; tabs: GridTab<T>[] }) {
   return (
-    <HStack spacing={0}>
+    <HStack spacing={0} background="systemBackground">
       {tabs.map((t) => (
         <Button key={t.value} buttonStyle="plain" onPress={() => onChange(t.value)} frame={{ maxWidth: "infinity" }} accessibilityLabel={t.label} accessibilityTraits={t.value === tab ? ["button", "selected"] : "button"}>
           <VStack spacing={10} padding={{ top: 6 }} contentShape="rectangle" frame={{ maxWidth: "infinity" }}>
@@ -180,15 +185,27 @@ function GridTabs<T extends string>({ tab, onChange, tabs }: { tab: T; onChange(
   );
 }
 
+type PostGridProps = {
+  posts: Post[];
+  onEndReached?(): void;
+  /** Shown (under the headers) when there are no posts. */
+  empty?: ReactNode;
+  onRefresh?(): Promise<unknown>;
+  header?: ReactNode;
+  stickyHeader?: ReactNode;
+};
+
 /** Three square columns of photos; tap one to open the post. */
-export function PostGrid({ posts, onEndReached, empty, onRefresh }: { posts: Post[]; onEndReached?(): void; empty?: ReactNode; onRefresh?(): Promise<unknown> }) {
+export function PostGrid({ posts, onEndReached, empty, onRefresh, header, stickyHeader }: PostGridProps) {
   const width = useWidth();
   const nav = useNavigation();
   const cell = (width - GAP * 2) / 3;
-  if (!posts.length && empty) return <>{empty}</>;
   return (
     <VirtualList
       data={posts}
+      header={header}
+      stickyHeader={stickyHeader}
+      footer={posts.length ? undefined : empty}
       columns={3}
       spacing={GAP}
       itemHeight={cell}
@@ -210,16 +227,5 @@ export function PostGrid({ posts, onEndReached, empty, onRefresh }: { posts: Pos
         </Button>
       )}
     />
-  );
-}
-
-function Empty({ icon, title, message }: { icon: string; title: string; message: string }) {
-  return (
-    <VStack spacing={10} padding={32} frame={{ maxWidth: "infinity" }}>
-      <Spacer minLength={24} />
-      <Image systemName={icon} font={{ size: 44, weight: "light" }} padding={18} border={{ color: "label", width: 2 }} cornerRadius="capsule" />
-      <Text font="title3" fontWeight="bold" textAlignment="center">{title}</Text>
-      <Text font="subheadline" foregroundStyle="secondary" textAlignment="center">{message}</Text>
-    </VStack>
   );
 }

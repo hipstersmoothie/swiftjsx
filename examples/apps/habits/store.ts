@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { nanoid } from "nanoid";
+import type { Day } from "date-fns";
 import type { DayKey } from "./dates";
 import type { Hex } from "./theme";
 import { seed } from "./seed";
@@ -39,7 +40,10 @@ export type State = { habits: Habit[]; logs: Logs };
 
 export const useHabits = create<State>()(
   persist(
-    immer(() => seed()),
+    // First launch. The store is made before anything renders, so there's no
+    // environment to read the locale's first weekday from yet: Sunday weeks
+    // (they only decide which week a sample workout falls in).
+    immer(() => seed(0)),
     {
       name: "habits",
       version: 1,
@@ -104,6 +108,6 @@ export function setCount(id: string, day: DayKey, count: number) {
 export const countOn = (logs: Logs, id: string, day: DayKey) => logs[id]?.[day] ?? 0;
 
 /** Start over with the sample habits (Settings → Reset). */
-export function resetToSample() {
-  useHabits.setState(seed());
+export function resetToSample(weekStartsOn: Day) {
+  useHabits.setState(seed(weekStartsOn));
 }

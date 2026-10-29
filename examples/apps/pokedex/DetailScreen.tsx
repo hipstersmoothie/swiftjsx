@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Screen, ToolbarItem, ScrollView, VStack, HStack, Text, Image, Button, ProgressView, Divider, Spacer, type Color,
+  Screen, ToolbarItem, ScrollView, VStack, HStack, Text, Image, Button, ProgressView, Divider, Spacer, ContentUnavailable, format,
+  type Color,
 } from "swiftjsx";
 import { artwork, capitalize, displayName, formatNumber, pokemonQuery, speciesQuery, type Entry, type Pokemon, type Species } from "./api";
 import { useFavorites, useIsFavorite } from "./favorites";
 import { MAX_STAT, statLabels, typeColor, withOpacity } from "./theme";
-import { ErrorView } from "./States";
 
 export function DetailScreen({ entry }: { entry: Entry }) {
   // Usually instant: the grid card already fetched this for its tint.
@@ -35,7 +35,9 @@ export function DetailScreen({ entry }: { entry: Entry }) {
           {pokemon.isPending ? (
             <ProgressView padding={24} />
           ) : pokemon.isError ? (
-            <ErrorView message={pokemon.error.message} retry={() => pokemon.refetch()} />
+            <ContentUnavailable systemImage="wifi.exclamationmark" title="Couldn’t Load Pokémon" description={pokemon.error.message}>
+              <Button title="Try Again" buttonStyle="bordered" onPress={() => pokemon.refetch()} />
+            </ContentUnavailable>
           ) : (
             <>
               <About pokemon={pokemon.data} species={species.data} loading={species.isPending} />
@@ -111,15 +113,18 @@ function About({ pokemon, species, loading }: { pokemon: Pokemon; species?: Spec
       {loading ? <ProgressView frame={{ maxWidth: "infinity" }} /> : null}
       {species?.flavorText ? <Text font="callout">{species.flavorText}</Text> : null}
       <HStack>
-        <Metric label="Height" value={`${(pokemon.height / 10).toFixed(1)} m`} />
+        <Metric label="Height" value={measure(pokemon.height / 10, "meter")} />
         <Divider frame={{ height: 32 }} />
-        <Metric label="Weight" value={`${(pokemon.weight / 10).toFixed(1)} kg`} />
+        <Metric label="Weight" value={measure(pokemon.weight / 10, "kilogram")} />
         <Divider frame={{ height: 32 }} />
         <Metric label="Base XP" value={pokemon.baseExperience?.toString() ?? "—"} />
       </HStack>
     </Card>
   );
 }
+
+const measure = (value: number, unit: string) =>
+  format.number(value, { style: "unit", unit, minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (

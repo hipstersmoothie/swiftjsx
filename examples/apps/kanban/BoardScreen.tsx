@@ -5,10 +5,11 @@
 import { useRef, useState } from "react";
 import {
   useNavigation, Screen, ToolbarItem, VStack, HStack, ZStack, ScrollView, Text, Image, Button, TextField, Spacer, Picker, Sheet,
-  Menu, Section, Divider, Label, Navigator, withAnimation, useAnimatedStyle, haptic, type HostInstance, type Color,
+  Menu, Section, Divider, Label, Navigator, ContentUnavailable, withAnimation, useAnimatedStyle, useToday, haptic, format,
+  type HostInstance, type Color,
 } from "swiftjsx";
 import {
-  activeColumns, columnCards, filterCount, matches, memberById, members, noFilters, plural, UNASSIGNED,
+  activeColumns, columnCards, filterCount, matches, memberById, members, noFilters, UNASSIGNED,
   type Board, type Card, type Column, type Filters,
 } from "./model";
 import { addCard, moveCard, setColumnArchived, shiftColumn, useBoard } from "./store";
@@ -17,8 +18,7 @@ import { BoardCard, CardFace, Placeholder } from "./CardView";
 import { CardDetail } from "./CardDetail";
 import { ColumnForm, BoardForm } from "./forms";
 import { ArchiveScreen } from "./ArchiveScreen";
-import { Dot, EmptyState } from "./ui";
-import { useToday } from "./today";
+import { Dot } from "./ui";
 
 const COLUMN_WIDTH = 284;
 
@@ -123,9 +123,9 @@ export function BoardScreen({ boardId }: { boardId: string }) {
               </HStack>
             </ScrollView>
           ) : (
-            <EmptyState symbol="rectangle.split.3x1" title="No columns" message="Add a column for each stage your cards go through.">
+            <ContentUnavailable systemImage="rectangle.split.3x1" title="No columns" description="Add a column for each stage your cards go through.">
               <Button title="Add Column" buttonStyle="borderedProminent" onPress={() => setColumnEditor({ columnId: null })} />
-            </EmptyState>
+            </ContentUnavailable>
           )}
         </VStack>
 
@@ -224,7 +224,7 @@ function FilterSummary({ board, filters, onChange, shown, total }: { board: Boar
       </ScrollView>
       <HStack padding={{ horizontal: 16 }}>
         <Text font="caption" foregroundStyle="secondary" monospacedDigit>
-          {shown} of {plural(total, "card")}
+          {shown} of {format.count(total, { one: "# card", other: "# cards" })}
         </Text>
         <Spacer />
         <Button title="Clear All" font="caption" fontWeight="semibold" buttonStyle="borderless" onPress={() => onChange(noFilters)} accessibilityIdentifier="clear-filters" />
@@ -311,7 +311,7 @@ function ColumnView({ board, column, cards, today, drag, armed, first, last, fil
       cornerRadius={16}
       border={{ color: incoming ? "accent/40" : "clear", width: 1.5 }}
       accessibilityElement="contain"
-      accessibilityLabel={`${column.name}, ${plural(cards.length, "card")}`}
+      accessibilityLabel={`${column.name}, ${format.count(cards.length, { one: "# card", other: "# cards" })}`}
       accessibilityIdentifier={`column-${column.name}`}
     >
       <HStack spacing={8} padding={{ leading: 14, trailing: 4, top: 10, bottom: 8 }}>

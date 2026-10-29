@@ -1,6 +1,6 @@
 // Explore: an endless photo grid (pull for a new mix), and a search for people.
 import { useState } from "react";
-import { useNavigation, Screen, ScrollView, LazyVStack, HStack, VStack, Text, Button, Spacer, Image } from "swiftjsx";
+import { useNavigation, Screen, ScrollView, LazyVStack, HStack, VStack, Text, Button, Spacer, ContentUnavailable } from "swiftjsx";
 import { explorePost, others, user as getUser } from "./data";
 import { compact } from "./format";
 import { PostGrid, ProfileScreen } from "./Profile";
@@ -43,14 +43,7 @@ export function ExploreScreen() {
 
 function People({ term }: { term: string }) {
   const matches = others.filter((id) => id.includes(term) || getUser(id).name.toLowerCase().includes(term));
-  if (!matches.length) {
-    return (
-      <VStack spacing={8} padding={32} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-        <Image systemName="person.crop.circle.badge.questionmark" font="largeTitle" foregroundStyle="secondary" />
-        <Text foregroundStyle="secondary">No one matches “{term}”.</Text>
-      </VStack>
-    );
-  }
+  if (!matches.length) return <ContentUnavailable search={term} />;
   return (
     <ScrollView>
       <LazyVStack spacing={0} alignment="leading" padding={{ vertical: 8 }}>

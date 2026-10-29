@@ -2,14 +2,14 @@
 // note with highlighted matches, sorting, swipe actions, and Recently Deleted.
 import { useState } from "react";
 import {
-  withAnimation, Screen, ToolbarItem, List, Section, VStack, HStack, Text, Image, Button, Label, Menu, Picker, Divider,
-  SwipeActions, ContextMenu, Alert, Sheet, Navigator,
+  withAnimation, useNow, format, Screen, ToolbarItem, List, Section, VStack, HStack, Text, Image, Button, Label, Menu, Picker,
+  Divider, SwipeActions, ContextMenu, Alert, Sheet, Navigator, ContentUnavailable,
 } from "swiftjsx";
 import {
   useNotes, setSort, updateNote, trashNotes, restoreNote, destroyNotes, inScope, scopeName, daysLeft,
   type Folder, type Note, type Scope, type Sort,
 } from "./store";
-import { displayTitle, preview, relativeDate, sortNotes, sortLabels, useNow } from "./format";
+import { displayTitle, preview, relativeDate, sortNotes, sortLabels } from "./format";
 import { highlight, plainLines, snippet, toMarkdown } from "./markdown";
 
 export function NotesColumn({ scope, selectedId, onOpen, onCompose }: {
@@ -90,7 +90,7 @@ export function NotesColumn({ scope, selectedId, onOpen, onCompose }: {
             footer={
               deletedScope
                 ? "Notes are deleted for good 30 days after you delete them."
-                : `${inFolder.length} ${inFolder.length === 1 ? "note" : "notes"} · sorted by ${sortLabels[sort].toLowerCase()}`
+                : `${format.count(inFolder.length, { one: "# note", other: "# notes" })} · sorted by ${sortLabels[sort].toLowerCase()}`
             }
           >
             {others.map((note) => (
@@ -99,10 +99,10 @@ export function NotesColumn({ scope, selectedId, onOpen, onCompose }: {
           </Section>
           {inFolder.length ? null : (
             <Section>
-              <EmptyState
-                icon={deletedScope ? "trash" : "note.text"}
+              <ContentUnavailable
+                systemImage={deletedScope ? "trash" : "note.text"}
                 title={deletedScope ? "No Deleted Notes" : "No Notes"}
-                message={deletedScope ? "Notes you delete stay here for 30 days." : "Tap the compose button to write one."}
+                description={deletedScope ? "Notes you delete stay here for 30 days." : "Tap the compose button to write one."}
               />
             </Section>
           )}
@@ -119,7 +119,7 @@ export function NotesColumn({ scope, selectedId, onOpen, onCompose }: {
       <Alert
         isPresented={confirmingEmpty}
         onDismiss={() => setConfirmingEmpty(false)}
-        title={`Delete ${inFolder.length} ${inFolder.length === 1 ? "note" : "notes"} permanently?`}
+        title={`Delete ${format.count(inFolder.length, { one: "# note", other: "# notes" })} permanently?`}
         message="You can't undo this."
       >
         <Button title="Delete All" role="destructive" onPress={() => withAnimation("snappy", () => destroyNotes(inFolder.map((n) => n.id)))} />
@@ -168,7 +168,7 @@ function NoteRow({ note, now, folders, showFolder, selected, onOpen, onMove, onD
       <VStack alignment="leading" spacing={3} padding={{ vertical: 2 }}>
         <Text font="headline" lineLimit={1}>{title}</Text>
         <Text font="subheadline" lineLimit={1}>
-          <Text foregroundStyle="primary">{deleted ? `${daysLeft(note, now)} days` : date}</Text>
+          <Text foregroundStyle="primary">{deleted ? format.count(daysLeft(note, now), { one: "# day", other: "# days" }) : date}</Text>
           <Text foregroundStyle="secondary">{"  " + preview(note)}</Text>
         </Text>
         {showFolder && folder ? (
@@ -260,7 +260,7 @@ function SearchResults({ query, now, folders, selectedId, onOpen }: {
 
   return (
     <List>
-      <Section header={`${results.length} ${results.length === 1 ? "result" : "results"}`}>
+      <Section header={format.count(results.length, { one: "# result", other: "# results" })}>
         {results.map(({ note, title, excerpt }) => {
           const folder = folders.find((f) => f.id === note.folderId);
           return (
@@ -285,7 +285,7 @@ function SearchResults({ query, now, folders, selectedId, onOpen }: {
       </Section>
       {results.length ? null : (
         <Section>
-          <EmptyState icon="magnifyingglass" title="No Results" message={`No notes contain “${query}”.`} />
+          <ContentUnavailable search={query} />
         </Section>
       )}
     </List>
@@ -346,15 +346,5 @@ function MoveForm({ note, folders, onClose }: { note: Note; folders: Folder[]; o
         </Section>
       </List>
     </Screen>
-  );
-}
-
-function EmptyState({ icon, title, message }: { icon: string; title: string; message: string }) {
-  return (
-    <VStack spacing={8} padding={{ vertical: 28 }} frame={{ maxWidth: "infinity" }} accessibilityElement="combine">
-      <Image systemName={icon} font="largeTitle" foregroundStyle="tertiary" />
-      <Text font="headline">{title}</Text>
-      <Text font="subheadline" foregroundStyle="secondary" textAlignment="center">{message}</Text>
-    </VStack>
   );
 }

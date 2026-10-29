@@ -3,10 +3,10 @@
 // `endsAt` (a wall-clock time), so it's right again the moment the app comes
 // back, however long JS was suspended. Persisted, so closing the app (or the
 // gallery sheet) doesn't lose them; their notifications are still pending.
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { haptic } from "swiftjsx";
+import { format, haptic, useNow } from "swiftjsx";
 import {
   requestPermission, getPermission, scheduleTimerNotification, cancelTimerNotification, type NotificationPermission,
 } from "./services";
@@ -162,42 +162,21 @@ export function secondsLeft(timer: KitchenTimer, now: number): number {
   return -((now - (timer.doneAt ?? now)) / 1000);
 }
 
-/** "4:05", "1:02:30"; overdue timers count up: "+0:42". */
+/**
+ * "4:05", "1:02:30"; overdue timers count up: "+0:42". Rounded up, so it
+ * reads "0:01" until the time is really up.
+ */
 export function formatClock(seconds: number): string {
-  const sign = seconds < 0 ? "+" : "";
-  const s = Math.abs(seconds < 0 ? Math.floor(seconds) : Math.ceil(seconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = String(s % 60).padStart(2, "0");
-  return h ? `${sign}${h}:${String(m).padStart(2, "0")}:${sec}` : `${sign}${m}:${sec}`;
-}
-
-/** The current time, re-read every `interval` ms while `active` (and when the app comes back). */
-export function useNow(active: boolean, interval = 1000): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!active) return;
-    const tick = () => setNow(Date.now());
-    tick();
-    const id = setInterval(tick, interval);
-    addEventListener("visibilitychange", tick);
-    return () => {
-      clearInterval(id);
-      removeEventListener("visibilitychange", tick);
-    };
-  }, [active, interval]);
-  return now;
+  return (seconds < 0 ? "+" : "") + format.duration(Math.ceil(Math.abs(seconds)));
 }
 
 /**
- * Mounted once at the app's root: rings timers when they're up (while the app
- * is open; in the background the notification does it).
+ * Mounted once at the app's root: keeps the notification permission current,
+ * and says whether a timer is running (render <TimerAlarm> then).
  */
-export function useTimerAlarm() {
+export function useTimerPermission(): boolean {
   const running = useTimers((s) => s.timers.some((t) => t.state === "running"));
-  const check = useTimers((s) => s.check);
   const refreshPermission = useTimers((s) => s.refreshPermission);
-  const now = useNow(running, 500);
 
   // "unavailable" without the native backend (getPermission checks). Re-read
   // when the app comes back: the user may have flipped it in Settings.
@@ -206,6 +185,18 @@ export function useTimerAlarm() {
     addEventListener("visibilitychange", refreshPermission);
     return () => removeEventListener("visibilitychange", refreshPermission);
   }, [refreshPermission]);
+
+  return running;
+}
+
+/**
+ * Rings timers when they're up (while the app is open; in the background the
+ * notification does it). Rendered only while a timer runs, so the clock only
+ * ticks then.
+ */
+export function TimerAlarm(): null {
+  const check = useTimers((s) => s.check);
+  const now = useNow(500);
 
   useEffect(() => {
     // Timers that ran out while we were in the background already rang (the
@@ -216,4 +207,5 @@ export function useTimerAlarm() {
     const names = due.map((t) => t.label.toLowerCase()).join(" and ");
     speak("timer-alarm", `Your ${names} timer${due.length > 1 ? "s are" : " is"} done.`).catch(() => {});
   }, [now, check]);
+  return null;
 }

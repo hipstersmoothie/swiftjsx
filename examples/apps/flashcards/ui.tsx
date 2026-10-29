@@ -1,19 +1,16 @@
 // Small pieces shared by the screens.
-import type { ReactNode } from "react";
-import { HStack, VStack, Image, Text, LazyVGrid, type Color } from "swiftjsx";
+import { HStack, VStack, Image, LazyVGrid, IconTile, type Color } from "swiftjsx";
 import { MAX_BOX, type Box } from "./model";
 import { themeOf, themeNames, themes, symbols, type ThemeName } from "./theme";
 
 export function DeckIcon({ theme, symbol, size = 44 }: { theme: string; symbol: string; size?: number }) {
   return (
-    <Image
-      systemName={symbol}
+    <IconTile
+      systemImage={symbol}
+      size={size}
+      color={{ gradient: themeOf(theme).gradient, start: "topLeading", end: "bottomTrailing" }}
+      // The app's glyph size (IconTile's default is 55% of the tile).
       font={size > 60 ? "largeTitle" : "title3"}
-      foregroundStyle="white"
-      frame={{ width: size, height: size }}
-      background={{ gradient: themeOf(theme).gradient, start: "topLeading", end: "bottomTrailing" }}
-      cornerRadius={size * 0.26}
-      accessibilityHidden
     />
   );
 }
@@ -71,16 +68,5 @@ export function SymbolPicker({ value, theme, onChange }: { value: string; theme:
         />
       ))}
     </LazyVGrid>
-  );
-}
-
-export function EmptyState({ symbol, title, message, children }: { symbol: string; title: string; message: string; children?: ReactNode }) {
-  return (
-    <VStack spacing={12} padding={32} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-      <Image systemName={symbol} font="largeTitle" foregroundStyle="secondary" />
-      <Text font="title2" fontWeight="bold">{title}</Text>
-      <Text textAlignment="center" foregroundStyle="secondary">{message}</Text>
-      {children}
-    </VStack>
   );
 }

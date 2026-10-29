@@ -3,17 +3,15 @@
 // Three ways to look at the body:
 //  - "edit" (default): a live-preview line editor, like Bear. Every line is
 //    rendered markdown except the one you're editing, which is a plain,
-//    vertically growing TextField. The formatting toolbar acts on that line
-//    (TextField has no cursor or selection API, so "the current line" is the
-//    finest thing it can format).
+//    vertically growing TextField. The formatting toolbar acts on that line.
 //  - "source": one TextEditor with the raw markdown (select across lines,
 //    paste long text). The toolbar acts on the last line.
 //  - "read": rendered markdown; checkboxes toggle, links open.
 import { useEffect, useRef, useState } from "react";
 import { nanoid } from "nanoid";
 import {
-  openURL, withAnimation, Screen, ToolbarItem, ScrollView, VStack, HStack, Text, TextField, TextEditor, Image, Button,
-  Label, Menu, Divider, Spacer, Alert, ConfirmationDialog, type HostInstance, type Font,
+  openURL, withAnimation, useNow, format, Screen, ToolbarItem, ScrollView, VStack, HStack, Text, TextField, TextEditor, Image,
+  Button, Label, Menu, Divider, Spacer, Alert, ShareLink, ContentUnavailable, type HostInstance, type Font,
 } from "swiftjsx";
 import {
   useNotes, saveNote, updateNote, trashNotes, restoreNote, destroyNotes, daysLeft, type Note, type Folder,
@@ -22,12 +20,9 @@ import {
   parseBlocks, counts, toggleWrap, cycleHeading, toggleTask, toggleBullet, flipTask, continuation, toMarkdown, type Block,
 } from "./markdown";
 import { BlockView, ReadView } from "./MarkdownView";
-import { isEmptyNote, longDate, useNow } from "./format";
+import { isEmptyNote, longDate } from "./format";
 import { ExportSheet } from "./ExportSheet";
-import { hasUIKit, shareText } from "./share";
 
-/** Every line field starts with this, so backspace at its start is visible (it deletes the sentinel). */
-const ZWSP = "​";
 const AUTOSAVE_MS = 600;
 
 type Line = { id: string; text: string };
@@ -51,10 +46,7 @@ export function NoteDetail({ id, autoFocusTitle, onClose }: { id: string; autoFo
 export function NoNoteSelected() {
   return (
     <Screen title="">
-      <VStack spacing={10} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} accessibilityElement="combine">
-        <Image systemName="note.text" font="largeTitle" foregroundStyle="tertiary" />
-        <Text font="title3" foregroundStyle="secondary">No Note Selected</Text>
-      </VStack>
+      <ContentUnavailable title="No Note Selected" systemImage="note.text" />
     </Screen>
   );
 }
@@ -69,12 +61,12 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
   const [editingId, setEditingId] = useState<string | null>(null);
   /** What has keyboard focus: "title", "source", a line id, or nothing. */
   const [focused, setFocused] = useState<string | null>(null);
-  const [linkChoices, setLinkChoices] = useState<string[] | null>(null);
   const [exporting, setExporting] = useState(false);
   const [confirmingDestroy, setConfirmingDestroy] = useState(false);
   const lineField = useRef<HostInstance>(null);
   const titleField = useRef<HostInstance>(null);
-  const shareButton = useRef<HostInstance>(null);
+  /** The cursor in the line being edited, for backspace at its start. */
+  const cursor = useRef({ id: "", start: -1, end: -1 });
   /** When a line last split, so a Return that also fires onSubmit doesn't split twice. */
   const lastSplit = useRef({ id: "", at: 0 });
   const effectiveMode: Mode = deleted ? "read" : mode;
@@ -158,16 +150,21 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
     split(line, line.text + "\n");
   };
 
-  const onLineChange = (line: Line, index: number, raw: string) => {
-    if (!raw.startsWith(ZWSP)) {
-      // The sentinel is gone. Unchanged text means backspace at the start;
-      // anything else is a replacement (select all, type) or typing before it.
-      if (raw === line.text) return mergeUp(index, raw);
-      return setLineText(line.id, raw.split(ZWSP).join(""));
-    }
-    const text = raw.slice(1).split(ZWSP).join("");
+  const onLineChange = (line: Line, text: string) => {
+    // Until the field reports the cursor again, it's unknown.
+    cursor.current = { id: "", start: -1, end: -1 };
     if (text.includes("\n")) return split(line, text);
     setLineText(line.id, text);
+  };
+
+  /**
+   * The delete key (reported after the text changes). With nothing to delete
+   * (an empty line, or the cursor at its start, so no text change forgot the
+   * cursor), join the line to the one above.
+   */
+  const onLineDelete = (line: Line, index: number, empty: boolean) => {
+    const c = cursor.current;
+    if (empty || (c.id === line.id && c.start === 0 && c.end === 0)) mergeUp(index, line.text);
   };
 
   /** A tap below the last line: edit it if it's blank, else start a new one. */
@@ -191,7 +188,7 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
     change((d) => ({ ...d, lines: d.lines.map((l, i) => (i === index ? { ...l, text: flipTask(l.text) } : l)) }));
 
   /** The formatting toolbar: the line being edited, or the last line in source mode. */
-  const format = (fn: (line: string) => string) => {
+  const applyFormat = (fn: (line: string) => string) => {
     const target = effectiveMode === "source" ? draft.lines[draft.lines.length - 1] : draft.lines.find((l) => l.id === editingId);
     if (target) setLineText(target.id, fn(target.text));
   };
@@ -208,19 +205,7 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
     withAnimation("snappy", () => setMode(next));
   };
 
-  // MARK: Links, sharing
-
-  const openLinks = (urls: string[]) => (urls.length === 1 ? openLink(urls[0]) : setLinkChoices(urls));
-
   const exportText = toMarkdown(draft.title, body);
-  const share = async () => {
-    if (!hasUIKit()) return setExporting(true);
-    const anchor = await shareButton.current?.measure();
-    shareText(exportText, anchor).catch((e) => {
-      console.error(e);
-      setExporting(true);
-    });
-  };
 
   const close = (fn: () => void) => {
     onClose();
@@ -237,7 +222,7 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
         <HStack spacing={10} padding={12} background="red/10" cornerRadius={12} frame={{ maxWidth: "infinity", alignment: "leading" }}>
           <Image systemName="trash" foregroundStyle="red" />
           <Text font="subheadline" frame={{ maxWidth: "infinity", alignment: "leading" }}>
-            {`In Recently Deleted. It will be deleted in ${daysLeft(note, now)} ${daysLeft(note, now) === 1 ? "day" : "days"}.`}
+            {format.count(daysLeft(note, now), { one: "In Recently Deleted. It will be deleted in # day.", other: "In Recently Deleted. It will be deleted in # days." })}
           </Text>
           <Button title="Recover" buttonStyle="borderedProminent" tint="red" onPress={() => withAnimation("snappy", () => restoreNote(note.id))} />
         </HStack>
@@ -267,7 +252,7 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
       )}
 
       <Text font="footnote" foregroundStyle="secondary" accessibilityIdentifier="note-counts">
-        {`${longDate(note.updatedAt)} · ${words} ${words === 1 ? "word" : "words"} · ${characters} ${characters === 1 ? "character" : "characters"}`}
+        {`${longDate(note.updatedAt)} · ${format.count(words, { one: "# word", other: "# words" })} · ${format.count(characters, { one: "# character", other: "# characters" })}`}
         <Text foregroundStyle="tertiary">{dirty ? " · Saving…" : " · Saved"}</Text>
       </Text>
     </>
@@ -287,9 +272,9 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
         </ToolbarItem>
       )}
       <ToolbarItem placement="primaryAction">
-        <Button ref={shareButton} onPress={share} accessibilityLabel="Share" accessibilityIdentifier="share-note">
+        <ShareLink text={exportText} accessibilityLabel="Share" accessibilityIdentifier="share-note">
           <Image systemName="square.and.arrow.up" />
-        </Button>
+        </ShareLink>
       </ToolbarItem>
       <ToolbarItem placement="primaryAction">
         <Menu systemImage="ellipsis.circle" accessibilityLabel="More" accessibilityIdentifier="note-menu">
@@ -362,7 +347,7 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
               <ReadView
                 lines={draft.lines.map((l) => l.text)}
                 onToggle={deleted ? undefined : toggleLine}
-                onLinks={openLinks}
+                onLink={openLink}
               />
             ) : (
               <VStack
@@ -377,8 +362,12 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
                     <TextField
                       key={line.id}
                       ref={lineField}
-                      value={ZWSP + line.text}
-                      onChange={(raw) => onLineChange(line, index, raw)}
+                      value={line.text}
+                      onChange={(text) => onLineChange(line, text)}
+                      onSelectionChange={({ start, end }) => {
+                        cursor.current = { id: line.id, start, end };
+                      }}
+                      onDeleteBackward={({ empty }) => onLineDelete(line, index, empty)}
                     // Return in a vertical field normally arrives as "\n" in onChange
                     // (that's what split() handles); this covers a submit instead.
                     onSubmit={() => submitted(line)}
@@ -424,23 +413,13 @@ function Editor({ note, folders, autoFocusTitle, onClose }: { note: Note; folder
               </VStack>
             )}
           </VStack>
-          <ConfirmationDialog item={linkChoices} onDismiss={() => setLinkChoices(null)} title="Open Link">
-            {(urls: string[]) => (
-              <>
-                {urls.map((url) => (
-                  <Button key={url} title={prettyURL(url)} onPress={() => openLink(url)} />
-                ))}
-                <Button title="Cancel" role="cancel" onPress={() => {}} />
-              </>
-            )}
-          </ConfirmationDialog>
         </ScrollView>
       )}
 
       {focused !== null && effectiveMode !== "read" ? (
         <FormatBar
           disabled={focused === "title"}
-          onFormat={format}
+          onFormat={applyFormat}
           onDone={doneEditing}
         />
       ) : null}
@@ -470,19 +449,7 @@ function openLink(url: string) {
   openURL(full, { inApp: /^https?:/i.test(full) });
 }
 
-function prettyURL(url: string) {
-  try {
-    const u = new URL(url);
-    return (u.hostname + u.pathname).replace(/\/$/, "");
-  } catch {
-    return url;
-  }
-}
-
-/**
- * Sits at the bottom of the editor, so keyboard avoidance puts it right above
- * the keyboard. (There's no keyboard toolbar placement.)
- */
+/** Sits at the bottom of the editor, so keyboard avoidance puts it right above the keyboard. */
 function FormatBar({ disabled, onFormat, onDone }: { disabled: boolean; onFormat(fn: (line: string) => string): void; onDone(): void }) {
   const tools: { icon: string; label: string; id: string; fn: (line: string) => string }[] = [
     { icon: "textformat.size", label: "Heading", id: "heading", fn: cycleHeading },

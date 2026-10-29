@@ -1,8 +1,9 @@
 // Games, best scores and stats per board size, persisted with zustand +
 // localStorage. The rules live in game.ts; this adds what isn't pure: ids,
 // seeds, the clock, undo and stats.
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { create } from "zustand";
+import { useAppState } from "swiftjsx";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { nanoid } from "nanoid";
 import { move, newGame, settle, highestTile, isGame, type Direction, type Game, type MoveResult } from "./game";
@@ -200,19 +201,8 @@ export const useSlot = () => useGame((s) => s.slots[s.size]);
  * app is in front; pauses it otherwise, committing the time to the game.
  */
 export function useGameClock(active: boolean, gameId: string) {
-  const [focused, setFocused] = useState(true);
-  useEffect(() => {
-    const onFocus = () => setFocused(true);
-    const onBlur = () => setFocused(false);
-    addEventListener("focus", onFocus);
-    addEventListener("blur", onBlur);
-    return () => {
-      removeEventListener("focus", onFocus);
-      removeEventListener("blur", onBlur);
-    };
-  }, []);
-
-  const running = active && focused;
+  const appState = useAppState();
+  const running = active && appState === "active";
   useEffect(() => {
     if (!running) return;
     useGame.getState().resumeClock();

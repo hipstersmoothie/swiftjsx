@@ -2,9 +2,9 @@
 import { useState } from "react";
 import {
   Navigator, Screen, ToolbarItem, Form, Section, TextField, Button, HStack, VStack, Text, Image, Label, Spacer,
-  Sheet, Alert, SwipeActions, withAnimation, type Color,
+  Sheet, Alert, SwipeActions, withAnimation, format, type Color,
 } from "swiftjsx";
-import { plural, type Card } from "./model";
+import type { Card } from "./model";
 import { useDeck, useFlashcards } from "./store";
 import { themeOf } from "./theme";
 import { BoxMeter, SymbolPicker, ThemePicker } from "./ui";
@@ -13,14 +13,14 @@ import { CardForm } from "./forms";
 export function DeckScreen({ deckId }: { deckId: string }) {
   const deck = useDeck(deckId);
   const { updateDeck, saveCard, removeCard, resetProgress } = useFlashcards();
-  // Kept after closing, so the sheet's content doesn't vanish while it slides away.
-  const [editor, setEditor] = useState<{ open: boolean; card?: Card; key: number }>({ open: false, key: 0 });
+  /** The card being edited (`card` undefined: a new one). */
+  const [editor, setEditor] = useState<{ card?: Card } | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
 
   if (!deck) return <Screen title="Deck" />;
   const tint = themeOf(deck.theme).tint;
-  const openEditor = (card?: Card) => setEditor((e) => ({ open: true, card, key: e.key + 1 }));
-  const closeEditor = () => setEditor((e) => ({ ...e, open: false }));
+  const openEditor = (card?: Card) => setEditor({ card });
+  const closeEditor = () => setEditor(null);
 
   return (
     <Screen title={deck.name || "Untitled Deck"} titleDisplayMode="inline">
@@ -37,7 +37,7 @@ export function DeckScreen({ deckId }: { deckId: string }) {
           <SymbolPicker value={deck.symbol} theme={deck.theme} onChange={(symbol) => updateDeck(deck.id, { symbol })} />
         </Section>
 
-        <Section header={plural(deck.cards.length, "Card")} footer="Tap a card to edit it. Swipe left to delete.">
+        <Section header={format.count(deck.cards.length, { one: "# Card", other: "# Cards" })} footer="Tap a card to edit it. Swipe left to delete.">
           {deck.cards.map((card) => (
             <CardRow
               key={card.id}
@@ -57,19 +57,20 @@ export function DeckScreen({ deckId }: { deckId: string }) {
         </Section>
       </Form>
 
-      <Sheet isPresented={editor.open} onDismiss={closeEditor} detents={["medium", "large"]}>
-        <Navigator>
-          <CardForm
-            key={editor.key}
-            card={editor.card}
-            theme={deck.theme}
-            onCancel={closeEditor}
-            onSave={(input) => {
-              saveCard(deck.id, { ...input, id: editor.card?.id });
-              closeEditor();
-            }}
-          />
-        </Navigator>
+      <Sheet item={editor} onDismiss={closeEditor} detents={["medium", "large"]}>
+        {({ card }) => (
+          <Navigator>
+            <CardForm
+              card={card}
+              theme={deck.theme}
+              onCancel={closeEditor}
+              onSave={(input) => {
+                saveCard(deck.id, { ...input, id: card?.id });
+                closeEditor();
+              }}
+            />
+          </Navigator>
+        )}
       </Sheet>
 
       <Alert

@@ -3,13 +3,14 @@
 // autoplay, about, account.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Screen, ScrollView, VStack, HStack, Text, Image, Button, Toggle, Spacer, ToolbarItem, Rectangle, useNavigation, openURL,
+  Screen, ScrollView, VStack, HStack, Text, Image, Button, Toggle, Spacer, ToolbarItem, Rectangle, useNavigation, openURL, toast,
 } from "swiftjsx";
 import { deleteSession, getProfile } from "./api";
 import { displayName } from "./format";
 import { PROFILE_BAR, ProfileBody } from "./Profile";
 import { useSession, useSettings } from "./session";
-import { toast, useUI } from "./store";
+import { useUI } from "./store";
+import { BRAND } from "./theme";
 import { Avatar, Butterfly, PillButton, Segmented, T, ty, useTheme } from "./ui";
 
 export function useMyProfile() {
@@ -52,7 +53,7 @@ export function SettingsScreen({ root = false }: { root?: boolean }) {
     if (session) await deleteSession(session);
     setSession(null);
     client.clear();
-    toast("Signed out", "rectangle.portrait.and.arrow.right");
+    toast("Signed out", { systemImage: "rectangle.portrait.and.arrow.right", tint: BRAND });
   };
 
   return (
@@ -66,6 +67,7 @@ export function SettingsScreen({ root = false }: { root?: boolean }) {
               <Text font={ty(T.md)} foregroundStyle={t.textMedium}>@{session.handle}</Text>
             </VStack>
           ) : (
+            // Our own, not ContentUnavailable: the butterfly and two of Bluesky's buttons.
             <VStack spacing={10} padding={{ horizontal: 24, vertical: 28 }} frame={{ maxWidth: "infinity" }} accessibilityIdentifier="sign-in-card">
               <Butterfly size={40} />
               <Text font={ty(T.xxl, "bold")} foregroundStyle={t.text} textAlignment="center" padding={{ top: 4 }}>You're browsing signed out</Text>

@@ -5,11 +5,11 @@ import { useState } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Navigator, useNavigation, Screen, ToolbarItem, Sheet, ContextMenu, ScrollView, LazyVStack, VStack, HStack, Text, Image, Label,
-  Button, ProgressView, Spacer,
+  Button, ProgressView, Spacer, ContentUnavailable, useNow,
 } from "swiftjsx";
 import { forecastQuery, type City } from "./api";
 import { conditionGradient, conditionLabel } from "./conditions";
-import { cityClock, useNow, useTemperature } from "./format";
+import { cityClock, useTemperature } from "./format";
 import { useSettings } from "./store";
 import { CityScreen } from "./CityScreen";
 import { SearchResults } from "./Search";
@@ -54,12 +54,7 @@ function CityList() {
   const now = useNow();
 
   if (!cities.length) {
-    return (
-      <VStack spacing={10} padding={24} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-        <Image systemName="cloud.sun" font="largeTitle" foregroundStyle="secondary" />
-        <Text textAlignment="center" foregroundStyle="secondary">Search for a city to see its weather.</Text>
-      </VStack>
-    );
+    return <ContentUnavailable systemImage="cloud.sun" title="No Cities" description="Search for a city to see its weather." />;
   }
 
   return (

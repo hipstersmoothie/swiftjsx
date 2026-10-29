@@ -4,12 +4,12 @@
 import { useState } from "react";
 import {
   Navigator, useNavigation, Screen, ToolbarItem, List, Section, Button, HStack, VStack, Text, Image, Label, Spacer,
-  Sheet, Alert, SwipeActions, ContextMenu, withAnimation,
+  Sheet, Alert, SwipeActions, ContextMenu, ContentUnavailable, withAnimation, useNow, format,
 } from "swiftjsx";
-import { currentStreak, dueCards, plural, MAX_BOX, type Deck } from "./model";
-import { useFlashcards, useNow } from "./store";
+import { currentStreak, dueCards, MAX_BOX, type Deck } from "./model";
+import { useFlashcards } from "./store";
 import { themeOf } from "./theme";
-import { DeckIcon, EmptyState } from "./ui";
+import { DeckIcon } from "./ui";
 import { StudyScreen } from "./StudyScreen";
 import { DeckScreen } from "./DeckScreen";
 import { NewDeckForm } from "./forms";
@@ -28,16 +28,15 @@ function HomeScreen() {
   const streak = useFlashcards((s) => s.streak);
   const removeDeck = useFlashcards((s) => s.removeDeck);
   const now = useNow();
-  // Presentations keep their last content while they animate away.
-  const [creating, setCreating] = useState({ open: false, key: 0 });
-  const [deleting, setDeleting] = useState<{ open: boolean; deck?: Deck }>({ open: false });
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<Deck | null>(null);
   const due = decks.reduce((n, deck) => n + dueCards(deck, now).length, 0);
 
   return (
     <Screen title="Flashcards">
       <ToolbarItem placement="primaryAction">
         <Button
-          onPress={() => setCreating((c) => ({ open: true, key: c.key + 1 }))}
+          onPress={() => setCreating(true)}
           accessibilityLabel="New deck"
           accessibilityIdentifier="new-deck"
         >
@@ -52,23 +51,22 @@ function HomeScreen() {
           </Section>
           <Section header="Decks" footer="Long-press a deck for more options.">
             {decks.map((deck) => (
-              <DeckRow key={deck.id} deck={deck} now={now} onDelete={() => setDeleting({ open: true, deck })} />
+              <DeckRow key={deck.id} deck={deck} now={now} onDelete={() => setDeleting(deck)} />
             ))}
           </Section>
         </List>
       ) : (
-        <EmptyState symbol="rectangle.on.rectangle.angled" title="No decks" message="Create a deck and add a few cards to start learning.">
-          <Button title="New Deck" buttonStyle="borderedProminent" onPress={() => setCreating((c) => ({ open: true, key: c.key + 1 }))} />
-        </EmptyState>
+        <ContentUnavailable systemImage="rectangle.on.rectangle.angled" title="No decks" description="Create a deck and add a few cards to start learning.">
+          <Button title="New Deck" buttonStyle="borderedProminent" onPress={() => setCreating(true)} />
+        </ContentUnavailable>
       )}
 
-      <Sheet isPresented={creating.open} onDismiss={() => setCreating((c) => ({ ...c, open: false }))}>
+      <Sheet isPresented={creating} onDismiss={() => setCreating(false)}>
         <Navigator>
           <NewDeckForm
-            key={creating.key}
-            onCancel={() => setCreating((c) => ({ ...c, open: false }))}
+            onCancel={() => setCreating(false)}
             onCreate={(deckId) => {
-              setCreating((c) => ({ ...c, open: false }));
+              setCreating(false);
               nav.push(<DeckScreen deckId={deckId} />);
             }}
           />
@@ -76,13 +74,17 @@ function HomeScreen() {
       </Sheet>
 
       <Alert
-        isPresented={deleting.open}
-        onDismiss={() => setDeleting((d) => ({ ...d, open: false }))}
-        title={`Delete "${deleting.deck?.name}"?`}
-        message={`Its ${deleting.deck?.cards.length} cards and your progress on them will be gone.`}
+        item={deleting}
+        onDismiss={() => setDeleting(null)}
+        title={(deck) => `Delete "${deck.name}"?`}
+        message={(deck) => `Its ${format.count(deck.cards.length, { one: "# card", other: "# cards" })} and your progress on them will be gone.`}
       >
-        <Button title="Delete" role="destructive" onPress={() => deleting.deck && withAnimation("default", () => removeDeck(deleting.deck!.id))} />
-        <Button title="Cancel" role="cancel" onPress={() => {}} />
+        {(deck) => (
+          <>
+            <Button title="Delete" role="destructive" onPress={() => withAnimation("default", () => removeDeck(deck.id))} />
+            <Button title="Cancel" role="cancel" onPress={() => {}} />
+          </>
+        )}
       </Alert>
     </Screen>
   );
@@ -100,7 +102,7 @@ function TodayRow({ due, streak }: { due: number; streak: number }) {
       <VStack spacing={4}>
         <Image systemName="flame.fill" font="largeTitle" foregroundStyle={streak ? "orange" : "secondary"} scale={streak ? 1 : 0.85} animation="bouncy" />
         <Text font="caption" fontWeight="semibold" foregroundStyle={streak ? "orange" : "secondary"}>
-          {plural(streak, "day")}
+          {format.count(streak, { one: "# day", other: "# days" })}
         </Text>
       </VStack>
     </HStack>
@@ -121,7 +123,7 @@ function DeckRow({ deck, now, onDelete }: { deck: Deck; now: number; onDelete():
         <VStack alignment="leading" spacing={3}>
           <Text font="headline" foregroundStyle="primary" lineLimit={1}>{deck.name || "Untitled Deck"}</Text>
           <Text font="subheadline" foregroundStyle="secondary">
-            {plural(deck.cards.length, "card")}{mastered ? ` · ${mastered} mastered` : ""}
+            {format.count(deck.cards.length, { one: "# card", other: "# cards" })}{mastered ? ` · ${mastered} mastered` : ""}
           </Text>
         </VStack>
         <Spacer />

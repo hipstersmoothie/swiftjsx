@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
-  withAnimation, Navigator, Screen, ToolbarItem, Form, Section, VStack, LazyVGrid, Image, TextField, Button, Sheet,
-  type Color, type HostInstance,
+  withAnimation, Navigator, Screen, ToolbarItem, Form, Section, VStack, LazyVGrid, Image, IconTile, TextField, Button, Sheet,
+  type Color,
 } from "swiftjsx";
 import { addList } from "./store";
 
@@ -11,16 +11,13 @@ const icons = [
   "graduationcap.fill", "book.fill", "gift.fill", "airplane", "heart.fill", "leaf.fill",
 ];
 
-/**
- * Change `formKey` each time it opens for a fresh form. (Rendering the form
- * only while presented would blank the sheet during its dismiss animation.)
- */
-export function NewListSheet({ isPresented, formKey, onClose }: { isPresented: boolean; formKey: number; onClose(): void }) {
+/** The form starts fresh each time the sheet opens. */
+export function NewListSheet({ isPresented, onClose }: { isPresented: boolean; onClose(): void }) {
   return (
     <Sheet isPresented={isPresented} onDismiss={onClose} detents={["large"]}>
       {/* A stack of its own, for the sheet's title and Cancel / Done buttons. */}
       <Navigator>
-        <NewListForm key={formKey} onClose={onClose} />
+        <NewListForm onClose={onClose} />
       </Navigator>
     </Sheet>
   );
@@ -30,11 +27,6 @@ function NewListForm({ onClose }: { onClose(): void }) {
   const [name, setName] = useState("");
   const [color, setColor] = useState<Color>("blue");
   const [icon, setIcon] = useState("list.bullet");
-  const input = useRef<HostInstance>(null);
-
-  useEffect(() => {
-    input.current?.focus();
-  }, []);
 
   const save = () => {
     if (!name.trim()) return;
@@ -54,19 +46,9 @@ function NewListForm({ onClose }: { onClose(): void }) {
       <Form>
         <Section>
           <VStack spacing={16} padding={{ vertical: 8 }} frame={{ maxWidth: "infinity" }}>
-            <Image
-              systemName={icon}
-              font="largeTitle"
-              foregroundStyle="white"
-              frame={{ width: 88, height: 88 }}
-              background={color}
-              cornerRadius={44}
-              shadow={{ radius: 8, y: 4 }}
-              animation="snappy"
-              accessibilityHidden
-            />
+            <IconTile systemImage={icon} color={color} size={88} shape="circle" font="largeTitle" shadow={{ radius: 8, y: 4 }} animation="snappy" />
             <TextField
-              ref={input}
+              autoFocus
               value={name}
               onChange={setName}
               onSubmit={save}

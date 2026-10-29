@@ -1,49 +1,21 @@
 // Money, numbers and the fake variants DummyJSON doesn't have.
 //
 // Money is kept in integer cents so a cart of 3 × $9.99 adds up to $29.97,
-// not $29.969999999999995. Intl.NumberFormat does the display (JavaScriptCore
-// ships ICU, so `style: "currency"` works); there's a fallback in case an
-// engine comes without it.
-import type { Color } from "swiftjsx";
+// not $29.969999999999995; it becomes dollars only to be shown.
+import { format, type Color } from "swiftjsx";
 
 export type Cents = number;
 
 export const toCents = (dollars: number): Cents => Math.round(dollars * 100);
 
-const currency: ((cents: Cents) => string) | null = (() => {
-  try {
-    const nf = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
-    // Some engines accept the options and ignore them; make sure it really did.
-    return /\d/.test(nf.format(1)) ? (cents: Cents) => nf.format(cents / 100) : null;
-  } catch {
-    return null;
-  }
-})();
-
 /** 1999 → "$19.99" (in the user's locale, in US dollars). */
-export function money(cents: Cents): string {
-  if (currency) return currency(cents);
-  const sign = cents < 0 ? "-" : "";
-  const abs = Math.abs(cents);
-  const dollars = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${sign}$${dollars}.${String(abs % 100).padStart(2, "0")}`;
-}
-
-/** Whether `money()` is using Intl (shown in the cart footer, for the gap report). */
-export const usesIntl = currency !== null;
-
-const percent = (() => {
-  try {
-    return new Intl.NumberFormat(undefined, { style: "percent", maximumFractionDigits: 0 });
-  } catch {
-    return null;
-  }
-})();
+export const money = (cents: Cents) => format.currency(cents / 100, "USD");
 
 /** 12.48 → "12%". */
-export const formatPercent = (value: number) => (percent ? percent.format(value / 100) : `${Math.round(value)}%`);
+export const formatPercent = (value: number) => format.percent(value / 100);
 
-export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** "1 item", "3 items". */
+export const plural = (n: number, one: string, many = `${one}s`) => format.count(n, { one: `# ${one}`, other: `# ${many}` });
 
 /** "home-decoration" → "Home Decoration". */
 export const titleCase = (slug: string) =>

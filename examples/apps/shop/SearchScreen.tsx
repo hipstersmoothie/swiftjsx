@@ -1,30 +1,22 @@
 // Search: debounced queries against /products/search, results as rows, and
 // suggestions (popular terms, categories) while the field is empty.
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useNavigation, Screen, List, Section, ScrollView, VStack, HStack, Text, Image, Button, Spacer, Flow, ProgressView, Divider } from "swiftjsx";
+import {
+  useNavigation, useDebouncedValue, Screen, List, Section, ScrollView, VStack, HStack, Text, Image, Button, Spacer, Flow, ProgressView, Divider,
+  ContentUnavailable,
+} from "swiftjsx";
 import { categoriesQuery, searchQuery, stockLevel, type Product } from "./api";
 import { plural } from "./format";
 import { ProductScreen } from "./ProductScreen";
 import { CategoryScreen } from "./CategoryScreen";
-import { ACCENT, EmptyState, ErrorState, HeartButton, PriceTag, RatingStars } from "./ui";
+import { ACCENT, ErrorState, HeartButton, PriceTag, RatingStars } from "./ui";
 
 const popular = ["phone", "laptop", "watch", "perfume", "sunglasses", "shoes", "lipstick", "chair"];
 
-/** `value`, once it has stopped changing for `ms`. */
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(timer);
-  }, [value, ms]);
-  return debounced;
-}
-
 export function SearchScreen() {
   const [text, setText] = useState("");
-  const term = useDebounced(text.trim().toLowerCase(), 300);
-  const typing = text.trim().toLowerCase() !== term;
+  const [term, typing] = useDebouncedValue(text.trim().toLowerCase(), 300);
 
   return (
     <Screen title="Search" searchText={text} onSearchTextChange={setText} searchPrompt="Products, brands and more">
@@ -47,7 +39,7 @@ function Results({ term, typing }: { term: string; typing: boolean }) {
     );
   }
   if (!search.data.products.length) {
-    return <EmptyState icon="magnifyingglass" title={`No results for “${term}”`} message="Check the spelling or try a more general term." />;
+    return <ContentUnavailable search={term} />;
   }
 
   return (

@@ -5,14 +5,14 @@ import { useState } from "react";
 import { addDays, addMinutes, differenceInCalendarDays, format, startOfWeek } from "date-fns";
 import {
   Screen, ScrollView, LazyVStack, VStack, HStack, LazyVGrid, Text, Image, Button, Spacer, Divider, ProgressView,
-  useNavigation, withAnimation, haptic, type Color,
+  ContentUnavailable, IconTile, useNavigation, withAnimation, haptic, format as fmt, type Color,
 } from "swiftjsx";
 import { getData, workoutHeartRate, workoutSplits, type Workout, type WorkoutType } from "./data";
 import { WORKOUTS, ZONES, MAX_HR, zoneOf } from "./theme";
 import { mean, type ChartData } from "./model";
 import { Chart, Legend } from "./Chart";
 import { Card, SectionTitle, ValueText } from "./ui";
-import { clock, decimal, hoursMinutes, int, pace, relativeDay, time } from "./format";
+import { decimal, hoursMinutes, int, pace, time } from "./format";
 
 const RECENT_DAYS = 90;
 const TYPES = Object.keys(WORKOUTS) as WorkoutType[];
@@ -32,14 +32,13 @@ function primaryValue(w: Workout) {
 export function WorkoutIcon({ type, size = 40 }: { type: WorkoutType; size?: number }) {
   const meta = WORKOUTS[type];
   return (
-    <Image
-      systemName={meta.icon}
+    <IconTile
+      systemImage={meta.icon}
+      size={size}
+      shape="circle"
+      color={`${meta.color}/18`}
+      foreground={meta.color}
       font={{ size: size * 0.48, weight: "semibold" }}
-      foregroundStyle={meta.color}
-      frame={{ width: size, height: size }}
-      background={`${meta.color}2E` as Color}
-      cornerRadius="capsule"
-      accessibilityHidden
     />
   );
 }
@@ -59,7 +58,7 @@ export function WorkoutRow({ workout }: { workout: Workout }) {
       </VStack>
       <Spacer />
       <VStack alignment="trailing" spacing={2}>
-        <Text font="footnote" foregroundStyle="secondary">{relativeDay(workout.start, getData().today)}</Text>
+        <Text font="footnote" foregroundStyle="secondary">{fmt.relativeDay(workout.start, { now: +getData().today })}</Text>
         <Text font="caption" foregroundStyle="tertiary" monospacedDigit>{hoursMinutes(workout.minutes)}</Text>
       </VStack>
       <Image systemName="chevron.right" font="footnote" fontWeight="semibold" foregroundStyle="tertiary" />
@@ -159,7 +158,7 @@ export function WorkoutsScreen({ pushed = false }: { pushed?: boolean }) {
             </VStack>
           ))}
           {!months.length ? (
-            <Text foregroundStyle="secondary" frame={{ maxWidth: "infinity" }} padding={24}>No workouts of this type in the last 90 days.</Text>
+            <ContentUnavailable title="No Workouts" systemImage="figure.run" description="No workouts of this type in the last 90 days." />
           ) : null}
         </LazyVStack>
       </ScrollView>
@@ -230,7 +229,7 @@ export function WorkoutScreen({ workoutId }: { workoutId: string }) {
 function details(w: Workout): { title: string; value: string; unit: string; color: Color }[] {
   const seconds = w.minutes * 60 + (w.seed % 60);
   const out: { title: string; value: string; unit: string; color: Color }[] = [
-    { title: "Workout Time", value: clock(seconds), unit: "", color: "yellow" },
+    { title: "Workout Time", value: fmt.duration(seconds), unit: "", color: "yellow" },
   ];
   if (w.distanceKm) {
     out.push(w.type === "swim" ? { title: "Distance", value: int(w.distanceKm * 1000), unit: "M", color: "cyan" } : { title: "Distance", value: decimal(w.distanceKm, 2), unit: "KM", color: "cyan" });
@@ -303,7 +302,7 @@ function ZonesCard({ workout }: { workout: Workout }) {
                 <Text font="subheadline" fontWeight="semibold" foregroundStyle={zone.color}>{zone.name}</Text>
                 <Text font="caption" foregroundStyle="secondary">{i === 0 ? `< ${hi! + 1}` : hi ? `${lo}–${hi}` : `${lo}+`} BPM</Text>
                 <Spacer />
-                <Text font="subheadline" fontWeight="semibold" monospacedDigit>{clock(minutes[i] * 60)}</Text>
+                <Text font="subheadline" fontWeight="semibold" monospacedDigit>{fmt.duration(minutes[i] * 60)}</Text>
               </HStack>
               <ProgressView value={minutes[i] / most} tint={zone.color} />
             </VStack>

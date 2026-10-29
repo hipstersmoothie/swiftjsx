@@ -38,7 +38,8 @@ export type Palette = {
   scrim: Color;
 };
 
-const BRAND: Color = "#1083FE";
+/** The brand blue (light theme's primary): toasts' symbols, outside any theme. */
+export const BRAND: Color = "#1083FE";
 
 export const light: Palette = {
   name: "light",

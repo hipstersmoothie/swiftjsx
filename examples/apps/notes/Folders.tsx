@@ -3,15 +3,11 @@
 import { useState } from "react";
 import {
   withAnimation, Navigator, Screen, ToolbarItem, List, Section, Form, HStack, Text, Image, TextField, Button, Label,
-  LazyVGrid, SwipeActions, ContextMenu, Alert, Sheet, type Fill,
+  LazyVGrid, SwipeActions, ContextMenu, Alert, Sheet, format, type Fill,
 } from "swiftjsx";
 import {
   useNotes, useStorageSize, addFolder, deleteFolder, inScope, sameScope, DEFAULT_FOLDER, type Folder, type Scope,
 } from "./store";
-import { formatBytes } from "./format";
-
-/** Past this, saving every change to UserDefaults starts to cost (it rewrites the whole plist). */
-const LARGE_STORAGE = 512 * 1024;
 
 export function FoldersColumn({ scope, highlight, onSelect }: { scope: Scope; highlight: boolean; onSelect(scope: Scope): void }) {
   const folders = useNotes((s) => s.folders);
@@ -56,13 +52,7 @@ export function FoldersColumn({ scope, highlight, onSelect }: { scope: Scope; hi
             );
           })}
         </Section>
-        <Section
-          footer={
-            bytes > LARGE_STORAGE
-              ? `Notes use ${formatBytes(bytes)} of local storage. localStorage lives in UserDefaults, which is read into memory at launch and rewritten on every save; consider exporting old notes.`
-              : `Notes use ${formatBytes(bytes)} of local storage.`
-          }
-        >
+        <Section footer={`Notes use ${format.bytes(bytes)} of local storage.`}>
           <FolderRow
             name="Recently Deleted"
             icon="trash"
@@ -86,7 +76,7 @@ export function FoldersColumn({ scope, highlight, onSelect }: { scope: Scope; hi
         item={deleting}
         onDismiss={() => setDeleting(null)}
         title={(f: Folder) => `Delete “${f.name}”?`}
-        message={() => (deletingCount ? `Its ${deletingCount} ${deletingCount === 1 ? "note moves" : "notes move"} to Recently Deleted.` : "The folder is empty.")}
+        message={() => (deletingCount ? format.count(deletingCount, { one: "Its # note moves to Recently Deleted.", other: "Its # notes move to Recently Deleted." }) : "The folder is empty.")}
       >
         {(folder: Folder) => (
           <>
@@ -115,7 +105,7 @@ function FolderRow({ name, icon, iconColor = "orange", count, selected, onPress,
       listRowBackground={selected ? "orange/15" : undefined}
       badge={count}
       accessibilityLabel={name}
-      accessibilityValue={`${count} ${count === 1 ? "note" : "notes"}`}
+      accessibilityValue={format.count(count, { one: "# note", other: "# notes" })}
       accessibilityTraits={selected ? ["button", "selected"] : "button"}
       accessibilityIdentifier="folder-row"
     >

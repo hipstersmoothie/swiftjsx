@@ -5,6 +5,8 @@
 // headers on their own line, "01.Put the potatoes…", bullets, or a single
 // paragraph. We normalize all of them into short, readable steps.
 
+import { format } from "swiftjsx";
+
 const MAX_STEP = 320;
 const TARGET_STEP = 220;
 
@@ -117,13 +119,8 @@ const unitSeconds = (unit: string) => (/^h/i.test(unit) ? 3600 : /^m/i.test(unit
 const unitShort = (unit: string) => (/^h/i.test(unit) ? "hr" : /^m/i.test(unit) ? "min" : "sec");
 const formatNumber = (n: number) => (Number.isInteger(n) ? String(n) : n === 0.5 ? "½" : String(Math.round(n * 10) / 10).replace(/\.5$/, "½"));
 
-export function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)} sec`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
-  if (!h) return `${m} min`;
-  return m ? `${h} hr ${m} min` : `${h} hr`;
-}
+/** "45 sec", "25 min", "1 hr 5 min". */
+export const formatDuration = (seconds: number) => format.duration(seconds, "abbreviated");
 
 /** The most telling cooking verb in the clause before `index`, as a label. */
 function labelBefore(text: string, from: number, index: number): string {

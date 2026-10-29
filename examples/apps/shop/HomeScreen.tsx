@@ -1,6 +1,6 @@
 // Home: category chips, a paging carousel of the best deals, and an
 // infinitely loading product grid (all products, or one category's).
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   withAnimation,
@@ -16,15 +16,17 @@ import {
   Image,
   Button,
   Spacer,
-  Capsule,
   RoundedRectangle,
   ProgressView,
+  Chip,
+  Pager,
+  PageIndicator,
   type HostInstance,
 } from "swiftjsx";
 import { categoriesQuery, featuredQuery, productsQuery, salePrice, type Product } from "./api";
 import { formatPercent, money, plural, toCents } from "./format";
 import { ProductScreen } from "./ProductScreen";
-import { ACCENT, CartButton, Chip, ErrorState, ProductGrid, SkeletonGrid } from "./ui";
+import { ACCENT, CartButton, ErrorState, ProductGrid, SkeletonGrid } from "./ui";
 
 export function HomeScreen() {
   const [category, setCategory] = useState<string | null>(null);
@@ -72,17 +74,24 @@ function CategoryChips({ selected, onSelect }: { selected: string | null; onSele
   return (
     <ScrollView ref={scroller} axis="horizontal" showsIndicators={false} spacing={8} contentMargins={{ horizontal: 16 }}>
       {options.map((c) => (
-        <Chip
+        // Wrapped for the ref: selecting a chip scrolls it to the middle.
+        <HStack
           key={c.slug ?? "all"}
-          label={c.name}
-          selected={selected === c.slug}
-          identifier="category-chip"
-          onPress={() => select(c.slug)}
-          chipRef={(instance) => {
+          ref={(instance) => {
             if (instance) chips.current.set(c.slug ?? "all", instance);
             else chips.current.delete(c.slug ?? "all");
           }}
-        />
+        >
+          <Chip
+            label={c.name}
+            selected={selected === c.slug}
+            tint={ACCENT}
+            pressedScale={0.94}
+            animation="snappy"
+            accessibilityIdentifier="category-chip"
+            onPress={() => select(c.slug)}
+          />
+        </HStack>
       ))}
     </ScrollView>
   );
@@ -91,23 +100,13 @@ function CategoryChips({ selected, onSelect }: { selected: string | null; onSele
 // MARK: Featured carousel
 
 const CAROUSEL_HEIGHT = 190;
-const AUTO_ADVANCE_MS = 4500;
+/** Seconds per deal (paused while the user drags). */
+const AUTO_ADVANCE = 4.5;
 
 function Featured() {
   const { data } = useQuery(featuredQuery);
   const nav = useNavigation();
-  const scroller = useRef<HostInstance>(null);
   const [page, setPage] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const count = data?.length ?? 0;
-
-  // Auto-advance, paused while the user drags; a swipe changes `page`, which
-  // restarts the timer.
-  useEffect(() => {
-    if (count < 2 || dragging) return;
-    const timer = setTimeout(() => scroller.current?.scrollTo((page + 1) % count, { anchor: "leading" }), AUTO_ADVANCE_MS);
-    return () => clearTimeout(timer);
-  }, [page, count, dragging]);
 
   if (!data) {
     return (
@@ -119,33 +118,22 @@ function Featured() {
 
   return (
     <VStack spacing={10}>
-      <ScrollView
-        ref={scroller}
-        axis="horizontal"
-        paging
-        showsIndicators={false}
-        spacing={0}
+      <Pager
+        onPageChange={setPage}
+        autoAdvance={AUTO_ADVANCE}
+        // The dots go under the cards, not over them.
+        indicator="none"
         frame={{ height: CAROUSEL_HEIGHT }}
-        onScrollIndexChange={setPage}
-        onScrollPhaseChange={(phase) => setDragging(phase === "tracking" || phase === "interacting")}
+        accessibilityElement="contain"
         accessibilityIdentifier="featured-carousel"
       >
         {data.map((product) => (
-          <VStack
-            key={product.id}
-            relativeWidth={1}
-            frame={{ height: CAROUSEL_HEIGHT }}
-            padding={{ horizontal: 16 }}
-          >
+          <VStack key={product.id} frame={{ height: CAROUSEL_HEIGHT }} padding={{ horizontal: 16 }}>
             <FeaturedCard product={product} onPress={() => nav.push(<ProductScreen product={product} />)} />
           </VStack>
         ))}
-      </ScrollView>
-      <HStack spacing={6} accessibilityElement="ignore" accessibilityLabel={`Deal ${page + 1} of ${count}`}>
-        {data.map((p, i) => (
-          <Capsule key={p.id} fill={i === page ? ACCENT : "systemGray4"} frame={{ width: i === page ? 20 : 7, height: 7 }} animation="snappy" />
-        ))}
-      </HStack>
+      </Pager>
+      <PageIndicator style="capsule" count={data.length} page={page} tint={ACCENT} inactive="systemGray4" accessibilityLabel={`Deal ${page + 1} of ${data.length}`} />
     </VStack>
   );
 }

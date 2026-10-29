@@ -18,9 +18,10 @@ export type RingsProps = Modifiers & {
 };
 
 export function ActivityRings({ move, exercise, stand, size = 160, animateOnAppear = true, ...modifiers }: RingsProps) {
-  // There's no "animate on appear": start empty, and fill once the view is on
-  // screen (onAppear comes after SwiftUI has drawn the empty rings, so the
-  // change animates; setting it in an effect can land in the same frame).
+  // `initial` animates opacity, scale and offset in, not a trim: start empty,
+  // and fill once the view is on screen (onAppear comes after SwiftUI has
+  // drawn the empty rings, so the change animates; setting it in an effect
+  // can land in the same frame).
   const [shown, setShown] = useState(!animateOnAppear);
   const lineWidth = Math.max(4, size * 0.12);
   const gap = Math.max(1, size * 0.012);

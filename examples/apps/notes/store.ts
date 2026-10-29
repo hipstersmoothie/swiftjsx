@@ -1,13 +1,5 @@
 // Folders and notes in zustand (with immer), persisted to localStorage.
-//
-// Storage: SwiftJSX's localStorage is one dictionary in UserDefaults, and
-// every setItem rewrites the whole dictionary (every app's keys, not just
-// ours) synchronously from the JS thread. zustand's persist calls setItem on
-// *every* state change, so typing would serialize all notes on every
-// autosave. The storage below coalesces writes (one per second at most) and
-// flushes when the app resigns active. `useStorageSize()` reports what we
-// write, so the sidebar can warn as it grows (UserDefaults is loaded into
-// memory at launch and isn't meant for megabytes of data).
+// `useStorageSize()` reports what we write, so the sidebar can show it.
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
@@ -41,47 +33,31 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export type State = { folders: Folder[]; notes: Note[]; sort: Sort };
 
-// MARK: Storage with coalesced writes
+// MARK: Storage
 
-const pending = new Map<string, string>();
-let timer: ReturnType<typeof setTimeout> | undefined;
 let writtenBytes = 0;
 const sizeListeners = new Set<() => void>();
-
-function flush() {
-  if (timer !== undefined) clearTimeout(timer);
-  timer = undefined;
-  for (const [key, value] of pending) {
-    localStorage.setItem(key, value);
-    // UTF-16 code units; UserDefaults stores UTF-8, so this is an estimate.
-    writtenBytes = value.length;
-  }
-  pending.clear();
+const measure = (value: string | null) => {
+  // UTF-16 code units; the file is UTF-8, so this is an estimate.
+  writtenBytes = value?.length ?? 0;
   sizeListeners.forEach((l) => l());
-}
+};
 
-const coalescedStorage: StateStorage = {
+const measuredStorage: StateStorage = {
   getItem: (key) => {
-    const value = pending.get(key) ?? localStorage.getItem(key);
-    if (value != null) writtenBytes = value.length;
+    const value = localStorage.getItem(key);
+    measure(value);
     return value;
   },
   setItem: (key, value) => {
-    pending.set(key, value);
-    if (timer === undefined) timer = setTimeout(flush, 1000);
+    localStorage.setItem(key, value);
+    measure(value);
   },
   removeItem: (key) => {
-    pending.delete(key);
     localStorage.removeItem(key);
+    measure(null);
   },
 };
-
-// "blur" fires when the app resigns active (there's no pagehide/beforeunload).
-// A hot reload re-runs this module, so replace the previous listener.
-const g = globalThis as { __notesFlush?: () => void };
-if (g.__notesFlush) removeEventListener("blur", g.__notesFlush);
-g.__notesFlush = flush;
-addEventListener("blur", flush);
 
 /** Size (in UTF-16 code units, ~bytes) of the last state we wrote or read. */
 export function useStorageSize(): number {
@@ -100,7 +76,7 @@ export const useNotes = create<State>()(
     {
       name: "notes",
       version: 1,
-      storage: createJSONStorage(() => coalescedStorage),
+      storage: createJSONStorage(() => measuredStorage),
     },
   ),
 );

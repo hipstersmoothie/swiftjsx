@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { VStack, HStack, Text, Image, Spacer, type Color, type Modifiers } from "swiftjsx";
+import { VStack, HStack, Text, Image, Spacer, format, type Color, type Modifiers } from "swiftjsx";
 import type { Stat } from "./model";
 
 /** A rounded card on the grouped background. */
@@ -59,7 +59,7 @@ export function ChangeBadge({ change, lowerIsBetter = false }: { change: number;
   return (
     <HStack spacing={3} accessibilityElement="combine" accessibilityLabel={flat ? "About the same" : `${change > 0 ? "Up" : "Down"} ${Math.abs(change)} percent`}>
       <Image systemName={flat ? "equal" : change > 0 ? "arrow.up.right" : "arrow.down.right"} font="caption" fontWeight="bold" foregroundStyle={color} />
-      <Text font="caption" fontWeight="semibold" foregroundStyle={color} monospacedDigit>{flat ? "Steady" : `${Math.abs(change)}%`}</Text>
+      <Text font="caption" fontWeight="semibold" foregroundStyle={color} monospacedDigit>{flat ? "Steady" : format.percent(Math.abs(change) / 100)}</Text>
     </HStack>
   );
 }

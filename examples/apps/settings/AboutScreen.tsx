@@ -1,8 +1,8 @@
 // About: version info, links (openURL: in-app Safari for web pages, the
 // system for mailto:), and acknowledgements.
-import { useNavigation, openURL, Screen, List, Section, VStack, Text } from "swiftjsx";
+import { useNavigation, openURL, Screen, List, Section, VStack, Text, IconTile } from "swiftjsx";
 import { useAccent } from "./store";
-import { IconTile, LinkRow, NavRow, ValueRow } from "./ui";
+import { LinkRow, NavRow, ValueRow } from "./ui";
 
 export const APP_VERSION = "2.4.1";
 const BUILD = "812";
@@ -25,7 +25,7 @@ export function AboutScreen() {
       <List>
         <Section>
           <VStack spacing={8} padding={{ vertical: 12 }} frame={{ maxWidth: "infinity" }} accessibilityElement="combine">
-            <IconTile icon="gearshape.2.fill" color={accent.color} size={72} />
+            <IconTile systemImage="gearshape.2.fill" color={accent.color} size={72} />
             <Text font="title2" fontWeight="bold">Settings</Text>
             <Text font="subheadline" foregroundStyle="secondaryLabel">A SwiftJSX toy app</Text>
           </VStack>

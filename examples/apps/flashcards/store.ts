@@ -1,6 +1,5 @@
 // Decks and study progress, persisted with zustand + localStorage. Updates
 // are written as mutations with the immer middleware.
-import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
@@ -78,13 +77,3 @@ export const useFlashcards = create<Store>()(
 );
 
 export const useDeck = (id: string) => useFlashcards((state) => state.decks.find((d) => d.id === id));
-
-/** The current time, refreshed every minute, for "what's due" (render stays pure). */
-export function useNow() {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}

@@ -6,9 +6,9 @@
 import { useEffect, useState } from "react";
 import {
   Portal, ZStack, VStack, HStack, Text, Image, Button, Spacer, Rectangle, ScrollView,
-  useEnvironment, useAnimatedStyle, withSpring, runOnJS, openURL, haptic,
+  useEnvironment, useAnimatedStyle, withSpring, runOnJS, openURL, haptic, format,
 } from "swiftjsx";
-import { compact, displayName } from "./format";
+import { displayName } from "./format";
 import { drawerProgress } from "./Home";
 import { useMyProfile, SettingsScreen } from "./Me";
 import { tabNav } from "./App";
@@ -118,9 +118,9 @@ function DrawerContent() {
               <Text font={ty(T.xl, "bold")} foregroundStyle={t.text} lineLimit={1} padding={{ top: 8 }}>{me.data ? displayName(me.data) : handle}</Text>
               <Text font={ty(T.md)} foregroundStyle={t.textMedium} lineLimit={1}>@{handle}</Text>
               <Text font={ty(T.md)} foregroundStyle={t.textMedium} padding={{ top: 6 }}>
-                <Text fontWeight="semibold" foregroundStyle={t.text}>{compact(me.data?.followersCount ?? 0)}</Text>
-                <Text>{" followers · "}</Text>
-                <Text fontWeight="semibold" foregroundStyle={t.text}>{compact(me.data?.followsCount ?? 0)}</Text>
+                <Text fontWeight="semibold" foregroundStyle={t.text}>{format.compact(me.data?.followersCount ?? 0)}</Text>
+                <Text>{` ${format.count(me.data?.followersCount ?? 0, { one: "follower", other: "followers" })} · `}</Text>
+                <Text fontWeight="semibold" foregroundStyle={t.text}>{format.compact(me.data?.followsCount ?? 0)}</Text>
                 <Text>{" following"}</Text>
               </Text>
             </VStack>

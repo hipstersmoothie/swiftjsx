@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TabView, Tab, Navigator, VStack, SafeAreaInset } from "swiftjsx";
 import { useRecipes, BASE_SERVINGS } from "./store";
 import { aggregate } from "./quantity";
-import { useTimerAlarm, useTimers } from "./timers";
+import { TimerAlarm, useTimerPermission, useTimers } from "./timers";
 import { stopSpeaking } from "./services";
 import { BrowseScreen } from "./BrowseScreen";
 import { SearchScreen } from "./SearchScreen";
@@ -37,7 +37,7 @@ function Shell() {
   const checked = useRecipes((s) => s.checked);
   const favoritesCount = useRecipes((s) => s.favorites.length);
   const doneTimers = useTimers((s) => s.timers.filter((t) => t.state === "done").length);
-  useTimerAlarm();
+  const timerRunning = useTimerPermission();
 
   // The gallery closes the app by unmounting it: stop talking. (Timers keep
   // their pending notifications and are still here next time.)
@@ -52,28 +52,31 @@ function Shell() {
     .filter((item) => !checked[item.key]).length;
 
   return (
-    <TabView selection={tab} onSelectionChange={(value) => setTab(value as TabId)} tint={ACCENT}>
-      <Tab value="browse" title="Browse" systemImage="square.grid.2x2.fill" badge={doneTimers ? "!" : 0}>
-        <WithTimers>
-          <BrowseScreen />
-        </WithTimers>
-      </Tab>
-      <Tab value="search" title="Search" systemImage="magnifyingglass" role="search">
-        <WithTimers>
-          <SearchScreen />
-        </WithTimers>
-      </Tab>
-      <Tab value="favorites" title="Favorites" systemImage="heart.fill" badge={favoritesCount}>
-        <WithTimers>
-          <FavoritesScreen />
-        </WithTimers>
-      </Tab>
-      <Tab value="list" title="Shopping List" systemImage="cart.fill" badge={toBuy}>
-        <WithTimers>
-          <ShoppingListScreen />
-        </WithTimers>
-      </Tab>
-    </TabView>
+    <>
+      {timerRunning ? <TimerAlarm /> : null}
+      <TabView selection={tab} onSelectionChange={(value) => setTab(value as TabId)} tint={ACCENT}>
+        <Tab value="browse" title="Browse" systemImage="square.grid.2x2.fill" badge={doneTimers ? "!" : 0}>
+          <WithTimers>
+            <BrowseScreen />
+          </WithTimers>
+        </Tab>
+        <Tab value="search" title="Search" systemImage="magnifyingglass" role="search">
+          <WithTimers>
+            <SearchScreen />
+          </WithTimers>
+        </Tab>
+        <Tab value="favorites" title="Favorites" systemImage="heart.fill" badge={favoritesCount}>
+          <WithTimers>
+            <FavoritesScreen />
+          </WithTimers>
+        </Tab>
+        <Tab value="list" title="Shopping List" systemImage="cart.fill" badge={toBuy}>
+          <WithTimers>
+            <ShoppingListScreen />
+          </WithTimers>
+        </Tab>
+      </TabView>
+    </>
   );
 }
 

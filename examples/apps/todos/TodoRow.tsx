@@ -1,5 +1,5 @@
 import {
-  useNavigation, withAnimation, HStack, VStack, Text, Image, Label, Button, Spacer, Divider, SwipeActions, ContextMenu,
+  useNavigation, useEnvironment, withAnimation, HStack, VStack, Text, Image, Label, Button, Spacer, Divider, SwipeActions, ContextMenu, Menu,
 } from "swiftjsx";
 import { useTodos, updateTodo, deleteTodos, type Todo } from "./store";
 import { dueLabel, duePresets } from "./dates";
@@ -8,6 +8,7 @@ import { TodoDetail } from "./TodoDetail";
 /** A todo in a `<List>`: tap the circle to complete, the rest for details. */
 export function TodoRow({ todo, today, showList }: { todo: Todo; today: number; showList?: boolean }) {
   const nav = useNavigation();
+  const { weekStartsOn } = useEnvironment().locale;
   const lists = useTodos((s) => s.lists);
   const list = lists.find((l) => l.id === todo.listId);
   const due = todo.due === null ? null : dueLabel(todo.due, today);
@@ -64,7 +65,6 @@ export function TodoRow({ todo, today, showList }: { todo: Todo; today: number; 
         </Button>
       </SwipeActions>
 
-      {/* No submenus in SwiftJSX yet, so due dates and lists are flat sections. */}
       <ContextMenu>
         <Button onPress={() => update({ done: !todo.done })}>
           <Label title={todo.done ? "Mark as Not Done" : "Mark as Done"} systemImage={todo.done ? "circle" : "checkmark.circle"} />
@@ -73,26 +73,29 @@ export function TodoRow({ todo, today, showList }: { todo: Todo; today: number; 
           <Label title={todo.flagged ? "Unflag" : "Flag"} systemImage={todo.flagged ? "flag.slash" : "flag"} />
         </Button>
         <Divider />
-        {duePresets(today)
-          .filter((p) => p.due !== todo.due)
-          .map((p) => (
-            <Button key={p.label} onPress={() => update({ due: p.due })}>
-              <Label title={`Due ${p.label}`} systemImage={p.icon} />
+        <Menu title="Due Date" systemImage="calendar">
+          {duePresets(today, weekStartsOn)
+            .filter((p) => p.due !== todo.due)
+            .map((p) => (
+              <Button key={p.label} onPress={() => update({ due: p.due })}>
+                <Label title={p.label} systemImage={p.icon} />
+              </Button>
+            ))}
+          {todo.due !== null ? (
+            <Button onPress={() => update({ due: null })}>
+              <Label title="Remove Due Date" systemImage="calendar.badge.minus" />
             </Button>
-          ))}
-        {todo.due !== null ? (
-          <Button onPress={() => update({ due: null })}>
-            <Label title="Remove Due Date" systemImage="calendar.badge.minus" />
-          </Button>
-        ) : null}
-        <Divider />
-        {lists
-          .filter((l) => l.id !== todo.listId)
-          .map((l) => (
-            <Button key={l.id} onPress={() => update({ listId: l.id })}>
-              <Label title={`Move to ${l.name}`} systemImage={l.icon} />
-            </Button>
-          ))}
+          ) : null}
+        </Menu>
+        <Menu title="Move to List" systemImage="folder">
+          {lists
+            .filter((l) => l.id !== todo.listId)
+            .map((l) => (
+              <Button key={l.id} onPress={() => update({ listId: l.id })}>
+                <Label title={l.name} systemImage={l.icon} />
+              </Button>
+            ))}
+        </Menu>
         <Divider />
         <Button role="destructive" onPress={remove}>
           <Label title="Delete" systemImage="trash" />

@@ -3,13 +3,12 @@
 // hold to pause, swipe sideways to skip a person, swipe down to close.
 import { useEffect, useReducer, useRef, useState } from "react";
 import {
-  ScrollView, VStack, HStack, ZStack, Text, Image, Button, Spacer, Divider, Capsule, Overlay, ProgressView, TextField, Sheet,
-  useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, haptic, withAnimation, type HostInstance,
+  ScrollView, VStack, HStack, ZStack, Text, Image, Button, Spacer, Divider, ProgressView, TextField, Sheet, PageIndicator,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, haptic, useNow, toast, format, type HostInstance,
 } from "swiftjsx";
 import { ME, storyURL, user as getUser, type Story } from "./data";
-import { shortAgo } from "./format";
 import { useSocial, useUI } from "./store";
-import { Avatar, Verified, useNow, useStories } from "./ui";
+import { Avatar, Verified, useStories } from "./ui";
 
 const watchedAll = (story: Story, seen: Record<string, string[]>) => story.items.every((item) => (seen[story.user] ?? []).includes(item.id));
 
@@ -133,13 +132,6 @@ function StoryPlayer({ users, start, onClose }: { users: string[]; start: number
     if (blurs) input.current?.blur();
   }, [blurs]);
   const now = useNow();
-  // The app's toast is drawn under this full-screen cover, so the viewer has its own.
-  const [notice, setNotice] = useState<{ id: number; text: string; icon: string } | null>(null);
-  const flash = (text: string, icon: string) => {
-    const id = Date.now();
-    withAnimation("snappy", () => setNotice({ id, text, icon }));
-    setTimeout(() => withAnimation("easeOut", () => setNotice((n) => (n?.id === id ? null : n))), 1400);
-  };
 
   useEffect(() => {
     if (loaded && story && item) markSeen(story.user, item.id);
@@ -236,19 +228,13 @@ function StoryPlayer({ users, start, onClose }: { users: string[]; start: number
               <Avatar user={story.user} size={32} />
               <Text font="subheadline" fontWeight="semibold" foregroundStyle="white">{story.user === ME ? "Your story" : story.user}</Text>
               {author.verified ? <Verified /> : null}
-              <Text font="subheadline" foregroundStyle="white/70">{shortAgo(item.createdAt, now)}</Text>
+              <Text font="subheadline" foregroundStyle="white/70">{format.relativeTime(item.createdAt, { now })}</Text>
               <Spacer />
               <Button onPress={onClose} accessibilityLabel="Close" accessibilityIdentifier="close-story" padding={6}>
                 <Image systemName="xmark" font="title3" fontWeight="semibold" foregroundStyle="white" />
               </Button>
             </HStack>
           </VStack>
-          {notice ? (
-            <HStack key={notice.id} spacing={8} padding={{ horizontal: 16, vertical: 10 }} background="black/70" cornerRadius="capsule" allowsHitTesting={false} transition="scale">
-              <Image systemName={notice.icon} foregroundStyle="white" />
-              <Text font="subheadline" fontWeight="semibold" foregroundStyle="white">{notice.text}</Text>
-            </HStack>
-          ) : null}
         </ZStack>
         <HStack spacing={12} padding={{ horizontal: 12, bottom: 4 }} animatedStyle={chromeStyle}>
           <TextField
@@ -261,7 +247,7 @@ function StoryPlayer({ users, start, onClose }: { users: string[]; start: number
             onFocus={() => setTyping(true)}
             onBlur={() => setTyping(false)}
             onSubmit={() => {
-              if (reply.trim()) flash(`Sent to ${story.user}`, "paperplane.fill");
+              if (reply.trim()) toast(`Sent to ${story.user}`, { systemImage: "paperplane.fill" });
               setReply("");
             }}
             padding={{ horizontal: 16, vertical: 11 }}
@@ -270,10 +256,10 @@ function StoryPlayer({ users, start, onClose }: { users: string[]; start: number
             foregroundStyle="white"
             accessibilityIdentifier="story-reply"
           />
-          <Button onPress={() => flash("Liked", "heart.fill")} accessibilityLabel="Like story">
+          <Button onPress={() => toast("Liked", { systemImage: "heart.fill" })} accessibilityLabel="Like story">
             <Image systemName="heart" font="title2" foregroundStyle="white" />
           </Button>
-          <Button onPress={() => navigator.clipboard.writeText(`https://social.example/stories/${story.user}`).then(() => flash("Link copied", "link"))} accessibilityLabel="Share story">
+          <Button onPress={() => navigator.clipboard.writeText(`https://social.example/stories/${story.user}`).then(() => toast("Link copied", { systemImage: "link" }))} accessibilityLabel="Share story">
             <Image systemName="paperplane" font="title2" foregroundStyle="white" />
           </Button>
         </HStack>
@@ -301,27 +287,17 @@ function Bars({ count, index, playing, onDone }: { count: number; index: number;
     onDone();
   }, [progress, onDone]);
 
-  // The bars split the width; the fill needs a number, so measure it.
-  const [width, setWidth] = useState(0);
-  const gap = 4;
-  const each = count ? (width - gap * (count - 1)) / count : 0;
   return (
-    <HStack spacing={gap} frame={{ maxWidth: "infinity", height: 2.5 }} onLayout={(s) => setWidth(s.width)} accessibilityHidden>
-      {Array.from({ length: count }, (_, i) => {
-        const fill = i < index ? 1 : i > index ? 0 : progress;
-        return (
-          <Capsule key={i} fill="white/35" frame={{ maxWidth: "infinity", height: 2.5 }}>
-            <Overlay alignment="leading">
-              <Capsule
-                fill="white"
-                frame={{ width: Math.max(0, each * fill), height: 2.5 }}
-                // Smooth between timer ticks.
-                animation={i === index ? { type: "linear", duration: TICK / 1000 } : undefined}
-              />
-            </Overlay>
-          </Capsule>
-        );
-      })}
-    </HStack>
+    <PageIndicator
+      style="segments"
+      dotSize={2.5}
+      count={count}
+      page={index}
+      progress={progress}
+      // Smooth between timer ticks.
+      animation={{ type: "linear", duration: TICK / 1000 }}
+      frame={{ maxWidth: "infinity" }}
+      accessibilityHidden
+    />
   );
 }

@@ -1,6 +1,6 @@
 // Privacy & Security: permissions as navigation rows (with how many apps have
 // access), a per-permission screen of apps, and tracking / analytics switches.
-import { useNavigation, withAnimation, Screen, List, Section, VStack, Text, Image } from "swiftjsx";
+import { useNavigation, withAnimation, format, Screen, List, Section, VStack, Text, Image, IconTile } from "swiftjsx";
 import type { Color } from "swiftjsx";
 import { setAccess, update, useSettings, type Access, type State } from "./store";
 import { ChoiceScreen, NavRow, ToggleRow, type Choice } from "./ui";
@@ -44,7 +44,7 @@ function permissionSummary(state: State["privacy"], id: string): string {
   const entries = Object.values(state.access[id] ?? {});
   const allowed = entries.filter(isAllowed).length;
   if (!entries.length) return "None";
-  return allowed ? `${allowed} ${allowed === 1 ? "app" : "apps"}` : "None";
+  return allowed ? format.count(allowed, { one: "# app", other: "# apps" }) : "None";
 }
 
 /** For the root screen's row. */
@@ -63,7 +63,7 @@ export function PrivacyScreen() {
       <List>
         <Section>
           <VStack spacing={8} padding={{ vertical: 8 }} frame={{ maxWidth: "infinity" }} accessibilityElement="combine">
-            <Image systemName="hand.raised.fill" font={{ size: 28, weight: "semibold" }} foregroundStyle="white" frame={{ width: 56, height: 56 }} background="blue" cornerRadius={14} />
+            <IconTile systemImage="hand.raised.fill" color="blue" size={56} />
             <Text font="headline">Your data, your call</Text>
             <Text font="footnote" foregroundStyle="secondaryLabel" textAlignment="center">
               Choose which apps can use your location, contacts, photos and devices.

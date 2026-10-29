@@ -2,24 +2,24 @@
 // an async username check, and a "discard changes?" confirmation.
 import { useState, type ReactNode } from "react";
 import {
-  withAnimation, Navigator, Screen, ToolbarItem, Form, Section, VStack, HStack, Text, Image, TextField, Picker, Button,
+  withAnimation, Navigator, Screen, ToolbarItem, Form, Section, VStack, HStack, Text, Image, TextField, Picker, DatePicker, Button,
   ProgressView, Spacer, Sheet, ConfirmationDialog,
 } from "swiftjsx";
 import { saveProfile, useAccent, useColorScheme, useSettings, type Profile } from "./store";
 import {
-  BIO_LIMIT, describeBirthday, dayOptions, formatPhone, initials, months, normalizeProfile, parseBirthday, parseWebsite,
-  profilesEqual, pronounOptions, setBirthdayPart, useUsernameStatus, validateProfile, yearOptions, type UsernameStatus,
+  BIO_LIMIT, birthdayRange, describeBirthday, formatBirthday, formatPhone, normalizeProfile, parseBirthday, parseWebsite,
+  profilesEqual, pronounOptions, useUsernameStatus, validateProfile, type UsernameStatus,
 } from "./profile";
-import { Avatar, ToggleRow } from "./ui";
+import { ProfileAvatar, ToggleRow } from "./ui";
 
-/** Bump `formKey` each time it opens, for a fresh draft. */
-export function ProfileEditorSheet({ isPresented, formKey, onClose }: { isPresented: boolean; formKey: number; onClose(): void }) {
+/** A fresh draft of the saved profile each time it opens. */
+export function ProfileEditorSheet({ isPresented, onClose }: { isPresented: boolean; onClose(): void }) {
   const scheme = useColorScheme();
   return (
     <Sheet isPresented={isPresented} onDismiss={onClose}>
       {/* The sheet gets its own stack (title + toolbar), and the theme again. */}
       <Navigator colorScheme={scheme}>
-        <ProfileEditor key={formKey} onClose={onClose} />
+        <ProfileEditor onClose={onClose} />
       </Navigator>
     </Sheet>
   );
@@ -81,7 +81,7 @@ function ProfileEditor({ onClose }: { onClose(): void }) {
       <Form>
         <Section>
           <VStack spacing={8} padding={{ vertical: 8 }} frame={{ maxWidth: "infinity" }} accessibilityElement="combine">
-            <Avatar initials={initials(draft.name)} size={88} />
+            <ProfileAvatar name={draft.name} size={88} />
             <Text font="title2" fontWeight="bold" lineLimit={1}>{draft.name.trim() || "Your Name"}</Text>
             <Text font="subheadline" foregroundStyle="secondaryLabel">
               @{draft.username || "username"}
@@ -175,39 +175,13 @@ function ProfileEditor({ onClose }: { onClose(): void }) {
             onChange={(on) => withAnimation("snappy", () => set("birthday", on ? saved.birthday || "1995-01-01" : ""))}
           />
           {birthday ? (
-            // No DatePicker yet: month / day / year menus. Empty labels because
-            // there's no labelsHidden(); a label would sit next to each menu.
-            <HStack spacing={0}>
-              <Text>Born</Text>
-              <Spacer />
-              <Picker
-                label=""
-                accessibilityLabel="Birth month"
-                pickerStyle="menu"
-                tint={accent.color}
-                value={String(birthday.getMonth())}
-                options={months}
-                onChange={(m) => set("birthday", setBirthdayPart(draft.birthday, "month", Number(m)))}
-              />
-              <Picker
-                label=""
-                accessibilityLabel="Birth day"
-                pickerStyle="menu"
-                tint={accent.color}
-                value={String(birthday.getDate())}
-                options={dayOptions(birthday.getFullYear(), birthday.getMonth())}
-                onChange={(d) => set("birthday", setBirthdayPart(draft.birthday, "day", Number(d)))}
-              />
-              <Picker
-                label=""
-                accessibilityLabel="Birth year"
-                pickerStyle="menu"
-                tint={accent.color}
-                value={String(birthday.getFullYear())}
-                options={yearOptions()}
-                onChange={(y) => set("birthday", setBirthdayPart(draft.birthday, "year", Number(y)))}
-              />
-            </HStack>
+            <DatePicker
+              label="Born"
+              value={birthday}
+              onChange={(date) => set("birthday", formatBirthday(date))}
+              {...birthdayRange()}
+              tint={accent.color}
+            />
           ) : null}
           {errorFor("birthday") ? <ErrorText message={errorFor("birthday")!} /> : null}
         </Section>

@@ -2,9 +2,9 @@
 // wrapper the columns render (BoardCard). The ghost that follows the finger
 // while dragging is in BoardScreen.
 import { useEffect } from "react";
-import { VStack, HStack, ZStack, Text, Image, Spacer, RoundedRectangle, runOnJS, type Color, type HostInstance } from "swiftjsx";
+import { VStack, HStack, ZStack, Text, Image, Spacer, RoundedRectangle, Avatar, runOnJS, type Color, type HostInstance } from "swiftjsx";
 import { dueLabel, memberById, type Card, type CardLabel } from "./model";
-import { Avatar, LabelCapsule } from "./ui";
+import { LabelCapsule } from "./ui";
 import type { CardDrag } from "./drag";
 
 /** Space below each card. It's padding inside the card's node (not stack spacing), so a collapsed card takes no room. */
@@ -66,7 +66,7 @@ export function CardFace({ card, labels, today, lifted = false }: { card: Card; 
           ) : null}
           {card.description ? <Image systemName="text.alignleft" font="caption2" foregroundStyle="tertiaryLabel" accessibilityHidden /> : null}
           <Spacer />
-          {assignee ? <Avatar member={assignee} /> : null}
+          {assignee ? <Avatar name={assignee.name} color={assignee.color} size={22} accessibilityLabel={`Assigned to ${assignee.name}`} /> : null}
         </HStack>
       ) : null}
 
@@ -155,9 +155,9 @@ export function BoardCard({ card, labels, today, drag, armed, collapsed, onOpen,
       onLongPress={onArm}
       longPressDuration={0.35}
       // Only an armed card takes the drag (anywhere on it); otherwise the
-      // drag is left to the scroll views, and the grip starts one. (There's no
-      // long-press-then-drag gesture: arming re-renders with onDrag set, and
-      // the drag is a new touch.)
+      // drag is left to the scroll views, and the grip starts one. Arming
+      // re-renders with onDrag set, and the drag is a new touch.
+      // (`dragActivation="longPress"` would make hold-then-drag one gesture.)
       onDrag={armed ? onDrag : undefined}
       onDragEnd={armed ? onDragEnd : undefined}
       dragMinimumDistance={2}

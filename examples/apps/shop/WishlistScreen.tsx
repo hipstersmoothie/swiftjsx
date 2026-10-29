@@ -16,12 +16,13 @@ import {
   Spacer,
   SwipeActions,
   EditButton,
+  ContentUnavailable,
 } from "swiftjsx";
 import { stockLevel, type Product } from "./api";
 import { plural, variantsFor } from "./format";
 import { useShop } from "./store";
 import { ProductScreen } from "./ProductScreen";
-import { ACCENT, CartButton, EmptyState, PriceTag, RatingStars, useRouter } from "./ui";
+import { ACCENT, CartButton, PriceTag, RatingStars, useRouter } from "./ui";
 
 export function WishlistScreen() {
   const wishlist = useShop((s) => s.wishlist);
@@ -50,9 +51,9 @@ export function WishlistScreen() {
           </Section>
         </List>
       ) : (
-        <EmptyState icon="heart" title="Your wishlist is empty" message="Tap the heart on anything you like and it’ll wait for you here.">
+        <ContentUnavailable systemImage="heart" title="Your wishlist is empty" description="Tap the heart on anything you like and it’ll wait for you here.">
           <Button title="Start Browsing" buttonStyle="borderedProminent" tint={ACCENT} onPress={() => router.setTab("home")} />
-        </EmptyState>
+        </ContentUnavailable>
       )}
     </Screen>
   );

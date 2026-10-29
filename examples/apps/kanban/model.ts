@@ -71,13 +71,6 @@ export const members: Member[] = [
 ];
 
 export const memberById = (id: string | null) => members.find((m) => m.id === id);
-export const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
 export function defaultLabels(): CardLabel[] {
   return [
@@ -230,5 +223,3 @@ export function dueLabel(due: number, today: number): { text: string; tone: "ove
   if (days < 7) return { text: format(due, "EEE"), tone: "later" };
   return { text: format(due, "MMM d"), tone: "later" };
 }
-
-export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;

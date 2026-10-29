@@ -2,12 +2,12 @@
 // cuisines as chips. Each opens a grid of recipes (FilterScreen).
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  useNavigation, Screen, ScrollView, VStack, ZStack, Text, Image, Button, LazyVGrid, Flow, Rectangle, ProgressView,
+  useNavigation, Screen, ScrollView, VStack, ZStack, Text, Image, Button, LazyVGrid, Flow, Rectangle, ProgressView, Chip,
 } from "swiftjsx";
 import { areasQuery, categoriesQuery, randomQuery, recipeQuery, thumbSize, type Category } from "./api";
 import { RecipeScreen } from "./RecipeScreen";
 import { FilterScreen } from "./FilterScreen";
-import { ACCENT, Chip, ErrorView, Loading, SectionTitle } from "./ui";
+import { ACCENT, ErrorView, Loading, SectionTitle } from "./ui";
 
 export function BrowseScreen() {
   const categories = useQuery(categoriesQuery);
@@ -48,7 +48,7 @@ export function BrowseScreen() {
               <SectionTitle title="Cuisines" />
               <Flow spacing={8} lineSpacing={8}>
                 {areas.data.map((area) => (
-                  <Chip key={area} title={area} systemImage="globe" onPress={() => nav.push(<FilterScreen filter={{ kind: "area", value: area }} />)} />
+                  <Chip key={area} label={area} systemImage="globe" onPress={() => nav.push(<FilterScreen filter={{ kind: "area", value: area }} />)} />
                 ))}
               </Flow>
             </VStack>

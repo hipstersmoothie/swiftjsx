@@ -3,14 +3,15 @@
 // "more", and the comment link.
 import { useState } from "react";
 import {
-  useNavigation, VStack, HStack, ZStack, ScrollView, Text, Image, Button, Menu, Label, Divider, Spacer, Circle, Screen,
-  ConfirmationDialog, useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, haptic, withAnimation,
+  useNavigation, VStack, HStack, ZStack, ScrollView, Text, Image, Button, Menu, Label, Divider, Spacer, Screen, Pager, PageIndicator,
+  ConfirmationDialog, useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withSequence, runOnJS, haptic, withAnimation,
+  toast, format,
 } from "swiftjsx";
-import { photoURL, user as getUser, type Post } from "./data";
-import { ago, compact, isLong } from "./format";
+import { ME, others, photoURL, user as getUser, type Post } from "./data";
+import { compact, longDate } from "./format";
 import { useIsFollowing, useIsLiked, useIsSaved, useMyCommentCount, useSocial, useUI } from "./store";
 import { ProfileScreen } from "./Profile";
-import { Avatar, RichText, Verified, useNow, useRing, useWidth, brandBlue } from "./ui";
+import { Avatar, RichText, Verified, useRing, useWidth, brandBlue } from "./ui";
 
 type PostProps = {
   post: Post;
@@ -55,7 +56,6 @@ function PostHeader({ post, onHide }: PostProps) {
   const toggleSave = useSocial((s) => s.toggleSave);
   const seen = useSocial((s) => s.seen);
   const ring = useRing(post.author, seen);
-  const toast = useUI((s) => s.showToast);
   const openProfile = () => nav.push(<ProfileScreen userId={post.author} />);
 
   return (
@@ -74,17 +74,17 @@ function PostHeader({ post, onHide }: PostProps) {
       </Button>
       <Spacer />
       <Menu systemImage="ellipsis" tint="primary" accessibilityLabel="More options" padding={10}>
-        <Button onPress={() => toast(toggleSave(post) ? "Saved" : "Removed from saved", "bookmark")}>
+        <Button onPress={() => toast(toggleSave(post) ? "Saved" : "Removed from saved", { systemImage: "bookmark" })}>
           <Label title={saved ? "Remove from saved" : "Save"} systemImage={saved ? "bookmark.slash" : "bookmark"} />
         </Button>
-        <Button onPress={() => copyLink(post).then(() => toast("Link copied", "link"))}>
+        <Button onPress={() => copyLink(post).then(() => toast("Link copied", { systemImage: "link" }))}>
           <Label title="Copy link" systemImage="link" />
         </Button>
         <Divider />
         <Button
           onPress={() => {
             toggleFollow(post.author);
-            toast(following ? `Unfollowed ${post.author}` : `Following ${post.author}`, following ? "person.badge.minus" : "person.badge.plus");
+            toast(following ? `Unfollowed ${post.author}` : `Following ${post.author}`, { systemImage: following ? "person.badge.minus" : "person.badge.plus" });
           }}
         >
           <Label title={following ? "Unfollow" : "Follow"} systemImage={following ? "person.badge.minus" : "person.badge.plus"} />
@@ -94,7 +94,7 @@ function PostHeader({ post, onHide }: PostProps) {
             <Label title="Not interested" systemImage="eye.slash" />
           </Button>
         ) : null}
-        <Button role="destructive" onPress={() => toast("Thanks for letting us know", "flag")}>
+        <Button role="destructive" onPress={() => toast("Thanks for letting us know", { systemImage: "flag" })}>
           <Label title="Report" systemImage="exclamationmark.bubble" />
         </Button>
       </Menu>
@@ -106,83 +106,41 @@ const copyLink = (post: Post) => navigator.clipboard.writeText(`https://social.e
 
 // MARK: Carousel
 
-/** How long the heart stays up after a double tap (ms). */
-const HEART_HOLD = 650;
-
 function Carousel({ post, page, onPage, onDoubleTap }: { post: Post; page: number; onPage(page: number): void; onDoubleTap(): void }) {
   const width = useWidth();
   // The heart burst runs on the main thread, so it pops in the same frame as
-  // the second tap; the like itself goes through React.
+  // the second tap; the like itself goes through React. A second double tap
+  // starts the sequence over, so the heart stays up.
   const heartScale = useSharedValue(0.3);
   const heartOpacity = useSharedValue(0);
   const heart = useAnimatedStyle(() => ({ scale: heartScale.get(), opacity: heartOpacity.get() }));
-  // Which burst is showing, so a quick second double tap keeps the heart up.
-  // (A shared value, not a ref: the worklet below captures `settle`, and the
-  // React Compiler won't compile a component that hands a ref-reading
-  // function to a call during render.)
-  const burst = useSharedValue(0);
-
-  // There's no withSequence or animation-completion callback, so the fade
-  // out (and the reset) are timers on the JS thread.
-  const settle = () => {
-    const id = burst.get() + 1;
-    burst.set(id);
-    setTimeout(() => {
-      if (burst.get() !== id) return;
-      heartOpacity.set(withTiming(0, { duration: 0.18 }));
-      heartScale.set(withTiming(0.75, { duration: 0.18, easing: "easeIn" }));
-    }, HEART_HOLD);
-    setTimeout(() => {
-      if (burst.get() === id) heartScale.set(0.3);
-    }, HEART_HOLD + 220);
-    onDoubleTap();
-  };
 
   const multiple = post.photos.length > 1;
+  const photo = (i: number) => <Image key={i} src={photoURL(post.photos[i])} contentMode="fill" frame={{ width, height: width }} />;
   return (
     <ZStack
       frame={{ width, height: width }}
       background="secondarySystemBackground"
       onDoubleTap={() => {
         "worklet";
-        heartScale.set(withSpring(1, { duration: 0.35, bounce: 0.5 }));
-        heartOpacity.set(withTiming(1, { duration: 0.08 }));
-        runOnJS(settle)();
+        heartScale.set(withSequence(
+          withSpring(1, { duration: 0.35, bounce: 0.5 }),
+          withDelay(0.3, withTiming(0.75, { duration: 0.18, easing: "easeIn" })),
+          withTiming(0.3, { duration: 0 }),
+        ));
+        heartOpacity.set(withSequence(withTiming(1, { duration: 0.08 }), withDelay(0.57, withTiming(0, { duration: 0.18 }))));
+        runOnJS(onDoubleTap)();
       }}
       accessibilityLabel={multiple ? `Photo ${page + 1} of ${post.photos.length} by ${post.author}` : `Photo by ${post.author}`}
       accessibilityHint="Double tap to like"
     >
       {multiple ? (
-        <ScrollView
-          axis="horizontal"
-          paging
-          spacing={0}
-          showsIndicators={false}
-          frame={{ width, height: width }}
-          onScrollIndexChange={onPage}
-        >
-          {post.photos.map((photo, i) => (
-            <Image key={i} src={photoURL(photo)} contentMode="fill" frame={{ width, height: width }} />
-          ))}
-        </ScrollView>
+        <Pager page={page} onPageChange={onPage} indicator="counter" indicatorAlignment="topTrailing" frame={{ width, height: width }}>
+          {post.photos.map((_, i) => photo(i))}
+        </Pager>
       ) : (
-        <Image src={photoURL(post.photos[0])} contentMode="fill" frame={{ width, height: width }} />
+        photo(0)
       )}
-      {multiple ? (
-        <VStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topTrailing" }} padding={12} allowsHitTesting={false}>
-          <Text
-            font="caption"
-            fontWeight="semibold"
-            monospacedDigit
-            foregroundStyle="white"
-            padding={{ horizontal: 9, vertical: 4 }}
-            background="black/60"
-            cornerRadius="capsule"
-          >
-            {page + 1}/{post.photos.length}
-          </Text>
-        </VStack>
-      ) : null}
       <Image
         systemName="heart.fill"
         font={{ size: 96 }}
@@ -208,7 +166,7 @@ function Actions({ post, page }: { post: Post; page: number }) {
         <Spacer />
         <SaveButton post={post} />
       </HStack>
-      {post.photos.length > 1 ? <PageDots count={post.photos.length} page={page} /> : null}
+      {post.photos.length > 1 ? <PageIndicator count={post.photos.length} page={page} tint={brandBlue} inactive="systemGray3" /> : null}
     </ZStack>
   );
 }
@@ -225,7 +183,7 @@ function LikeButton({ post }: { post: Post }) {
       pressedScale={0.85}
       accessibilityIdentifier="like-button"
       accessibilityLabel={liked ? "Unlike" : "Like"}
-      accessibilityValue={`${count.toLocaleString("en-US")} likes`}
+      accessibilityValue={format.count(count, { one: "# like", other: "# likes" })}
       accessibilityTraits={liked ? ["button", "selected"] : "button"}
     >
       <HStack spacing={5}>
@@ -259,7 +217,6 @@ function CommentButton({ post }: { post: Post }) {
 
 function ShareButton({ post }: { post: Post }) {
   const [open, setOpen] = useState(false);
-  const toast = useUI((s) => s.showToast);
   const shares = Math.round(post.likes * 0.03);
   return (
     <Button onPress={() => setOpen(true)} pressedScale={0.85} accessibilityLabel="Share">
@@ -268,9 +225,9 @@ function ShareButton({ post }: { post: Post }) {
         {shares ? <Text font="subheadline" fontWeight="semibold" foregroundStyle="label">{compact(shares)}</Text> : null}
       </HStack>
       <ConfirmationDialog isPresented={open} onDismiss={() => setOpen(false)} title="Share post">
-        <Button title="Copy link" onPress={() => copyLink(post).then(() => toast("Link copied", "link"))} />
-        {post.likedBy ? <Button title={`Send to ${post.likedBy}`} onPress={() => toast(`Sent to ${post.likedBy}`, "paperplane.fill")} /> : null}
-        <Button title="Add to your story" onPress={() => toast("Added to your story", "plus.circle")} />
+        <Button title="Copy link" onPress={() => copyLink(post).then(() => toast("Link copied", { systemImage: "link" }))} />
+        {post.likedBy ? <Button title={`Send to ${post.likedBy}`} onPress={() => toast(`Sent to ${post.likedBy}`, { systemImage: "paperplane.fill" })} /> : null}
+        <Button title="Add to your story" onPress={() => toast("Added to your story", { systemImage: "plus.circle" })} />
         <Button title="Cancel" role="cancel" onPress={() => setOpen(false)} />
       </ConfirmationDialog>
     </Button>
@@ -280,13 +237,12 @@ function ShareButton({ post }: { post: Post }) {
 function SaveButton({ post }: { post: Post }) {
   const saved = useIsSaved(post.id);
   const toggle = useSocial((s) => s.toggleSave);
-  const toast = useUI((s) => s.showToast);
   return (
     <Button
       onPress={() => {
         const now = toggle(post);
         haptic(now ? "success" : "light");
-        toast(now ? "Saved to your collection" : "Removed from saved", now ? "bookmark.fill" : "bookmark");
+        toast(now ? "Saved to your collection" : "Removed from saved", { systemImage: now ? "bookmark.fill" : "bookmark" });
       }}
       pressedScale={0.85}
       accessibilityIdentifier="save-button"
@@ -294,22 +250,6 @@ function SaveButton({ post }: { post: Post }) {
     >
       <Image systemName={saved ? "bookmark.fill" : "bookmark"} font={{ size: 22 }} foregroundStyle="label" symbolEffect={{ type: "bounce", value: saved }} />
     </Button>
-  );
-}
-
-/** Instagram's dots: the current one blue, far ones smaller. */
-function PageDots({ count, page }: { count: number; page: number }) {
-  return (
-    <HStack spacing={4} animation="snappy" accessibilityHidden>
-      {Array.from({ length: count }, (_, i) => (
-        <Circle
-          key={i}
-          fill={i === page ? brandBlue : "systemGray3"}
-          frame={{ width: 6, height: 6 }}
-          scale={Math.abs(i - page) >= 3 ? 0.6 : 1}
-        />
-      ))}
-    </HStack>
   );
 }
 
@@ -328,10 +268,10 @@ function LikedBy({ post }: { post: Post }) {
 }
 
 function Caption({ post }: { post: Post }) {
+  const nav = useNavigation();
   const [expanded, setExpanded] = useState(false);
-  // No way to ask whether Text truncated, so "more" is a length guess.
-  const long = isLong(post.caption);
-  const collapsed = long && !expanded;
+  const [truncated, setTruncated] = useState(false);
+  const collapsed = truncated && !expanded;
   return (
     <VStack
       alignment="leading"
@@ -339,7 +279,16 @@ function Caption({ post }: { post: Post }) {
       onTapGesture={collapsed ? () => withAnimation("snappy", () => setExpanded(true)) : undefined}
       accessibilityIdentifier="caption"
     >
-      <RichText lead={post.author} text={post.caption} font="subheadline" lineLimit={collapsed ? 2 : undefined} />
+      <RichText
+        lead={post.author}
+        text={post.caption}
+        font="subheadline"
+        lineLimit={expanded ? undefined : 2}
+        onTruncationChange={setTruncated}
+        onMention={(id) => {
+          if (id === ME || others.includes(id)) nav.push(<ProfileScreen userId={id} />);
+        }}
+      />
       {collapsed ? <Text font="subheadline" foregroundStyle="secondary">more</Text> : null}
     </VStack>
   );
@@ -355,7 +304,7 @@ function CommentsLink({ post }: { post: Post }) {
     <Button buttonStyle="plain" onPress={() => open(post)}>
       <VStack alignment="leading" spacing={3}>
         <Text font="subheadline" foregroundStyle="secondary">
-          {count === 1 ? "View 1 comment" : `View all ${count.toLocaleString("en-US")} comments`}
+          {format.count(count, { one: "View # comment", other: "View all # comments" })}
         </Text>
         {latest ? <RichText lead={latest.author} text={latest.text} font="subheadline" lineLimit={1} /> : null}
       </VStack>
@@ -363,9 +312,15 @@ function CommentsLink({ post }: { post: Post }) {
   );
 }
 
+const WEEK = 7 * 86_400_000;
+
+/** "2 hours ago" (kept current natively); older than a week, the date. */
 function Time({ post }: { post: Post }) {
-  const now = useNow();
-  return <Text font="caption" foregroundStyle="secondary">{ago(post.createdAt, now)}</Text>;
+  return Date.now() - post.createdAt < WEEK ? (
+    <Text font="caption" foregroundStyle="secondary" date={post.createdAt} dateStyle="ago" />
+  ) : (
+    <Text font="caption" foregroundStyle="secondary">{longDate(post.createdAt)}</Text>
+  );
 }
 
 // MARK: Single post screen

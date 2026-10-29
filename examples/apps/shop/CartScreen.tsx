@@ -23,14 +23,15 @@ import {
   SafeAreaInset,
   ConfirmationDialog,
   Label,
+  ContentUnavailable,
 } from "swiftjsx";
 import { format } from "date-fns";
 import { productQuery } from "./api";
-import { money, plural, usesIntl } from "./format";
+import { money, plural } from "./format";
 import { checkPromo, FREE_SHIPPING_OVER, promoHint, totals } from "./pricing";
 import { MAX_PER_LINE, useShop, type CartLine, type Order } from "./store";
 import { CheckoutScreen } from "./CheckoutScreen";
-import { ACCENT, EmptyState, SummaryRow, useRouter } from "./ui";
+import { ACCENT, SummaryRow, useRouter } from "./ui";
 
 export function CartScreen() {
   const nav = useNavigation();
@@ -47,7 +48,7 @@ export function CartScreen() {
       <Screen title="Cart">
         <List listStyle="insetGrouped">
           <Section>
-            <EmptyState icon="bag" title="Your cart is empty" message="Find something you love. It’ll be here when you’re ready.">
+            <ContentUnavailable systemImage="bag" title="Your cart is empty" description="Find something you love. It’ll be here when you’re ready.">
               <Button
                 title="Continue Shopping"
                 buttonStyle="borderedProminent"
@@ -55,7 +56,7 @@ export function CartScreen() {
                 onPress={() => router.setTab("home")}
                 accessibilityIdentifier="continue-shopping"
               />
-            </EmptyState>
+            </ContentUnavailable>
           </Section>
           {orders.length ? (
             <Section header="Recent orders">
@@ -112,7 +113,7 @@ export function CartScreen() {
           <SummaryRow title="Total" value={money(t.total)} emphasis identifier="cart-total" />
           <SectionFooter>
             <Text font="caption" foregroundStyle="secondaryLabel">
-              Tax is estimated; the final amount is calculated at checkout.{usesIntl ? "" : " (Prices formatted without Intl.)"}
+              Tax is estimated; the final amount is calculated at checkout.
             </Text>
           </SectionFooter>
         </Section>

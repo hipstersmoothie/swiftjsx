@@ -3,11 +3,11 @@
 // generator (Discover, a trending topic, a pinned feed).
 import type { ReactNode, Ref } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Screen, VirtualList, VStack, ToolbarItem, Button, Image, useEnvironment, type HostInstance, type SharedValue } from "swiftjsx";
+import { Screen, VirtualList, VStack, ToolbarItem, Button, Image, ContentUnavailable, useEnvironment, type HostInstance, type SharedValue } from "swiftjsx";
 import { getFeed } from "./api";
 import { FeedItem } from "./PostCell";
 import { useSession, useSettings } from "./session";
-import { EmptyState, EndOfFeed, ErrorView, FeedSkeleton, Spinner, useTheme } from "./ui";
+import { EndOfFeed, ErrorView, FeedSkeleton, Spinner, useTheme } from "./ui";
 import type { FeedPage, FeedViewPost } from "./types";
 
 type FeedListProps = {
@@ -91,7 +91,7 @@ export function FeedList({ queryKey, fetchPage, header, empty, id = "feed", filt
         ) : items.length ? (
           <EndOfFeed />
         ) : (
-          <EmptyState icon={empty?.icon ?? "text.bubble"} title={empty?.title ?? "This feed is empty."} message={empty?.message} />
+          <ContentUnavailable systemImage={empty?.icon ?? "text.bubble"} title={empty?.title ?? "This feed is empty."} description={empty?.message} frame={{ minHeight: 280 }} />
         )
       }
       onEndReached={() => {

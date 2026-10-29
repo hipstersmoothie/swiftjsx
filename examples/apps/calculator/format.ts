@@ -5,6 +5,7 @@
 // decimal *string* (Intl.NumberFormat v3) it formats it exactly, so we never
 // go through a float. Without it (or with an older Intl that converts the
 // string to a Number first) we group the digits ourselves.
+import { format } from "swiftjsx";
 import { isZero, magnitude, roundSignificant, roundTo, toPlain, type Dec } from "./decimal";
 
 type Separators = { group: string; decimal: string };
@@ -49,16 +50,6 @@ export const formattingInfo =
       ? `Intl.NumberFormat (${env.locale}), formatting exact decimal strings.`
       : `Intl.NumberFormat (${env.locale}) without exact decimal strings: grouped by hand with its separators.`;
 
-const formatters = new Map<number, Intl.NumberFormat>();
-function formatter(fractionDigits: number) {
-  let nf = formatters.get(fractionDigits);
-  if (!nf) {
-    nf = new Intl.NumberFormat(undefined, { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits });
-    formatters.set(fractionDigits, nf);
-  }
-  return nf;
-}
-
 function groupByHand(integer: string) {
   let out = "";
   for (let i = 0; i < integer.length; i++) {
@@ -78,7 +69,9 @@ export function localize(plain: string): string {
   const hasPoint = fraction !== undefined;
   if (env.kind === "intl" && env.exactStrings) {
     // `format` keeps "-0" negative, like the calculator should.
-    const text = formatter(fraction?.length ?? 0).format(`${negative ? "-" : ""}${integer || "0"}${fraction ? "." + fraction : ""}` as unknown as number);
+    const digits = fraction?.length ?? 0;
+    const exact = `${negative ? "-" : ""}${integer || "0"}${fraction ? "." + fraction : ""}`;
+    const text = format.number(exact as unknown as number, { minimumFractionDigits: digits, maximumFractionDigits: digits });
     return hasPoint && !fraction ? text + separators.decimal : text;
   }
   return (negative ? "-" : "") + groupByHand(integer || "0") + (hasPoint ? separators.decimal + fraction : "");
@@ -130,21 +123,4 @@ export function formatValue(value: Dec, maxDigits: number): string {
 export function plainValue(value: Dec, maxDigits: number): string {
   const shown = fit(value, maxDigits);
   return "plain" in shown ? shown.plain : `${shown.mantissa}e${shown.exponent}`;
-}
-
-const dayFormat = env.kind === "intl" ? new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }) : null;
-const timeFormat = env.kind === "intl" ? new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }) : null;
-
-export const formatTime = (at: number) => timeFormat?.format(at) ?? new Date(at).toTimeString().slice(0, 5);
-
-/** "Today", "Yesterday" or the date. */
-export function formatDay(at: number, now: number) {
-  const day = (t: number) => {
-    const d = new Date(t);
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  };
-  const days = Math.round((day(now) - day(at)) / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  return dayFormat?.format(at) ?? new Date(at).toDateString();
 }

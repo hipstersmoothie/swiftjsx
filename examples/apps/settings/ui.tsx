@@ -1,24 +1,9 @@
-// Building blocks that make rows look like iOS Settings: icon tiles, navigation
-// rows (chevron + value on the right), value rows, the avatar, and a generic
-// "pick one" screen with checkmarks.
+// Building blocks that make rows look like iOS Settings: navigation rows
+// (chevron + value on the right), value rows, the profile avatar, and a
+// generic "pick one" screen with checkmarks.
 import type { ReactNode } from "react";
-import { Screen, List, Section, HStack, VStack, Text, Image, Button, Spacer, Toggle, type Color } from "swiftjsx";
+import { Screen, List, Section, HStack, VStack, Text, Image, Button, Spacer, Toggle, Avatar, IconTile, type Color } from "swiftjsx";
 import { useAccent, useSettings, type State } from "./store";
-
-/** The rounded-square colored icon at the start of a Settings row. */
-export function IconTile({ icon, color, size = 29 }: { icon: string; color: Color; size?: number }) {
-  return (
-    <Image
-      systemName={icon}
-      font={{ size: size * 0.52, weight: "semibold" }}
-      foregroundStyle="white"
-      frame={{ width: size, height: size }}
-      background={color}
-      cornerRadius={size * 0.23}
-      accessibilityHidden
-    />
-  );
-}
 
 export function Chevron() {
   return <Image systemName="chevron.right" font={{ size: 14, weight: "semibold" }} foregroundStyle="tertiaryLabel" accessibilityHidden />;
@@ -47,7 +32,7 @@ export function NavRow({
       accessibilityTraits="button"
     >
       <HStack spacing={12}>
-        {icon ? <IconTile icon={icon} color={color ?? "gray"} /> : null}
+        {icon ? <IconTile systemImage={icon} color={color ?? "gray"} /> : null}
         <Text foregroundStyle="label">{title}</Text>
         <Spacer minLength={8} />
         {value ? <Text foregroundStyle="secondaryLabel" lineLimit={1}>{value}</Text> : null}
@@ -61,7 +46,7 @@ export function NavRow({
 export function ValueRow({ title, value, icon, color }: { title: string; value: string; icon?: string; color?: Color }) {
   return (
     <HStack spacing={12} accessibilityElement="combine">
-      {icon ? <IconTile icon={icon} color={color ?? "gray"} /> : null}
+      {icon ? <IconTile systemImage={icon} color={color ?? "gray"} /> : null}
       <Text>{title}</Text>
       <Spacer minLength={8} />
       <Text foregroundStyle="secondaryLabel" lineLimit={1} textAlignment="trailing">{value}</Text>
@@ -85,7 +70,7 @@ export function ToggleRow({
   return (
     <Toggle value={value} onChange={onChange} tint={accent.color} disabled={disabled} accessibilityLabel={title}>
       <HStack spacing={12}>
-        {icon ? <IconTile icon={icon} color={color ?? "gray"} /> : null}
+        {icon ? <IconTile systemImage={icon} color={color ?? "gray"} /> : null}
         <VStack alignment="leading" spacing={2}>
           <Text>{title}</Text>
           {subtitle ? <Text font="caption" foregroundStyle="secondaryLabel">{subtitle}</Text> : null}
@@ -110,21 +95,18 @@ export function LinkRow({ title, icon, onPress }: { title: string; icon: string;
   );
 }
 
-/** Initials in a circle with the accent gradient. */
-export function Avatar({ initials, size }: { initials: string; size: number }) {
+/** The profile's initials ("?" without a name) on the accent gradient. */
+export function ProfileAvatar({ name, size }: { name: string; size: number }) {
   const accent = useAccent();
   return (
-    <Text
-      font={{ size: size * 0.4, weight: "semibold", design: "rounded" }}
-      foregroundStyle="white"
-      frame={{ width: size, height: size }}
-      background={{ gradient: accent.gradient, start: "top", end: "bottom" }}
-      cornerRadius="capsule"
+    <Avatar
+      name={name.trim() || "?"}
+      size={size}
+      color={{ gradient: accent.gradient, start: "top", end: "bottom" }}
+      design="rounded"
       animation="snappy"
       accessibilityHidden
-    >
-      {initials}
-    </Text>
+    />
   );
 }
 

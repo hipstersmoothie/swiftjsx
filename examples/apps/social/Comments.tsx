@@ -2,13 +2,12 @@
 // docked above the keyboard (<SafeAreaInset>) with quick emoji.
 import { useRef, useState } from "react";
 import {
-  Sheet, VStack, HStack, LazyVStack, ScrollView, SafeAreaInset, Text, TextField, Button, Image, Divider, Spacer, haptic,
-  type HostInstance,
+  Sheet, VStack, HStack, LazyVStack, ScrollView, SafeAreaInset, Text, TextField, Button, Image, Divider, Spacer, ContentUnavailable,
+  haptic, useNow, format, type HostInstance,
 } from "swiftjsx";
 import { ME, postComments, type Comment, type Post } from "./data";
-import { shortAgo } from "./format";
 import { useSocial, useUI } from "./store";
-import { Avatar, RichText, brandBlue, useNow } from "./ui";
+import { Avatar, RichText, brandBlue } from "./ui";
 
 export function CommentsSheet() {
   const post = useUI((s) => s.commentsFor);
@@ -54,10 +53,7 @@ function Comments({ post }: { post: Post }) {
       <Divider />
       <ScrollView ref={scroller} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} onTapGesture={() => input.current?.blur()}>
         {comments.length === 0 ? (
-          <VStack spacing={6} padding={{ top: 60 }} frame={{ maxWidth: "infinity" }}>
-            <Text font="title2" fontWeight="bold">No comments yet</Text>
-            <Text font="subheadline" foregroundStyle="secondary">Start the conversation.</Text>
-          </VStack>
+          <ContentUnavailable systemImage="bubble.left.and.bubble.right" title="No comments yet" description="Start the conversation." padding={{ top: 40 }} />
         ) : (
           <LazyVStack alignment="leading" spacing={20} padding={{ horizontal: 16, vertical: 16 }}>
             {comments.map((comment) => (
@@ -133,14 +129,14 @@ function CommentRow({ comment, isAuthor, onReply }: { comment: Comment; isAuthor
         <HStack spacing={6}>
           <Text font="footnote" fontWeight="semibold">{comment.author === ME ? "You" : comment.author}</Text>
           {isAuthor ? <Text font="caption" foregroundStyle="secondary">· Author</Text> : null}
-          <Text font="footnote" foregroundStyle="secondary">{shortAgo(comment.createdAt, now)}</Text>
+          <Text font="footnote" foregroundStyle="secondary">{format.relativeTime(comment.createdAt, { now, weeks: true })}</Text>
         </HStack>
         <RichText text={comment.text} font="subheadline" />
         <HStack spacing={16}>
           <Button buttonStyle="plain" onPress={onReply}>
             <Text font="caption" fontWeight="semibold" foregroundStyle="secondary">Reply</Text>
           </Button>
-          {likes ? <Text font="caption" foregroundStyle="secondary">{likes === 1 ? "1 like" : `${likes.toLocaleString("en-US")} likes`}</Text> : null}
+          {likes ? <Text font="caption" foregroundStyle="secondary">{format.count(likes, { one: "# like", other: "# likes" })}</Text> : null}
         </HStack>
       </VStack>
       <Spacer />

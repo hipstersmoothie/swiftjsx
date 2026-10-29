@@ -4,11 +4,11 @@
 import { useState } from "react";
 import {
   Navigator, useNavigation, Screen, ToolbarItem, List, Section, Button, HStack, VStack, Text, Image, Label, Spacer, Sheet, Alert,
-  SwipeActions, ContextMenu, withAnimation,
+  SwipeActions, ContextMenu, ContentUnavailable, withAnimation, format,
 } from "swiftjsx";
-import { activeColumns, boardColors, cardCount, columnCards, plural, type Board } from "./model";
+import { activeColumns, boardColors, cardCount, columnCards, type Board } from "./model";
 import { deleteBoard, useKanban } from "./store";
-import { BoardIcon, EmptyState } from "./ui";
+import { BoardIcon } from "./ui";
 import { BoardScreen } from "./BoardScreen";
 import { BoardForm } from "./forms";
 
@@ -46,9 +46,9 @@ function BoardsScreen() {
           </Section>
         </List>
       ) : (
-        <EmptyState symbol="rectangle.split.3x1" title="No boards" message="A board holds columns of cards for one project.">
+        <ContentUnavailable systemImage="rectangle.split.3x1" title="No boards" description="A board holds columns of cards for one project.">
           <Button title="New Board" buttonStyle="borderedProminent" onPress={() => setCreating(true)} />
-        </EmptyState>
+        </ContentUnavailable>
       )}
 
       <Sheet isPresented={creating} onDismiss={() => setCreating(false)}>
@@ -74,7 +74,7 @@ function BoardsScreen() {
         item={deleting}
         onDismiss={() => setDeleting(null)}
         title={(board) => `Delete "${board.name}"?`}
-        message={(board) => `Its ${plural(Object.keys(board.cards).length, "card")} will be deleted too.`}
+        message={(board) => `Its ${format.count(Object.keys(board.cards).length, { one: "# card", other: "# cards" })} will be deleted too.`}
       >
         {(board) => (
           <>
@@ -100,7 +100,7 @@ function BoardRow({ board, onOpen, onEdit, onDelete }: { board: Board; onOpen():
         <VStack alignment="leading" spacing={5}>
           <Text font="headline" foregroundStyle="primary" lineLimit={1}>{board.name || "Untitled Board"}</Text>
           <Text font="subheadline" foregroundStyle="secondary">
-            {plural(cards, "card")} · {plural(columns.length, "column")}
+            {format.count(cards, { one: "# card", other: "# cards" })} · {format.count(columns.length, { one: "# column", other: "# columns" })}
           </Text>
           <Distribution board={board} />
         </VStack>

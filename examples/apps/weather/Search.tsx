@@ -1,15 +1,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useNavigation, List, VStack, HStack, Text, Image, Button, Spacer } from "swiftjsx";
+import { useNavigation, useDebouncedValue, List, VStack, HStack, Text, Image, Button, ProgressView, Spacer, ContentUnavailable } from "swiftjsx";
 import { searchCities, type City } from "./api";
-import { useDebounced } from "./format";
 import { useIsSaved } from "./store";
 import { CityScreen } from "./CityScreen";
-import { Loading, ErrorView } from "./Status";
 
 /** Results for the navigation bar's search field. `onAdded` runs when a result is saved. */
 export function SearchResults({ query, onAdded }: { query: string; onAdded(): void }) {
   const nav = useNavigation();
-  const term = useDebounced(query, 300);
+  const [term] = useDebouncedValue(query, 300);
   const { data, error, refetch } = useQuery({
     queryKey: ["search", term],
     queryFn: ({ signal }) => searchCities(term, signal),
@@ -18,10 +16,16 @@ export function SearchResults({ query, onAdded }: { query: string; onAdded(): vo
     placeholderData: keepPreviousData,
   });
 
-  if (term.length < 2) return <Message icon="magnifyingglass" text="Keep typing to search for a city." />;
-  if (error) return <ErrorView message={error.message} retry={() => refetch()} />;
-  if (!data) return <Loading />;
-  if (!data.length) return <Message icon="mappin.slash" text={`No results for “${term}”.`} />;
+  if (term.length < 2) return <ContentUnavailable systemImage="magnifyingglass" title="Search for a City" description="Keep typing to see matching cities." />;
+  if (error) {
+    return (
+      <ContentUnavailable systemImage="wifi.exclamationmark" title="Couldn’t Search" description={error.message}>
+        <Button title="Try Again" buttonStyle="bordered" onPress={() => refetch()} />
+      </ContentUnavailable>
+    );
+  }
+  if (!data) return <ProgressView frame={{ maxWidth: "infinity", maxHeight: "infinity" }} />;
+  if (!data.length) return <ContentUnavailable search={term} />;
 
   const open = (city: City) =>
     nav.push(
@@ -61,14 +65,5 @@ function ResultRow({ city, onPress }: { city: City; onPress(): void }) {
         )}
       </HStack>
     </Button>
-  );
-}
-
-function Message({ icon, text }: { icon: string; text: string }) {
-  return (
-    <VStack spacing={10} padding={24} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-      <Image systemName={icon} font="largeTitle" foregroundStyle="secondary" />
-      <Text textAlignment="center" foregroundStyle="secondary">{text}</Text>
-    </VStack>
   );
 }

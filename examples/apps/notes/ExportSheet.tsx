@@ -1,13 +1,10 @@
-// Export: Markdown or plain text, shared through whatever exists. SwiftJSX has
-// no ShareLink, so the share sheet needs the native backend; mail and
-// messages work everywhere through openURL.
+// Export: Markdown or plain text, copied, shared (the share sheet), or sent
+// straight to Mail or Messages.
 import { useState } from "react";
 import {
-  openURL, Navigator, Screen, ToolbarItem, Form, Section, Picker, Text, Button, Label, Sheet,
+  openURL, toast, format as fmt, Navigator, Screen, ToolbarItem, Form, Section, Picker, Text, Button, Label, Sheet, ShareLink,
 } from "swiftjsx";
 import { toMarkdown, toPlainText } from "./markdown";
-import { formatBytes } from "./format";
-import { hasUIKit, shareText } from "./share";
 
 type Format = "markdown" | "plain";
 
@@ -23,17 +20,12 @@ export function ExportSheet({ isPresented, onDismiss, title, body }: { isPresent
 
 function ExportForm({ title, body, onDone }: { title: string; body: string; onDone(): void }) {
   const [format, setFormat] = useState<Format>("markdown");
-  const [copied, setCopied] = useState(false);
   const text = format === "markdown" ? toMarkdown(title, body) : toPlainText(title, body);
   const bytes = new TextEncoder().encode(text).length;
   const subject = title.trim() || "Note";
-  const native = hasUIKit();
 
   const copy = () =>
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard.writeText(text).then(() => toast("Copied", { systemImage: "checkmark", haptic: "success" }));
 
   return (
     <Screen title="Export" titleDisplayMode="inline">
@@ -50,26 +42,18 @@ function ExportForm({ title, body, onDone }: { title: string; body: string; onDo
             onChange={(f) => setFormat(f as Format)}
           />
         </Section>
-        <Section header="Preview" footer={formatBytes(bytes)}>
+        <Section header="Preview" footer={fmt.bytes(bytes)}>
           <Text font="callout" fontDesign={format === "markdown" ? "monospaced" : undefined} lineLimit={14} accessibilityIdentifier="export-preview">
             {text || " "}
           </Text>
         </Section>
-        <Section
-          footer={
-            native
-              ? undefined
-              : "The share sheet needs the native backend (UIActivityViewController). Mail and Messages get the note as a URL-encoded body; very long notes may be cut off."
-          }
-        >
+        <Section>
           <Button onPress={copy} accessibilityIdentifier="export-copy">
-            <Label title={copied ? "Copied" : "Copy"} systemImage={copied ? "checkmark" : "doc.on.doc"} />
+            <Label title="Copy" systemImage="doc.on.doc" />
           </Button>
-          {native ? (
-            <Button onPress={() => void shareText(text)} accessibilityIdentifier="export-share">
-              <Label title="Share…" systemImage="square.and.arrow.up" />
-            </Button>
-          ) : null}
+          <ShareLink text={text} subject={subject} accessibilityIdentifier="export-share">
+            <Label title="Share…" systemImage="square.and.arrow.up" />
+          </ShareLink>
           <Button onPress={() => openURL(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`)}>
             <Label title="Mail" systemImage="envelope" />
           </Button>

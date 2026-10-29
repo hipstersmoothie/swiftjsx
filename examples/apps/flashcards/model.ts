@@ -54,9 +54,6 @@ export function shuffle<T>(items: T[]): T[] {
   return out;
 }
 
-/** "1 card", "3 cards". */
-export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
 /** Longest run of correct answers. */
 export const bestRun = (results: boolean[]) =>
   results.reduce(({ best, run }, knew) => (knew ? { best: Math.max(best, run + 1), run: run + 1 } : { best, run: 0 }), { best: 0, run: 0 }).best;

@@ -1,25 +1,22 @@
 // Search TheMealDB by name. Typing is debounced; results keep showing while
 // the next query loads. Before searching: recent searches and suggestions.
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useNavigation, Screen, ToolbarItem, List, Section, VStack, HStack, Text, Image, Button, Flow, ProgressView, SwipeActions,
+  Chip, ContentUnavailable, useDebouncedValue,
 } from "swiftjsx";
 import { recipeQuery, searchQuery, thumbSize, type Recipe } from "./api";
 import { useRecipes } from "./store";
 import { RecipeScreen } from "./RecipeScreen";
-import { ACCENT, Chip, EmptyState, ErrorView } from "./ui";
+import { ACCENT, ErrorView } from "./ui";
 
 const SUGGESTIONS = ["Chicken", "Pasta", "Curry", "Soup", "Cake", "Salmon", "Beef", "Pie", "Tart", "Rice", "Lamb", "Pancakes"];
 
 export function SearchScreen() {
   const [text, setText] = useState("");
-  const [term, setTerm] = useState("");
-  // Debounce: one request when typing pauses, not one per keystroke.
-  useEffect(() => {
-    const timer = setTimeout(() => setTerm(text.trim()), 350);
-    return () => clearTimeout(timer);
-  }, [text]);
+  // Debounced: one request when typing pauses, not one per keystroke.
+  const [term] = useDebouncedValue(text.trim(), 350);
 
   const query = useQuery({ ...searchQuery(term), enabled: term.length >= 2, placeholderData: keepPreviousData });
   const recent = useRecipes((s) => s.recentSearches);
@@ -50,7 +47,7 @@ export function SearchScreen() {
           <Section header="Try">
             <Flow spacing={8} lineSpacing={8} padding={{ vertical: 6 }}>
               {SUGGESTIONS.map((s) => (
-                <Chip key={s} title={s} onPress={() => setText(s)} />
+                <Chip key={s} label={s} onPress={() => setText(s)} />
               ))}
             </Flow>
           </Section>
@@ -60,7 +57,7 @@ export function SearchScreen() {
       ) : query.isError ? (
         <ErrorView message={query.error.message} retry={() => query.refetch()} />
       ) : !query.data.length ? (
-        <EmptyState icon="fork.knife" title="No recipes found" message={`TheMealDB has nothing called “${term}”. Try a single word, like an ingredient.`} />
+        <ContentUnavailable systemImage="fork.knife" title="No recipes found" description={`TheMealDB has nothing called “${term}”. Try a single word, like an ingredient.`} />
       ) : (
         <List listStyle="plain">
           <Section footer={query.data.length === 1 ? "1 recipe" : `${query.data.length} recipes`}>

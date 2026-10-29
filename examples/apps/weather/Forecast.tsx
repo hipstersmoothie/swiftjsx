@@ -1,12 +1,11 @@
 // The detail screen's sections: hourly strip, 10-day list, and detail tiles,
 // on frosted cards over the condition gradient.
 import { Fragment, type ReactNode } from "react";
-import { VStack, HStack, ZStack, ScrollView, LazyVGrid, Text, Image, Label, Divider, Spacer, type Color } from "swiftjsx";
+import { VStack, HStack, AbsoluteStack, ScrollView, LazyVGrid, Text, Image, Label, Divider, Spacer, format, type Color } from "swiftjsx";
 import type { Day, Forecast } from "./api";
-import { conditionLabel, conditionSymbol, symbolColor, temperatureColor } from "./conditions";
+import { conditionLabel, conditionSymbol, temperatureColor } from "./conditions";
 import { useTemperature, useWindSpeed, hourLabel, weekday, clockTime } from "./format";
 
-// White at reduced opacity: "secondary" is a fixed gray, not relative to the white text.
 /** Dimmed version of the white text on the gradient (hierarchical secondary). */
 export const dim = "secondary";
 const faint: Color = "#ffffff40";
@@ -43,16 +42,19 @@ export function HourlyForecast({ forecast }: { forecast: Forecast }) {
       <Divider />
       <ScrollView axis="horizontal">
         <HStack spacing={24} padding={{ horizontal: 4, bottom: 4 }}>
-          {hours.map((hour, i) => {
-            const symbol = conditionSymbol(hour.code, hour.isDay);
-            return (
-              <VStack key={hour.time} spacing={10} accessibilityElement="combine">
-                <Text font="subheadline" fontWeight="semibold">{i === 0 ? "Now" : hourLabel(hour.time)}</Text>
-                <Image systemName={symbol} font="title3" foregroundStyle={symbolColor(symbol)} frame={{ height: 28 }} accessibilityLabel={conditionLabel(hour.code)} />
-                <Text font="title3" fontWeight="medium">{temp(hour.temperature)}</Text>
-              </VStack>
-            );
-          })}
+          {hours.map((hour, i) => (
+            <VStack key={hour.time} spacing={10} accessibilityElement="combine">
+              <Text font="subheadline" fontWeight="semibold">{i === 0 ? "Now" : hourLabel(hour.time)}</Text>
+              <Image
+                systemName={conditionSymbol(hour.code, hour.isDay)}
+                symbolRenderingMode="multicolor"
+                font="title3"
+                frame={{ height: 28 }}
+                accessibilityLabel={conditionLabel(hour.code)}
+              />
+              <Text font="title3" fontWeight="medium">{temp(hour.temperature)}</Text>
+            </VStack>
+          ))}
         </HStack>
       </ScrollView>
     </Card>
@@ -86,16 +88,14 @@ export function DailyForecast({ forecast }: { forecast: Forecast }) {
 
 function DayRow({ day, label, low, high, current }: { day: Day; label: string; low: number; high: number; current?: number }) {
   const temp = useTemperature();
-  const symbol = conditionSymbol(day.code);
   const rainy = (day.precipitation ?? 0) >= 20;
   return (
     <HStack spacing={12} accessibilityElement="combine">
       <Text font="title3" fontWeight="medium" frame={{ width: 60, alignment: "leading" }}>{label}</Text>
       <VStack spacing={0} frame={{ width: 34 }}>
-        <Image systemName={symbol} font="body" foregroundStyle={symbolColor(symbol)} accessibilityLabel={conditionLabel(day.code)} />
-        {rainy ? <Text font="caption2" fontWeight="bold" foregroundStyle="#81cfff">{day.precipitation}%</Text> : null}
+        <Image systemName={conditionSymbol(day.code)} symbolRenderingMode="multicolor" font="body" accessibilityLabel={conditionLabel(day.code)} />
+        {rainy ? <Text font="caption2" fontWeight="bold" foregroundStyle="#81cfff">{percent(day.precipitation ?? 0)}</Text> : null}
       </VStack>
-      <Spacer minLength={0} />
       <Text font="title3" fontWeight="medium" monospacedDigit foregroundStyle={dim} frame={{ width: 40, alignment: "trailing" }} accessibilityLabel={`Low ${temp(day.min)}`}>
         {temp(day.min)}
       </Text>
@@ -107,26 +107,34 @@ function DayRow({ day, label, low, high, current }: { day: Day; label: string; l
   );
 }
 
-// There's no GeometryReader, so the bar has a fixed width and positions are
-// computed in points: the day's range is a capsule within the week's range.
-const barWidth = 88;
+// The day's range is a capsule within the week's range, placed in percent of
+// the bar's width (the bar takes the row's spare width).
 const barHeight = 5;
+const fill = { maxWidth: "infinity", height: barHeight } as const;
 
 function TemperatureBar({ min, max, low, high, current }: { min: number; max: number; low: number; high: number; current?: number }) {
-  const x = (celsius: number) => ((celsius - low) / Math.max(high - low, 1)) * barWidth;
+  const at = (celsius: number) => (celsius - low) / Math.max(high - low, 1);
+  const pct = (fraction: number) => `${fraction * 100}%` as const;
   return (
-    <ZStack alignment="leading" frame={{ width: barWidth, height: 8 }} accessibilityHidden>
-      <VStack frame={{ width: barWidth, height: barHeight }} background={faint} cornerRadius={barHeight / 2} />
+    <AbsoluteStack frame={{ height: 8 }} accessibilityHidden>
+      <VStack position={{ y: "50%", width: "100%", anchor: "leading" }} frame={fill} background={faint} cornerRadius={barHeight / 2} />
       <VStack
-        frame={{ width: Math.max(x(max) - x(min), barHeight), height: barHeight }}
+        position={{ x: pct(at(min)), y: "50%", width: pct(at(max) - at(min)), anchor: "leading" }}
+        // At least a dot when the day's range is (nearly) one temperature.
+        frame={{ ...fill, minWidth: barHeight }}
         background={{ gradient: [temperatureColor(min), temperatureColor(max)], start: "leading", end: "trailing" }}
         cornerRadius={barHeight / 2}
-        offset={{ x: x(min) }}
       />
       {current === undefined ? null : (
-        <VStack frame={{ width: 8, height: 8 }} background="white" cornerRadius={4} shadow={{ radius: 1, color: "#00000066" }} offset={{ x: x(current) - 4 }} />
+        <VStack
+          position={{ x: pct(at(current)), y: "50%", anchor: "center" }}
+          frame={{ width: 8, height: 8 }}
+          background="white"
+          cornerRadius={4}
+          shadow={{ radius: 1, color: "#00000066" }}
+        />
       )}
-    </ZStack>
+    </AbsoluteStack>
   );
 }
 
@@ -139,9 +147,9 @@ export function DetailTiles({ forecast }: { forecast: Forecast }) {
   return (
     <LazyVGrid columns={2} spacing={12}>
       <Tile icon="thermometer.medium" title="Feels like" value={temp(current.feelsLike)} note={feelsLikeNote(current.temperature, current.feelsLike)} />
-      <Tile icon="humidity.fill" title="Humidity" value={`${Math.round(current.humidity)}%`} note={humidityNote(current.humidity)} />
+      <Tile icon="humidity.fill" title="Humidity" value={percent(current.humidity)} note={humidityNote(current.humidity)} />
       <Tile icon="wind" title="Wind" value={wind(current.windSpeed)} note={windNote(current.windSpeed)} />
-      <Tile icon="umbrella.fill" title="Precipitation" value={`${today.precipitation ?? 0}%`} note="Chance of rain or snow today." />
+      <Tile icon="umbrella.fill" title="Precipitation" value={percent(today.precipitation ?? 0)} note="Chance of rain or snow today." />
       <Tile icon="sunrise.fill" title="Sunrise" value={clockTime(today.sunrise)} note={`Sunset: ${clockTime(today.sunset)}`} />
       <Tile icon="sunset.fill" title="Sunset" value={clockTime(today.sunset)} note={tomorrow ? `Sunrise tomorrow: ${clockTime(tomorrow.sunrise)}` : ""} />
     </LazyVGrid>
@@ -166,6 +174,9 @@ function Tile({ icon, title, value, note }: { icon: string; title: string; value
     </VStack>
   );
 }
+
+/** 0–100 from the API as "42%". */
+const percent = (value: number) => format.percent(value / 100);
 
 function feelsLikeNote(actual: number, feelsLike: number) {
   if (Math.abs(feelsLike - actual) < 2) return "Similar to the actual temperature.";

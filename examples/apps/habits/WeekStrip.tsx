@@ -1,20 +1,22 @@
 // A horizontally paging strip of weeks (locale's first weekday first), with a
 // completion ring per day. Opens on this week; swipe back through history.
 import { useEffect, useRef, useState } from "react";
-import { withAnimation, haptic, ScrollView, HStack, VStack, ZStack, Text, Button, Spacer, type HostInstance } from "swiftjsx";
-import { addDayKeys, formatWeekRange, parseDay, weekDays, weekStartKey, weekdayName, type DayKey } from "./dates";
+import { withAnimation, haptic, ScrollView, HStack, VStack, ZStack, Text, Button, Spacer, ProgressRing, type HostInstance } from "swiftjsx";
+import type { Day } from "date-fns";
+import { addDayKeys, formatWeekRange, parseDay, useWeekStartsOn, weekDays, weekStartKey, weekdayName, type DayKey } from "./dates";
 import { dayProgress } from "./stats";
 import { useHabits, type Habit, type Logs } from "./store";
-import { Card, Ring } from "./ui";
+import { Card } from "./ui";
 
 export function WeekStrip({ selected, today, onSelect }: { selected: DayKey; today: DayKey; onSelect: (day: DayKey) => void }) {
   const habits = useHabits((s) => s.habits);
   const logs = useHabits((s) => s.logs);
+  const weekStartsOn = useWeekStartsOn();
   const scroller = useRef<HostInstance>(null);
 
   // Weeks from the oldest habit's first week to this one.
-  const current = weekStartKey(today);
-  const first = weekStartKey(habits.reduce((min, h) => (h.createdAt < min ? h.createdAt : min), today));
+  const current = weekStartKey(today, weekStartsOn);
+  const first = weekStartKey(habits.reduce((min, h) => (h.createdAt < min ? h.createdAt : min), today), weekStartsOn);
   const weeks: DayKey[] = [];
   for (let w = first; w <= current; w = addDayKeys(w, 7)) weeks.push(w);
   const [page, setPage] = useState(weeks.length - 1);
@@ -52,22 +54,21 @@ export function WeekStrip({ selected, today, onSelect }: { selected: DayKey; tod
         // relativeWidth alone also sizes the pages to the scroll view's
         // height, so the strip needs a fixed height.
         frame={{ height: 78 }}
-        onScroll={(e) => {
-          if (e.width > 0) setPage(Math.round(e.x / e.width));
-        }}
+        onScrollIndexChange={setPage}
         accessibilityIdentifier="week-strip"
         accessibilityElement="contain"
       >
         {weeks.map((week) => (
-          <WeekPage key={week} week={week} habits={habits} logs={logs} selected={selected} today={today} onSelect={onSelect} />
+          <WeekPage key={week} week={week} weekStartsOn={weekStartsOn} habits={habits} logs={logs} selected={selected} today={today} onSelect={onSelect} />
         ))}
       </ScrollView>
     </Card>
   );
 }
 
-function WeekPage({ week, habits, logs, selected, today, onSelect }: {
+function WeekPage({ week, weekStartsOn, habits, logs, selected, today, onSelect }: {
   week: DayKey;
+  weekStartsOn: Day;
   habits: Habit[];
   logs: Logs;
   selected: DayKey;
@@ -76,9 +77,9 @@ function WeekPage({ week, habits, logs, selected, today, onSelect }: {
 }) {
   return (
     <HStack spacing={0} relativeWidth={1} padding={{ horizontal: 8 }}>
-      {weekDays(week).map((day) => {
+      {weekDays(week, weekStartsOn).map((day) => {
         const future = day > today;
-        const progress = dayProgress(habits, logs, day);
+        const progress = dayProgress(habits, logs, day, weekStartsOn);
         const isSelected = day === selected;
         const isToday = day === today;
         const date = parseDay(day);
@@ -102,9 +103,9 @@ function WeekPage({ week, habits, logs, selected, today, onSelect }: {
                 {weekdayName(date.getDay(), "narrow")}
               </Text>
               <ZStack frame={{ width: 34, height: 34 }} opacity={future ? 0.35 : 1}>
-                <Ring
-                  progress={future ? 0 : progress.fraction}
-                  size={34}
+                <ProgressRing
+                  value={future ? 0 : progress.fraction}
+                  frame={{ width: 34, height: 34 }}
                   lineWidth={4}
                   color={progress.total && progress.done === progress.total ? "green" : "accent"}
                   track="quaternarySystemFill"

@@ -1,7 +1,7 @@
-// Shared pieces: artwork, track rows (with their context menu), empty and
-// error states.
+// Shared pieces: artwork, track rows (with their context menu), the error
+// state.
 import type { ReactNode } from "react";
-import { Button, ContextMenu, HStack, Image, Label, Spacer, Text, VStack, type ColorValue } from "swiftjsx";
+import { Button, ContentUnavailable, ContextMenu, HStack, Image, Label, Spacer, Text, VStack, type ColorValue } from "swiftjsx";
 import { art, formatTime, type Track } from "./api";
 import { useIsLiked, useLibrary } from "./library";
 import { addToQueue, playNext, useCurrentTrack, usePlayer } from "./player";
@@ -109,22 +109,11 @@ export function TrackMenu({ track, hideAlbum, hideArtist }: { track: Track; hide
   );
 }
 
-export function EmptyState({ icon, title, message, children }: { icon: string; title: string; message?: string; children?: ReactNode }) {
-  return (
-    <VStack spacing={10} padding={32} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-      <Image systemName={icon} font={{ size: 44, weight: "light" }} foregroundStyle="secondary" />
-      <Text font="title3" fontWeight="semibold" textAlignment="center">{title}</Text>
-      {message ? <Text font="callout" foregroundStyle="secondary" textAlignment="center">{message}</Text> : null}
-      {children}
-    </VStack>
-  );
-}
-
 export function ErrorView({ message, retry }: { message: string; retry(): void }) {
   return (
-    <EmptyState icon="wifi.exclamationmark" title="Couldn’t load" message={message}>
-      <Button title="Try Again" buttonStyle="bordered" onPress={retry} padding={{ top: 6 }} />
-    </EmptyState>
+    <ContentUnavailable systemImage="wifi.exclamationmark" title="Couldn’t Load" description={message}>
+      <Button title="Try Again" buttonStyle="bordered" onPress={retry} />
+    </ContentUnavailable>
   );
 }
 

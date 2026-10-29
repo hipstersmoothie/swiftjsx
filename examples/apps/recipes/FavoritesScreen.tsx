@@ -1,8 +1,8 @@
 // Favorite recipes (persisted), as a grid, filterable by category.
 import { useState } from "react";
-import { Screen, ToolbarItem, ScrollView, VStack, LazyVGrid, Menu, Picker } from "swiftjsx";
+import { Screen, ToolbarItem, ScrollView, VStack, LazyVGrid, Menu, Picker, ContentUnavailable } from "swiftjsx";
 import { useRecipes } from "./store";
-import { EmptyState, RecipeCard } from "./ui";
+import { RecipeCard } from "./ui";
 
 export function FavoritesScreen() {
   const favorites = useRecipes((s) => s.favorites);
@@ -18,7 +18,7 @@ export function FavoritesScreen() {
   if (!favorites.length) {
     return (
       <Screen title="Favorites">
-        <EmptyState icon="heart" title="No favorites yet" message="Tap the heart on a recipe, or touch and hold a recipe card." />
+        <ContentUnavailable systemImage="heart" title="No favorites yet" description="Tap the heart on a recipe, or touch and hold a recipe card." />
       </Screen>
     );
   }
@@ -48,7 +48,7 @@ export function FavoritesScreen() {
           </VStack>
         </ScrollView>
       ) : (
-        <EmptyState icon="magnifyingglass" title="No matches" message="None of your favorites match." />
+        <ContentUnavailable systemImage="magnifyingglass" title="No matches" description="None of your favorites match." />
       )}
     </Screen>
   );

@@ -4,7 +4,7 @@
 // reposts and follows (optimistic). Light, dim and dark themes, on Inter.
 import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { TabView, Tab, Navigator, Overlay, VStack, hot, createNavigationRef, useAnimatedStyle, type NavigationRef } from "swiftjsx";
+import { TabView, Tab, Navigator, VStack, hot, createNavigationRef, useAnimatedStyle, type NavigationRef } from "swiftjsx";
 import { getUnreadCount } from "./api";
 import { HomeScreen } from "./Home";
 import { SearchScreen } from "./Search";
@@ -18,7 +18,7 @@ import { drawerProgress } from "./Home";
 import { useSession, useSettings } from "./session";
 import { useUI, type TabName } from "./store";
 import { fontsReady, loadInter, useTheme } from "./theme";
-import { Butterfly, ToastView } from "./ui";
+import { Butterfly } from "./ui";
 
 const queryClient: QueryClient = (hot.data.blueskyQueries ??= new QueryClient({
   defaultOptions: { queries: { staleTime: 60_000, retry: 1 } },
@@ -105,9 +105,6 @@ function Tabs() {
       {/* Over everything (their own window), from anywhere: they're in the UI store. */}
       <Drawer />
       <ImageViewer />
-      <Overlay alignment="bottom">
-        <ToastView />
-      </Overlay>
     </TabView>
   );
 }

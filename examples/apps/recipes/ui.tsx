@@ -1,9 +1,8 @@
-// Shared pieces: loading/error/empty states, chips, section titles and the
-// recipe card used by every grid.
+// Shared pieces: loading and error states, section titles and the recipe
+// card used by every grid.
 import type { ReactNode } from "react";
 import {
-  useNavigation, VStack, HStack, Text, Image, Button, ProgressView, Overlay, ContextMenu, Label, Spacer,
-  type ColorValue,
+  useNavigation, VStack, HStack, Text, Image, Button, ProgressView, Overlay, ContextMenu, Label, Spacer, ContentUnavailable,
 } from "swiftjsx";
 import { thumbSize, type RecipeSummary } from "./api";
 import { useIsFavorite, useRecipes } from "./store";
@@ -24,22 +23,9 @@ export function Loading({ label }: { label?: string }) {
 
 export function ErrorView({ message, retry }: { message: string; retry(): void }) {
   return (
-    <VStack spacing={12} padding={32} frame={fill}>
-      <Image systemName="wifi.exclamationmark" font="largeTitle" foregroundStyle="secondary" />
-      <Text textAlignment="center" foregroundStyle="secondary">{message}</Text>
+    <ContentUnavailable systemImage="wifi.exclamationmark" title="Couldn’t load" description={message}>
       <Button title="Try again" buttonStyle="bordered" onPress={retry} />
-    </VStack>
-  );
-}
-
-export function EmptyState({ icon, title, message, children }: { icon: string; title: string; message: string; children?: ReactNode }) {
-  return (
-    <VStack spacing={8} padding={32} frame={fill}>
-      <Image systemName={icon} font="largeTitle" foregroundStyle="secondary" symbolRenderingMode="hierarchical" />
-      <Text font="headline">{title}</Text>
-      <Text font="subheadline" textAlignment="center" foregroundStyle="secondary">{message}</Text>
-      {children}
-    </VStack>
+    </ContentUnavailable>
   );
 }
 
@@ -50,28 +36,6 @@ export function SectionTitle({ title, trailing }: { title: string; trailing?: Re
       <Spacer />
       {trailing}
     </HStack>
-  );
-}
-
-/** A small rounded label: categories, cuisines, tags. */
-export function Chip({ title, systemImage, color = "secondarySystemFill", foreground, onPress }: {
-  title: string;
-  systemImage?: string;
-  color?: ColorValue;
-  foreground?: ColorValue;
-  onPress?: () => void;
-}) {
-  const body = (
-    <HStack spacing={4} padding={{ horizontal: 10, vertical: 5 }} background={color} cornerRadius="capsule">
-      {systemImage ? <Image systemName={systemImage} font="caption" foregroundStyle={foreground ?? "secondaryLabel"} /> : null}
-      <Text font="subheadline" fontWeight="medium" foregroundStyle={foreground ?? "label"} lineLimit={1}>{title}</Text>
-    </HStack>
-  );
-  if (!onPress) return body;
-  return (
-    <Button buttonStyle="plain" pressedScale={0.95} onPress={onPress} accessibilityLabel={title}>
-      {body}
-    </Button>
   );
 }
 

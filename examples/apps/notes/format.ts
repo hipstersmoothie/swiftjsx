@@ -1,5 +1,4 @@
 // Note titles, previews, dates and sorting, shared by the list and the editor.
-import { useSyncExternalStore } from "react";
 import { format, isToday, isYesterday, differenceInCalendarDays } from "date-fns";
 import { plainLines } from "./markdown";
 import type { Note, Sort } from "./store";
@@ -41,22 +40,3 @@ export function sortNotes(notes: Note[], sort: Sort): Note[] {
 }
 
 export const sortLabels: Record<Sort, string> = { edited: "Date Edited", created: "Date Created", title: "Title" };
-
-export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} bytes`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1024 / 1024).toFixed(2)} MB`;
-}
-
-// The current time, re-read every minute (and when the app returns to the
-// foreground), so "Yesterday" and the like stay right.
-// The snapshot is rounded to the minute, so it's stable between ticks.
-function subscribe(onChange: () => void) {
-  const timer = setInterval(onChange, 15_000);
-  addEventListener("focus", onChange);
-  return () => {
-    clearInterval(timer);
-    removeEventListener("focus", onChange);
-  };
-}
-export const useNow = () => useSyncExternalStore(subscribe, () => Math.floor(Date.now() / 60_000) * 60_000);

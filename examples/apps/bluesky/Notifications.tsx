@@ -2,15 +2,15 @@
 // 3 others liked your post"), replies, mentions and quotes as full posts.
 // Signed out: a sign-in prompt.
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, useNavigation, type Color } from "swiftjsx";
+import { Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, ContentUnavailable, useNavigation, useNow, format, type Color } from "swiftjsx";
 import { getPosts, listNotifications } from "./api";
-import { ago, displayName } from "./format";
+import { displayName } from "./format";
 import { PostCell } from "./PostCell";
 import { ProfileScreen } from "./Profile";
 import { ThreadScreen } from "./Thread";
 import { useSession } from "./session";
 import { useUI } from "./store";
-import { Avatar, EmptyState, ErrorView, FeedSkeleton, PillButton, Separator, Spinner, T, ty, useNow, useTheme, type Palette } from "./ui";
+import { Avatar, ErrorView, FeedSkeleton, PillButton, Separator, Spinner, T, ty, useTheme, type Palette } from "./ui";
 import type { Notification, PostView } from "./types";
 
 type Group = {
@@ -75,6 +75,7 @@ export function NotificationsScreen() {
   );
 }
 
+/** Kept our own (not ContentUnavailable): Bluesky's sign-in prompt, its bell on a brand-tinted tile. */
 function SignedOutPrompt() {
   const openSignIn = useUI((s) => s.openSignIn);
   const t = useTheme();
@@ -110,7 +111,7 @@ function NotificationList() {
       keyExtractor={(g) => g.key}
       estimatedItemHeight={110}
       renderItem={(g) => <NotificationRow group={g} />}
-      footer={query.hasNextPage ? <Spinner height={64} /> : groups.length ? null : <EmptyState icon="bell" title="No notifications yet!" />}
+      footer={query.hasNextPage ? <Spinner height={64} /> : groups.length ? null : <ContentUnavailable systemImage="bell" title="No notifications yet!" frame={{ minHeight: 280 }} />}
       onEndReached={() => {
         if (query.hasNextPage && !query.isFetchingNextPage) query.fetchNextPage();
       }}
@@ -169,9 +170,9 @@ function NotificationRow({ group: g }: { group: Group }) {
             </HStack>
             <Text font={ty(T.md)} foregroundStyle={t.text} lineSpacing={2}>
               <Text fontWeight="bold">{displayName(first)}</Text>
-              {others > 0 ? <Text fontWeight="bold">{` and ${others} ${others === 1 ? "other" : "others"}`}</Text> : null}
+              {others > 0 ? <Text fontWeight="bold">{` and ${format.count(others, { one: "# other", other: "# others" })}`}</Text> : null}
               <Text>{` ${m.verb}`}</Text>
-              <Text foregroundStyle={t.textMedium}>{` · ${ago(g.indexedAt, now)}`}</Text>
+              <Text foregroundStyle={t.textMedium}>{` · ${format.relativeTime(Date.parse(g.indexedAt), { now })}`}</Text>
             </Text>
             {g.post?.record.text ? <Text font={ty(T.md)} foregroundStyle={t.textMedium} lineLimit={3} lineSpacing={2}>{g.post.record.text}</Text> : null}
           </VStack>

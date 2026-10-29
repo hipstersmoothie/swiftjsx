@@ -2,11 +2,11 @@
 // swipe or long-press for more.
 import { useState } from "react";
 import {
-  Screen, ToolbarItem, List, Section, Button, VStack, HStack, Text, Image, Label, Spacer, SwipeActions, ContextMenu, Alert,
-  withAnimation,
+  Screen, ToolbarItem, List, Section, Button, VStack, HStack, Text, Label, Spacer, SwipeActions, ContextMenu, Alert, ContentUnavailable,
+  withAnimation, format, useToday,
 } from "swiftjsx";
 import { decode, opSymbol, type HistoryEntry } from "./engine";
-import { formatDay, formatTime, formatValue, formattingInfo } from "./format";
+import { formatValue, formattingInfo } from "./format";
 import { clipboardKind } from "./clipboard";
 
 type Props = {
@@ -21,12 +21,12 @@ type Props = {
 
 export function HistoryScreen({ history, maxDigits, onUse, onCopy, onDelete, onClear, onDone }: Props) {
   const [confirming, setConfirming] = useState(false);
-  const [now] = useState(() => Date.now());
+  const today = useToday();
 
   // Consecutive entries from the same day share a section.
   const days: { title: string; entries: HistoryEntry[] }[] = [];
   for (const entry of history) {
-    const title = formatDay(entry.at, now);
+    const title = format.relativeDay(entry.at, { now: today });
     const last = days[days.length - 1];
     if (last && last.title === title) last.entries.push(entry);
     else days.push({ title, entries: [entry] });
@@ -53,12 +53,9 @@ export function HistoryScreen({ history, maxDigits, onUse, onCopy, onDelete, onC
           ))}
         </List>
       ) : (
-        <VStack spacing={10} padding={32} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-          <Image systemName="clock.arrow.circlepath" font={{ size: 44, weight: "light" }} foregroundStyle="secondary" />
-          <Text font="title3" fontWeight="semibold">No History</Text>
-          <Text font="callout" foregroundStyle="secondary" textAlignment="center">Calculations you finish with = show up here.</Text>
+        <ContentUnavailable title="No History" systemImage="clock.arrow.circlepath" description="Calculations you finish with = show up here.">
           <Text font="caption" foregroundStyle="tertiary" textAlignment="center" padding={{ top: 24 }}>{footer}</Text>
-        </VStack>
+        </ContentUnavailable>
       )}
 
       <Alert isPresented={confirming} onDismiss={() => setConfirming(false)} title="Clear History?" message="This removes every saved calculation.">
@@ -86,7 +83,7 @@ function Row({ entry, maxDigits, onUse, onCopy, onDelete }: RowProps) {
   return (
     <Button onPress={() => onUse(entry)} accessibilityIdentifier="history-row" accessibilityHint="Puts the result on the display">
       <HStack alignment="firstTextBaseline" accessibilityElement="combine">
-        <Text font="caption" foregroundStyle="tertiary" monospacedDigit>{formatTime(entry.at)}</Text>
+        <Text font="caption" foregroundStyle="tertiary" monospacedDigit date={entry.at} dateStyle="time" />
         <Spacer />
         <VStack alignment="trailing" spacing={2}>
           <Text font="callout" foregroundStyle="secondary" lineLimit={1} minimumScaleFactor={0.6}>

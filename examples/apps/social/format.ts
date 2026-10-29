@@ -1,34 +1,13 @@
-// Relative times, compact counts, and caption tokens (@mentions, #hashtags).
-import { differenceInDays, differenceInHours, differenceInMinutes, differenceInWeeks, format, formatDistanceToNowStrict } from "date-fns";
+// Older-post dates, compact counts, and caption tokens (@mentions, #hashtags).
+import { format as formatDate } from "date-fns";
+import { format } from "swiftjsx";
 
-/** "2 hours ago", "3 days ago"; older than a week: "October 3" (with the year when it isn't this one). */
-export function ago(time: number, now = Date.now()): string {
-  if (now - time < 60_000) return "Just now";
-  if (differenceInDays(now, time) < 7) return formatDistanceToNowStrict(time, { addSuffix: true });
-  return format(time, new Date(time).getFullYear() === new Date(now).getFullYear() ? "MMMM d" : "MMMM d, yyyy");
-}
+/** "October 3" (with the year when it isn't this one), for posts older than a week. */
+export const longDate = (time: number) =>
+  formatDate(time, new Date(time).getFullYear() === new Date().getFullYear() ? "MMMM d" : "MMMM d, yyyy");
 
-/** Instagram's short form: "now", "5m", "3h", "2d", "4w". */
-export function shortAgo(time: number, now = Date.now()): string {
-  const minutes = differenceInMinutes(now, time);
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = differenceInHours(now, time);
-  if (hours < 24) return `${hours}h`;
-  const days = differenceInDays(now, time);
-  if (days < 7) return `${days}d`;
-  return `${differenceInWeeks(now, time)}w`;
-}
-
-/** 1,234 · 12.4K · 2.3M */
-export function compact(n: number): string {
-  if (n < 10_000) return n.toLocaleString("en-US");
-  if (n < 1_000_000) return `${trim(n / 1000)}K`;
-  return `${trim(n / 1_000_000)}M`;
-}
-const trim = (n: number) => (n >= 100 ? Math.floor(n).toString() : (Math.floor(n * 10) / 10).toString());
-
-export const plural = (n: number, one: string, many = one + "s") => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
+/** 1,234 · 12.4K · 2.3M (in full under 10,000, as Instagram shows them). */
+export const compact = (n: number) => format.compact(n, { from: 10_000 });
 
 export type Token = { text: string; kind: "text" | "mention" | "tag" };
 
@@ -48,6 +27,3 @@ export function tokenize(text: string): Token[] {
   if (last < text.length) tokens.push({ text: text.slice(last), kind: "text" });
   return tokens;
 }
-
-/** Captions long enough to be cut off at two lines (there's no way to ask Text if it truncated). */
-export const isLong = (text: string) => text.length > 90 || text.includes("\n");

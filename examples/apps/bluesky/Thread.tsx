@@ -4,10 +4,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, Rectangle, Background, SafeAreaInset, useNavigation,
+  Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, Rectangle, Background, SafeAreaInset, ContentUnavailable, useNavigation, format,
 } from "swiftjsx";
 import { getPostThread, getLikes, getRepostedBy } from "./api";
-import { compact, counted, displayName, fullTimestamp } from "./format";
+import { displayName, fullTimestamp } from "./format";
 import { ActionBar, PostCell, Verified } from "./PostCell";
 import { RichText } from "./PostText";
 import { ContentHider, Embed, mediaWarning } from "./Embeds";
@@ -16,7 +16,7 @@ import { ActorListScreen } from "./ActorList";
 import { usePostState, useUI, useIsFollowing, useInteractions } from "./store";
 import { useMyDid, useSession } from "./session";
 import { useMyProfile } from "./Me";
-import { Avatar, EmptyState, ErrorView, FeedSkeleton, H_PADDING, PillButton, T, ty, useTheme, useWindowWidth } from "./ui";
+import { Avatar, ErrorView, FeedSkeleton, H_PADDING, PillButton, T, ty, useTheme, useWindowWidth } from "./ui";
 import type { PostView, ThreadNode } from "./types";
 
 type Row =
@@ -106,7 +106,7 @@ export function ThreadScreen({ uri, initial }: { uri: string; initial?: PostView
               <FeedSkeleton count={3} />
             ) : (
               <VStack padding={{ bottom: 320 }} background={t.bg}>
-                {rows.every((r) => r.kind !== "reply") ? <EmptyState icon="bubble.left.and.bubble.right" title="No replies yet" message="Be the first to reply." /> : null}
+                {rows.every((r) => r.kind !== "reply") ? <ContentUnavailable systemImage="bubble.left.and.bubble.right" title="No replies yet" description="Be the first to reply." frame={{ minHeight: 280 }} /> : null}
               </VStack>
             )
           }
@@ -268,8 +268,8 @@ function FocusedPost({ post, hasParent }: { post: PostView; hasParent: boolean }
               {stats.map((s) => {
                 const label = (
                   <Text font={ty(T.md)} foregroundStyle={t.textMedium}>
-                    <Text fontWeight="bold" foregroundStyle={t.text}>{compact(s.n)}</Text>
-                    <Text> {counted(s.n, s.one, s.other).split(" ").slice(1).join(" ")}</Text>
+                    <Text fontWeight="bold" foregroundStyle={t.text}>{format.compact(s.n)}</Text>
+                    <Text> {format.count(s.n, { one: s.one, other: s.other })}</Text>
                   </Text>
                 );
                 return s.open ? (

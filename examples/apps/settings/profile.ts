@@ -2,7 +2,7 @@
 // username taken?" service.
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { differenceInYears, format, getDaysInMonth, isValid, parse } from "date-fns";
+import { differenceInYears, format, isValid, parse, startOfToday, subYears } from "date-fns";
 import type { Profile } from "./store";
 
 export const BIO_LIMIT = 160;
@@ -57,6 +57,15 @@ export const parseBirthday = (value: string) => {
   return isValid(date) ? date : null;
 };
 
+/** Stored as "yyyy-MM-dd" (a day, with no time zone to shift it). */
+export const formatBirthday = (date: Date) => format(date, "yyyy-MM-dd");
+
+/** What the birthday picker offers: 13 to 113 years ago. */
+export function birthdayRange(now = startOfToday()) {
+  const latest = subYears(now, 13);
+  return { min: subYears(latest, 100), max: latest };
+}
+
 const profileSchema = z.object({
   name: z.string().trim().min(1, "Your name can’t be empty").max(60, "That name is too long"),
   username: usernameSchema,
@@ -107,43 +116,11 @@ export function normalizeProfile(profile: Profile): Profile {
 export const profilesEqual = (a: Profile, b: Profile) =>
   (Object.keys(a) as (keyof Profile)[]).every((key) => a[key] === b[key]);
 
-export function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (!words.length) return "?";
-  const first = words[0][0];
-  const last = words.length > 1 ? words[words.length - 1][0] : "";
-  return (first + last).toUpperCase();
-}
-
 export function pronounsLabel(profile: Profile): string {
   return profile.pronouns === "custom" ? profile.customPronouns : profile.pronouns;
 }
 
-// MARK: Birthday parts (there's no DatePicker; three menus instead)
-
-export const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i), label: format(new Date(2000, i, 1), "MMMM") }));
-
-export function yearOptions(now = new Date()) {
-  const newest = now.getFullYear() - 13;
-  return Array.from({ length: 100 }, (_, i) => String(newest - i)).map((y) => ({ value: y, label: y }));
-}
-
-export function dayOptions(year: number, month: number) {
-  return Array.from({ length: getDaysInMonth(new Date(year, month, 1)) }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
-}
-
-/** Changes one part of a birthday, clamping the day (Mar 31 → Feb 28). */
-export function setBirthdayPart(value: string, part: "year" | "month" | "day", to: number): string {
-  const date = parseBirthday(value) ?? new Date(1995, 0, 1);
-  let year = date.getFullYear();
-  let month = date.getMonth();
-  let day = date.getDate();
-  if (part === "year") year = to;
-  if (part === "month") month = to;
-  if (part === "day") day = to;
-  day = Math.min(day, getDaysInMonth(new Date(year, month, 1)));
-  return format(new Date(year, month, day), "yyyy-MM-dd");
-}
+// MARK: Birthday
 
 export function describeBirthday(value: string): string | null {
   const date = parseBirthday(value);

@@ -1,5 +1,5 @@
 // Hacker News through Algolia's public API (https://hn.algolia.com/api).
-import { formatDistanceToNowStrict } from "date-fns";
+import { format } from "swiftjsx";
 
 export type Story = {
   id: string;
@@ -72,7 +72,8 @@ function countComments(children: any[] = []): number {
 }
 
 export const domain = (url: string | null) => (url ? new URL(url).hostname.replace(/^www\./, "") : null);
-export const ago = (time: number) => formatDistanceToNowStrict(time, { addSuffix: true });
+export const comments = (n: number) => format.count(n, { one: "# comment", other: "# comments" });
+export const points = (n: number) => format.count(n, { one: "# point", other: "# points" });
 
 /** HN's comment HTML as plain text: paragraphs, links, entities. */
 export function htmlToText(html: string | null): string {

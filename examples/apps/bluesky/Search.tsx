@@ -2,33 +2,24 @@
 // topics as pills, suggested accounts with Follow buttons, and feeds to
 // discover. As you type, people (typeahead); on submit, all matching people,
 // and posts (signed in: the public AppView refuses post search).
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
-  Screen, ScrollView, VirtualList, VStack, HStack, Text, Image, Button, Spacer, LazyVStack, Flow, Rectangle, useNavigation,
+  Screen, ScrollView, VirtualList, VStack, HStack, Text, Image, Button, Spacer, LazyVStack, Flow, Rectangle, ContentUnavailable,
+  useNavigation, useNow, useDebouncedValue, format,
 } from "swiftjsx";
 import {
   getPopularFeeds, getProfiles, getSuggestions, getTrendingTopics, getTrends, searchActors, searchActorsTypeahead, searchPosts,
 } from "./api";
-import { ago, compact } from "./format";
 import { ActorRow } from "./ActorList";
 import { FeedScreen } from "./FeedScreen";
 import { PostCell } from "./PostCell";
 import { useSession, useSettings } from "./session";
 import { useUI } from "./store";
 import {
-  Avatar, EmptyState, ErrorView, FeedSkeleton, PillButton, ProfileRowSkeleton, Separator, Shimmer, Spinner, T, ty, useNow, useTheme,
+  Avatar, ErrorView, FeedSkeleton, PillButton, ProfileRowSkeleton, Separator, Shimmer, Spinner, T, ty, useTheme,
 } from "./ui";
 import type { GeneratorView, PostView, ProfileView, Trend } from "./types";
-
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(timer);
-  }, [value, ms]);
-  return debounced;
-}
 
 type Scope = "people" | "posts";
 
@@ -39,7 +30,7 @@ export function SearchScreen() {
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [scope, setScope] = useState<Scope>("people");
   const q = text.trim();
-  const typed = useDebounced(q, 220);
+  const [typed, typing] = useDebouncedValue(q, 220);
   const showFull = submitted !== null && submitted === q;
 
   return (
@@ -66,7 +57,7 @@ export function SearchScreen() {
       ) : showFull ? (
         <PeopleResults query={q} />
       ) : (
-        <Typeahead query={typed} pending={typed !== q} onSearchAll={() => setSubmitted(q)} />
+        <Typeahead query={typed} pending={typing} onSearchAll={() => setSubmitted(q)} />
       )}
     </Screen>
   );
@@ -221,7 +212,7 @@ function TrendRow({ trend, rank }: { trend: Trend; rank: number }) {
   const now = useNow();
   const uri = topicFeedURI(trend.link);
   const hot = trend.status === "hot";
-  const meta = [`${compact(trend.postCount)} posts`, trend.category ? trend.category.charAt(0).toUpperCase() + trend.category.slice(1) : null].filter(Boolean).join(" · ");
+  const meta = [`${format.compact(trend.postCount)} posts`, trend.category ? trend.category.charAt(0).toUpperCase() + trend.category.slice(1) : null].filter(Boolean).join(" · ");
   return (
     <Button onPress={() => uri && nav.push(<FeedScreen uri={uri} title={trend.displayName} />)} pressedOpacity={0.6} accessibilityLabel={`Trending ${rank}: ${trend.displayName}`} accessibilityIdentifier="trending-topic">
       <HStack spacing={10} padding={{ horizontal: 16, vertical: 9 }} frame={{ maxWidth: "infinity", alignment: "leading" }} contentShape="rectangle">
@@ -235,7 +226,7 @@ function TrendRow({ trend, rank }: { trend: Trend; rank: number }) {
                 <Text font={ty(11, "bold")} foregroundStyle="#E8572B">Hot</Text>
               </HStack>
             ) : (
-              <Text font={ty(T.xs, "medium")} foregroundStyle={t.textMedium}>{ago(trend.startedAt, now)} ago</Text>
+              <Text font={ty(T.xs, "medium")} foregroundStyle={t.textMedium}>{format.relativeTime(Date.parse(trend.startedAt), { now })} ago</Text>
             )}
             <Text font={ty(T.xs)} foregroundStyle={t.textMedium} lineLimit={1}>{meta}</Text>
           </HStack>
@@ -282,7 +273,7 @@ export function FeedRow({ feed }: { feed: GeneratorView }) {
           </HStack>
           {feed.description ? <Text font={ty(T.md)} foregroundStyle={t.text} lineLimit={3} lineSpacing={2}>{feed.description}</Text> : null}
           {feed.likeCount ? (
-            <Text font={ty(T.sm, "medium")} foregroundStyle={t.textMedium}>Liked by {compact(feed.likeCount)} {feed.likeCount === 1 ? "user" : "users"}</Text>
+            <Text font={ty(T.sm, "medium")} foregroundStyle={t.textMedium}>Liked by {format.compact(feed.likeCount)} {format.count(feed.likeCount, { one: "user", other: "users" })}</Text>
           ) : null}
         </VStack>
       </Button>
@@ -320,7 +311,7 @@ function Typeahead({ query, pending, onSearchAll }: { query: string; pending: bo
           <ActorRow key={actor.did} actor={actor} showBio={false} />
         ))}
         {result.isFetching || pending ? <Spinner height={56} /> : null}
-        {!actors.length && !result.isFetching && !pending && result.isSuccess ? <EmptyState icon="person.fill.questionmark" title="No results found" message={`We couldn't find any results for “${query}”.`} /> : null}
+        {!actors.length && !result.isFetching && !pending && result.isSuccess ? <ContentUnavailable search={query} frame={{ minHeight: 280 }} /> : null}
       </LazyVStack>
     </ScrollView>
   );
@@ -344,7 +335,7 @@ function PeopleResults({ query }: { query: string }) {
       keyExtractor={(a) => a.did}
       estimatedItemHeight={88}
       renderItem={(actor) => <ActorRow actor={actor} />}
-      footer={result.hasNextPage ? <Spinner height={64} /> : actors.length ? null : <EmptyState icon="person.fill.questionmark" title="No results found" message={`We couldn't find any results for “${query}”.`} />}
+      footer={result.hasNextPage ? <Spinner height={64} /> : actors.length ? null : <ContentUnavailable search={query} frame={{ minHeight: 280 }} />}
       onEndReached={() => {
         if (result.hasNextPage && !result.isFetchingNextPage) result.fetchNextPage();
       }}
@@ -375,7 +366,7 @@ function PostResults({ query, sort = "top" }: { query: string; sort?: "top" | "l
       keyExtractor={(p) => p.uri}
       estimatedItemHeight={240}
       renderItem={(post) => <PostCell post={post} />}
-      footer={result.hasNextPage ? <Spinner height={64} /> : posts.length ? null : <EmptyState icon="text.magnifyingglass" title="No results found" message={`We couldn't find any results for “${query}”.`} />}
+      footer={result.hasNextPage ? <Spinner height={64} /> : posts.length ? null : <ContentUnavailable search={query} frame={{ minHeight: 280 }} />}
       onEndReached={() => {
         if (result.hasNextPage && !result.isFetchingNextPage) result.fetchNextPage();
       }}
@@ -410,10 +401,15 @@ export function PostSearchScreen({ query }: { query: string }) {
           <PostResults key={sort} query={query} sort={sort} />
         </VStack>
       ) : (
-        <VStack spacing={12} padding={32} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background={t.bg}>
-          <EmptyState icon="number" title="Sign in to search posts" message="Bluesky only lets signed-in accounts search posts." />
+        <ContentUnavailable
+          systemImage="number"
+          title="Sign in to search posts"
+          description="Bluesky only lets signed-in accounts search posts."
+          frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+          background={t.bg}
+        >
           <PillButton title="Sign in" onPress={() => openSignIn("search posts")} />
-        </VStack>
+        </ContentUnavailable>
       )}
     </Screen>
   );
