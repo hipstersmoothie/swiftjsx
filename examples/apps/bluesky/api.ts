@@ -112,7 +112,7 @@ export const getFeed = (feed: string, cursor?: string, signal?: AbortSignal) =>
 export const getTimeline = (cursor?: string, signal?: AbortSignal) =>
   get<FeedPage>("app.bsky.feed.getTimeline", { cursor, limit: 30 }, signal);
 
-export type AuthorFilter = "posts_no_replies" | "posts_with_replies" | "posts_with_media" | "posts_and_author_threads";
+export type AuthorFilter = "posts_no_replies" | "posts_with_replies" | "posts_with_media" | "posts_and_author_threads" | "posts_with_video";
 
 export const getAuthorFeed = (actor: string, filter: AuthorFilter, cursor?: string, signal?: AbortSignal) =>
   get<FeedPage>("app.bsky.feed.getAuthorFeed", { actor, filter, cursor, limit: 30, includePins: filter === "posts_and_author_threads" }, signal);
@@ -136,11 +136,30 @@ export const searchPosts = (q: string, sort: "top" | "latest", cursor?: string, 
 export const getTrendingTopics = (signal?: AbortSignal) =>
   get<{ topics: TrendingTopic[]; suggested: TrendingTopic[] }>("app.bsky.unspecced.getTrendingTopics", { limit: 14 }, signal);
 
+export const getTrends = (signal?: AbortSignal) =>
+  get<{ trends: import("./types").Trend[] }>("app.bsky.unspecced.getTrends", { limit: 10 }, signal);
+
+/** Signed in only (the account's own likes). */
+export const getActorLikes = (actor: string, cursor?: string, signal?: AbortSignal) =>
+  get<FeedPage>("app.bsky.feed.getActorLikes", { actor, cursor, limit: 30 }, signal);
+
+export const getActorFeeds = (actor: string, signal?: AbortSignal) =>
+  get<{ feeds: GeneratorView[] }>("app.bsky.feed.getActorFeeds", { actor, limit: 50 }, signal);
+
+export const getLists = (actor: string, signal?: AbortSignal) =>
+  get<{ lists: import("./types").ListView[] }>("app.bsky.graph.getLists", { actor, limit: 50 }, signal);
+
+export const getProfiles = (actors: string[], signal?: AbortSignal) =>
+  get<{ profiles: ProfileViewDetailed[] }>("app.bsky.actor.getProfiles", { actors }, signal);
+
 export const getSuggestions = (signal?: AbortSignal) =>
   get<{ actors: ProfileView[] }>("app.bsky.actor.getSuggestions", { limit: 8 }, signal);
 
 export const getSuggestedFeeds = (cursor?: string, signal?: AbortSignal) =>
   get<{ feeds: GeneratorView[]; cursor?: string }>("app.bsky.feed.getSuggestedFeeds", { limit: 20, cursor }, signal);
+
+export const getPopularFeeds = (signal?: AbortSignal) =>
+  get<{ feeds: GeneratorView[]; cursor?: string }>("app.bsky.unspecced.getPopularFeedGenerators", { limit: 10 }, signal);
 
 export const getFeedGenerators = (feeds: string[], signal?: AbortSignal) =>
   get<{ feeds: GeneratorView[] }>("app.bsky.feed.getFeedGenerators", { feeds }, signal);

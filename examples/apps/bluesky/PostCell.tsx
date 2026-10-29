@@ -1,26 +1,29 @@
-// A post in a feed: "Reposted by" / "Replying to" context, avatar, name,
-// handle and time, rich text, embeds, and the action row (reply, repost or
-// quote, an animated like, share, more). Thread lines connect posts in a
-// reply chain.
+// A post in a feed: "Reposted by" / "Reply to" context, avatar, name,
+// handle and time on one line, rich text, embeds (labeled media behind a
+// warning), and the action row (reply, repost or quote, an animated like,
+// share, more). Thread lines connect posts in a reply chain.
+import { useState } from "react";
 import {
-  VStack, HStack, Text, Image, Button, Menu, MenuLabel, Label, Divider, Spacer, Background, Rectangle, ShareLink,
-  useNavigation, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring, openURL, type ColorValue,
+  VStack, HStack, ZStack, Text, Image, Button, Menu, MenuLabel, Label, Divider, Spacer, Background, Overlay, Rectangle, ShareLink, Canvas,
+  useNavigation, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring, openURL,
 } from "swiftjsx";
 import { postWebURL } from "./api";
 import { ago, agoSpoken, compact, displayName } from "./format";
 import { RichText } from "./PostText";
-import { Embed } from "./Embeds";
+import { Embed, ContentHider, mediaWarning } from "./Embeds";
 import { ThreadScreen } from "./Thread";
 import { ProfileScreen } from "./Profile";
+import { useSession } from "./session";
 import { toast, usePostState, useInteractions, useUI } from "./store";
-import { AVATAR, Avatar, GUTTER, H_PADDING, hairline, likeColor, repostColor, subtle, useContentWidth, useNow } from "./ui";
+import { AVATAR, Avatar, GUTTER, H_PADDING, T, ty, useContentWidth, useNow, useTheme } from "./ui";
+import type { Color } from "swiftjsx";
 import type { FeedViewPost, PostView, ProfileViewBasic } from "./types";
 
 type CellProps = {
   post: PostView;
   /** "Reposted by …" above the post. */
   repostedBy?: ProfileViewBasic;
-  /** "Replying to …" under the name, when the parent isn't shown above. */
+  /** "Reply to …" under the name, when the parent isn't shown above. */
   replyingTo?: ProfileViewBasic;
   /** Thread lines: from the post above into this avatar, and from this avatar down to the next post. */
   lineAbove?: boolean;
@@ -53,75 +56,96 @@ export function FeedItem({ item }: { item: FeedViewPost }) {
   );
 }
 
+/** Bluesky's verified badge. */
+export function Verified({ size = 13 }: { size?: number }) {
+  const t = useTheme();
+  return <Image systemName="checkmark.seal.fill" font={{ size }} foregroundStyle={t.primary} accessibilityLabel="Verified" />;
+}
+
 export function PostCell({ post, repostedBy, replyingTo, lineAbove = false, lineBelow = false, pinned = false, indent = 0, hideSeparator = false }: CellProps) {
   const nav = useNavigation();
   const now = useNow();
+  const t = useTheme();
   const width = useContentWidth(indent);
   const author = post.author;
   const openThread = () => nav.push(<ThreadScreen uri={post.uri} initial={post} />);
   const openProfile = () => nav.push(<ProfileScreen actor={author.did} initial={author} />);
+  const hasReason = !!repostedBy || pinned;
+  const top = lineAbove ? 0 : hasReason ? 6 : 12;
+  const warning = mediaWarning(post);
 
   return (
     <VStack
       spacing={0}
       alignment="leading"
       padding={{ leading: indent }}
+      background={t.bg}
       contentShape="rectangle"
       onTapGesture={openThread}
       accessibilityIdentifier="post"
       accessibilityElement="contain"
     >
-      {repostedBy || pinned ? (
-        <HStack spacing={6} padding={{ leading: H_PADDING + AVATAR - 14, top: 10 }}>
-          <Image systemName={pinned ? "pin.fill" : "arrow.2.squarepath"} font="caption" fontWeight="semibold" foregroundStyle={subtle} frame={{ width: 14 }} />
+      {hasReason ? (
+        <HStack spacing={GUTTER} padding={{ leading: H_PADDING, top: 10 }}>
+          <Image systemName={pinned ? "pin.fill" : "arrow.2.squarepath"} font={{ size: 12, weight: "semibold" }} foregroundStyle={t.textMedium} frame={{ width: AVATAR, alignment: "trailing" }} />
           {repostedBy ? (
-            <Text font="footnote" fontWeight="semibold" foregroundStyle={subtle} lineLimit={1} onTapGesture={() => nav.push(<ProfileScreen actor={repostedBy.did} initial={repostedBy} />)}>
+            <Text font={ty(13, "medium")} foregroundStyle={t.textMedium} lineLimit={1} onTapGesture={() => nav.push(<ProfileScreen actor={repostedBy.did} initial={repostedBy} />)}>
               Reposted by {displayName(repostedBy)}
             </Text>
           ) : (
-            <Text font="footnote" fontWeight="semibold" foregroundStyle={subtle}>Pinned</Text>
+            <Text font={ty(13, "medium")} foregroundStyle={t.textMedium}>Pinned</Text>
           )}
         </HStack>
       ) : null}
-      <HStack alignment="top" spacing={GUTTER} padding={{ horizontal: H_PADDING, top: lineAbove || repostedBy || pinned ? 4 : 12, bottom: lineBelow ? 0 : 10 }}>
-        <VStack spacing={4} frame={{ width: AVATAR }}>
-          <Button onPress={openProfile} accessibilityLabel={`${displayName(author)}'s profile`} pressedOpacity={0.7}>
-            <Avatar uri={author.avatar} size={AVATAR} />
-          </Button>
-        </VStack>
-        <VStack alignment="leading" spacing={4} frame={{ maxWidth: "infinity", alignment: "leading" }}>
-          <HStack spacing={4} accessibilityElement="combine" accessibilityLabel={`${displayName(author)}, @${author.handle}, ${agoSpoken(post.indexedAt, now)}`}>
-            <Text font="subheadline" fontWeight="bold" lineLimit={1} layoutPriority={1}>{displayName(author)}</Text>
-            {author.verification?.verifiedStatus === "valid" ? <Image systemName="checkmark.seal.fill" font="caption" foregroundStyle="blue" /> : null}
-            <Text font="subheadline" foregroundStyle={subtle} lineLimit={1}>@{author.handle}</Text>
-            <Text font="subheadline" foregroundStyle={subtle} fixedSize>· {ago(post.record.createdAt ?? post.indexedAt, now)}</Text>
+      <HStack alignment="top" spacing={GUTTER} padding={{ horizontal: H_PADDING, top: lineAbove ? 8 : top, bottom: lineBelow ? 2 : 4 }}>
+        <Button onPress={openProfile} accessibilityLabel={`${displayName(author)}'s profile`} pressedOpacity={0.7}>
+          <Avatar uri={author.avatar} size={AVATAR} />
+        </Button>
+        <VStack alignment="leading" spacing={0} frame={{ maxWidth: "infinity", alignment: "leading" }}>
+          <HStack spacing={0} padding={{ bottom: 2 }} accessibilityElement="combine" accessibilityLabel={`${displayName(author)}, @${author.handle}, ${agoSpoken(post.indexedAt, now)}`}>
+            <Text font={ty(T.md, "bold")} foregroundStyle={t.text} lineLimit={1} layoutPriority={1}>{displayName(author)}</Text>
+            {author.verification?.verifiedStatus === "valid" ? (
+              <HStack padding={{ leading: 3 }}>
+                <Verified />
+              </HStack>
+            ) : null}
+            <Text font={ty(T.md)} foregroundStyle={t.textMedium} lineLimit={1} padding={{ leading: 4 }}>@{author.handle}</Text>
+            <Text font={ty(T.md)} foregroundStyle={t.textMedium} fixedSize padding={{ leading: 4 }}>{`· ${ago(post.record.createdAt ?? post.indexedAt, now)}`}</Text>
             <Spacer minLength={0} />
           </HStack>
           {replyingTo ? (
-            <HStack spacing={4}>
-              <Image systemName="arrowshape.turn.up.left.fill" font="caption2" foregroundStyle={subtle} />
-              <Text font="footnote" foregroundStyle={subtle} lineLimit={1}>Replying to {displayName(replyingTo)}</Text>
+            <HStack spacing={4} padding={{ bottom: 2 }}>
+              <Image systemName="arrowshape.turn.up.left.fill" font={{ size: 10 }} foregroundStyle={t.textMedium} />
+              <Text font={ty(13)} foregroundStyle={t.textMedium} lineLimit={1}>
+                Reply to <Text fontWeight="medium">{displayName(replyingTo)}</Text>
+              </Text>
             </HStack>
           ) : null}
-          <RichText text={post.record.text} facets={post.record.facets} font="body" />
+          <RichText text={post.record.text} facets={post.record.facets} size={T.post} />
           {post.embed ? (
-            <VStack padding={{ top: 4 }}>
-              <Embed embed={post.embed} width={width} />
+            <VStack padding={{ top: 8 }}>
+              {warning ? (
+                <ContentHider warning={warning} width={width}>
+                  <Embed embed={post.embed} width={width} />
+                </ContentHider>
+              ) : (
+                <Embed embed={post.embed} width={width} />
+              )}
             </VStack>
           ) : null}
           <ActionBar post={post} />
         </VStack>
         {/* Thread lines run in the avatar column, behind it (sized to this row). */}
         <Background alignment="topLeading">
-          {lineAbove ? <Rectangle fill={hairline} frame={{ width: 2, height: 4 }} padding={{ leading: H_PADDING + AVATAR / 2 - 1 }} /> : null}
+          {lineAbove ? <Rectangle fill={t.bg100} frame={{ width: 2, height: 6 }} padding={{ leading: H_PADDING + AVATAR / 2 - 1 }} /> : null}
           {lineBelow ? (
-            <VStack padding={{ leading: H_PADDING + AVATAR / 2 - 1, top: (lineAbove || repostedBy || pinned ? 4 : 12) + AVATAR + 4 }} frame={{ maxHeight: "infinity", alignment: "top" }}>
-              <Rectangle fill={hairline} frame={{ width: 2, maxHeight: "infinity" }} />
+            <VStack padding={{ leading: H_PADDING + AVATAR / 2 - 1, top: (lineAbove ? 8 : top) + AVATAR + 4 }} frame={{ maxHeight: "infinity", alignment: "top" }}>
+              <Rectangle fill={t.bg100} frame={{ width: 2, maxHeight: "infinity" }} />
             </VStack>
           ) : null}
         </Background>
       </HStack>
-      {hideSeparator || lineBelow ? null : <Rectangle fill={hairline} frame={{ maxWidth: "infinity", height: 0.5 }} />}
+      {hideSeparator || lineBelow ? null : <Rectangle fill={t.border} frame={{ maxWidth: "infinity", height: 0.5 }} />}
     </VStack>
   );
 }
@@ -131,45 +155,40 @@ export function PostCell({ post, repostedBy, replyingTo, lineAbove = false, line
 /** Reply, repost (menu: repost / quote), like, share, more. `large` for the focused post in a thread. */
 export function ActionBar({ post, large = false }: { post: PostView; large?: boolean }) {
   const state = usePostState(post);
-  const toggleLike = useInteractions((s) => s.toggleLike);
   const toggleRepost = useInteractions((s) => s.toggleRepost);
   const openCompose = useUI((s) => s.openCompose);
   const nav = useNavigation();
+  const t = useTheme();
   const url = postWebURL(post.uri, post.author.handle);
-  const font = large ? "body" : "subheadline";
-  const icon = large ? "title3" : "subheadline";
-
-  // The heart pops on the main thread (a worklet animation started from JS).
-  const heart = useSharedValue(1);
-  const heartStyle = useAnimatedStyle(() => ({ scale: heart.get() }));
-  const like = () => {
-    if (!state.liked) heart.set(withSequence(withTiming(1.35, { duration: 0.1 }), withSpring(1, { duration: 0.35, bounce: 0.55 })));
-    toggleLike(post);
-  };
-
-  const count = (n: number) => (large ? null : <Text font="footnote" foregroundStyle={subtle} monospacedDigit animation="snappy">{n ? compact(n) : ""}</Text>);
+  const size = large ? 22 : 18;
+  const repostColor = state.reposted ? t.repost : t.textLow;
 
   return (
-    <HStack spacing={0} padding={{ top: large ? 8 : 4 }} frame={{ maxWidth: "infinity" }}>
+    <HStack spacing={0} padding={{ top: large ? 4 : 6, bottom: large ? 4 : 6 }} frame={{ maxWidth: "infinity" }} accessibilityIdentifier="action-bar" accessibilityElement="contain">
       <Button
         onPress={() => openCompose({ replyTo: post })}
-        buttonStyle="plain"
+        pressedOpacity={0.5}
         accessibilityLabel={`Reply (${post.replyCount ?? 0} replies)`}
         accessibilityIdentifier="reply-button"
         frame={{ maxWidth: "infinity", alignment: "leading" }}
       >
-        <HStack spacing={5} padding={{ vertical: 4 }}>
-          <Image systemName="bubble.left" font={icon} foregroundStyle={subtle} />
-          {count(post.replyCount ?? 0)}
+        <HStack spacing={5} padding={{ vertical: 3, trailing: 8 }} contentShape="rectangle">
+          <Image systemName="bubble.left" font={{ size }} foregroundStyle={t.textLow} />
+          {large ? null : <Count n={post.replyCount ?? 0} color={t.textLow} />}
         </HStack>
       </Button>
       <Menu
-        tint={state.reposted ? repostColor : subtle}
+        tint={repostColor}
         accessibilityLabel={state.reposted ? `Undo repost (${state.repostCount} reposts)` : `Repost or quote (${state.repostCount} reposts)`}
         accessibilityIdentifier="repost-button"
         frame={{ maxWidth: "infinity", alignment: "leading" }}
       >
-        <MenuLabelContent icon="arrow.2.squarepath" font={icon} color={state.reposted ? repostColor : subtle} count={large ? null : state.repostCount} bold={state.reposted} />
+        <MenuLabel>
+          <HStack spacing={5} padding={{ vertical: 3, trailing: 8 }} contentShape="rectangle">
+            <Image systemName="arrow.2.squarepath" font={{ size, weight: state.reposted ? "semibold" : "regular" }} foregroundStyle={repostColor} />
+            {large ? null : <Count n={state.repostCount} color={repostColor} />}
+          </HStack>
+        </MenuLabel>
         <Button onPress={() => toggleRepost(post)}>
           <Label title={state.reposted ? "Undo repost" : "Repost"} systemImage="arrow.2.squarepath" />
         </Button>
@@ -177,31 +196,18 @@ export function ActionBar({ post, large = false }: { post: PostView; large?: boo
           <Label title="Quote post" systemImage="quote.opening" />
         </Button>
       </Menu>
-      <Button
-        onPress={like}
-        buttonStyle="plain"
-        accessibilityLabel={state.liked ? `Unlike (${state.likeCount} likes)` : `Like (${state.likeCount} likes)`}
-        accessibilityIdentifier="like-button"
-        frame={{ maxWidth: "infinity", alignment: "leading" }}
-      >
-        <HStack spacing={5} padding={{ vertical: 4 }}>
-          <Image systemName={state.liked ? "heart.fill" : "heart"} font={icon} foregroundStyle={state.liked ? likeColor : subtle} animatedStyle={heartStyle} />
-          {large ? null : (
-            <Text font="footnote" foregroundStyle={state.liked ? likeColor : subtle} monospacedDigit animation="snappy">
-              {state.likeCount ? compact(state.likeCount) : ""}
-            </Text>
-          )}
-        </HStack>
-      </Button>
-      <ShareLink url={url} accessibilityLabel="Share" frame={{ maxWidth: large ? "infinity" : undefined, alignment: "leading" }}>
-        <Image systemName="square.and.arrow.up" font={icon} foregroundStyle={subtle} padding={{ vertical: 4, trailing: large ? 0 : 18 }} />
+      <LikeButton post={post} size={size} showCount={!large} />
+      <ShareLink url={url} accessibilityLabel="Share" frame={large ? { maxWidth: "infinity", alignment: "leading" } : { width: 40, alignment: "center" }}>
+        <Image systemName="square.and.arrow.up" font={{ size: size - 1 }} foregroundStyle={t.textLow} padding={{ vertical: 3, horizontal: 6 }} offset={{ y: -1 }} />
       </ShareLink>
-      <Menu accessibilityLabel="More options" accessibilityIdentifier="more-button" tint={subtle}>
-        <MenuLabelContent icon="ellipsis" font={icon} color={subtle} count={null} />
+      <Menu accessibilityLabel="Open post options menu" accessibilityIdentifier="more-button" tint={t.textLow} frame={{ width: large ? 44 : 40, alignment: "trailing" }}>
+        <MenuLabel>
+          <Image systemName="ellipsis" font={{ size: size - 2, weight: "semibold" }} foregroundStyle={t.textLow} padding={{ vertical: 9, leading: 12 }} contentShape="rectangle" />
+        </MenuLabel>
         <Button onPress={() => navigator.clipboard.writeText(post.record.text).then(() => toast("Copied to clipboard", "doc.on.doc"))}>
           <Label title="Copy post text" systemImage="doc.on.doc" />
         </Button>
-        <Button onPress={() => navigator.clipboard.writeText(url).then(() => toast("Link copied", "link"))}>
+        <Button onPress={() => navigator.clipboard.writeText(url).then(() => toast("Copied to clipboard", "link"))}>
           <Label title="Copy link to post" systemImage="link" />
         </Button>
         <Button onPress={() => openURL(url, { inApp: true })}>
@@ -216,14 +222,95 @@ export function ActionBar({ post, large = false }: { post: PostView; large?: boo
   );
 }
 
-function MenuLabelContent({ icon, font, color, count, bold = false }: { icon: string; font: "title3" | "subheadline"; color: ColorValue; count: number | null; bold?: boolean }) {
+function Count({ n, color, bold = false }: { n: number; color: Color; bold?: boolean }) {
   return (
-    <MenuLabel>
-      <HStack spacing={5} padding={{ vertical: 4 }}>
-        <Image systemName={icon} font={font} fontWeight={bold ? "semibold" : "regular"} foregroundStyle={color} />
-        {count !== null ? <Text font="footnote" foregroundStyle={color} monospacedDigit>{count ? compact(count) : ""}</Text> : null}
-      </HStack>
-    </MenuLabel>
+    <Text font={ty(T.sm, bold ? "semibold" : "regular")} foregroundStyle={color} monospacedDigit animation="snappy" lineLimit={1}>
+      {n ? compact(n) : ""}
+    </Text>
   );
 }
 
+const BURST_DOTS = 7;
+
+/**
+ * Bluesky's like: the heart shrinks and springs back filled, a ring and a
+ * ring of dots burst out of it (a Canvas worklet, mounted only while it
+ * plays), and the count rolls to the new number.
+ */
+function LikeButton({ post, size, showCount }: { post: PostView; size: number; showCount: boolean }) {
+  const state = usePostState(post);
+  const toggleLike = useInteractions((s) => s.toggleLike);
+  const signedIn = useSession((s) => s.session !== null);
+  const t = useTheme();
+  const [bursting, setBursting] = useState(0);
+  const heart = useSharedValue(1);
+  const burst = useSharedValue(0);
+  const heartStyle = useAnimatedStyle(() => ({ scale: heart.get() }));
+  const color = state.liked ? t.like : t.textLow;
+  const pink = t.like;
+
+  const like = () => {
+    if (!signedIn) {
+      // Asks to sign in instead.
+    } else if (!state.liked) {
+      heart.set(withSequence(withTiming(0.62, { duration: 0.09 }), withSpring(1, { duration: 0.45, bounce: 0.6 })));
+      burst.set(0);
+      burst.set(withTiming(1, { duration: 0.55, easing: "easeOut" }));
+      const id = Date.now();
+      setBursting(id);
+      setTimeout(() => setBursting((b) => (b === id ? 0 : b)), 650);
+    } else {
+      heart.set(withSequence(withTiming(0.85, { duration: 0.06 }), withSpring(1, { duration: 0.25 })));
+    }
+    toggleLike(post);
+  };
+
+  return (
+    <Button
+      onPress={like}
+      pressedOpacity={0.6}
+      accessibilityLabel={state.liked ? `Unlike (${state.likeCount} likes)` : `Like (${state.likeCount} likes)`}
+      accessibilityIdentifier="like-button"
+      frame={{ maxWidth: "infinity", alignment: "leading" }}
+    >
+      <HStack spacing={5} padding={{ vertical: 3, trailing: 8 }} contentShape="rectangle">
+        <ZStack>
+          <Image systemName={state.liked ? "heart.fill" : "heart"} font={{ size }} foregroundStyle={color} animatedStyle={heartStyle} />
+          {bursting ? (
+            <Overlay>
+              <Canvas
+                frame={{ width: size * 3, height: size * 3 }}
+                allowsHitTesting={false}
+                draw={(ctx, { width, height }) => {
+                  const p = burst.get();
+                  if (p <= 0 || p >= 1) return;
+                  const cx = width / 2;
+                  const cy = height / 2;
+                  const unit = width / 6;
+                  // The ring grows and thins out…
+                  ctx.globalAlpha = Math.max(0, 1 - p * 1.6);
+                  ctx.strokeStyle = pink;
+                  ctx.lineWidth = Math.max(0.5, unit * 0.9 * (1 - p));
+                  ctx.beginPath();
+                  ctx.circle(cx, cy, unit * (0.6 + 1.7 * p));
+                  ctx.stroke();
+                  // …and the dots fly out and shrink.
+                  ctx.globalAlpha = 1;
+                  for (let i = 0; i < BURST_DOTS; i++) {
+                    const angle = (i / BURST_DOTS) * Math.PI * 2 - Math.PI / 2;
+                    const r = unit * (1.1 + 1.7 * p);
+                    ctx.fillStyle = i % 2 === 0 ? pink : "#FF9F43";
+                    ctx.beginPath();
+                    ctx.circle(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r, Math.max(0, unit * 0.32 * (1 - p)));
+                    ctx.fill();
+                  }
+                }}
+              />
+            </Overlay>
+          ) : null}
+        </ZStack>
+        {showCount ? <Count n={state.likeCount} color={color} /> : null}
+      </HStack>
+    </Button>
+  );
+}

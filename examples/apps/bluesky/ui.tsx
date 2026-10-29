@@ -1,28 +1,22 @@
-// Shared pieces: colors, avatars, a ticking clock for relative times, loading
-// skeletons, error and empty states, and the toast.
-import { useSyncExternalStore } from "react";
+// Shared pieces: layout constants, avatars, a ticking clock for relative
+// times, skeletons with a shimmer, error and empty states, buttons and the
+// toast. Colors come from the theme (light, dim or dark).
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
-  VStack, HStack, ZStack, Text, Image, Button, Circle, RoundedRectangle, useEnvironment, type ColorValue,
+  VStack, HStack, ZStack, Text, Image, Button, Circle, RoundedRectangle, Rectangle, Overlay, ProgressView, Path, useEnvironment,
+  type HostInstance,
 } from "swiftjsx";
 import { useUI } from "./store";
+import { T, ty, useTheme, type Palette } from "./theme";
 
-// MARK: Colors
-
-/** Bluesky's blue. */
-export const brand: ColorValue = { light: "#0a7aff", dark: "#208bfe" };
-export const likeColor: ColorValue = "#ec4899";
-export const repostColor: ColorValue = { light: "#13b55c", dark: "#20bc6c" };
-export const hairline: ColorValue = { light: "#e5e8eb", dark: "#2e3a47" };
-export const subtle: ColorValue = { light: "#6f869f", dark: "#8d9fb4" };
-export const cardBackground: ColorValue = { light: "#f1f3f5", dark: "#1e2936" };
-export const screenBackground: ColorValue = { light: "white", dark: "#161e27" };
+export { useTheme, ty, T, type Palette };
 
 // MARK: Layout
 
 /** Avatar size in feeds, and the column the post's content starts after. */
 export const AVATAR = 42;
-export const GUTTER = 12;
-export const H_PADDING = 14;
+export const GUTTER = 10;
+export const H_PADDING = 16;
 
 /** The width the post body gets in a feed cell (embeds are sized from it). */
 export function useContentWidth(indent = 0) {
@@ -31,6 +25,32 @@ export function useContentWidth(indent = 0) {
 }
 
 export const useWindowWidth = () => useEnvironment().window.width;
+
+/** The navigation bar's height under the status bar (iOS 26, inline title). */
+export const NAV_BAR = 54;
+
+/**
+ * How much of the status bar a full-height view that ignores the top safe
+ * area sits under: the window's top inset, less how far down the window the
+ * view starts (inside a sheet, it starts below the status bar). Put `ref` on
+ * that view. (A transparent navigation bar doesn't inset the layout, and
+ * there's no way to read its height or the safe area of a view directly.)
+ */
+export function useStatusInset() {
+  const { safeAreaInsets, window } = useEnvironment();
+  const ref = useRef<HostInstance>(null);
+  const [top, setTop] = useState<number | null>(null);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      ref.current?.measure().then(
+        (frame) => setTop(frame.y),
+        () => setTop(0),
+      );
+    }, 30);
+    return () => clearTimeout(timer);
+  }, [window.width, window.height]);
+  return { ref, inset: top === null ? 0 : Math.max(0, Math.round(safeAreaInsets.top - top)) };
+}
 
 // MARK: Clock
 
@@ -50,25 +70,26 @@ export const useNow = () => useSyncExternalStore(subscribe, () => now);
 
 // MARK: Avatar
 
-type AvatarProps = { uri?: string; size: number; label?: string; square?: boolean };
+type AvatarProps = { uri?: string; size: number; label?: string; square?: boolean; full?: boolean };
 
-/** A round avatar (square-ish for feeds and labelers), or a placeholder silhouette. */
-export function Avatar({ uri, size, label, square = false }: AvatarProps) {
-  const radius = square ? size * 0.22 : size / 2;
+/** A round avatar (rounded square for feeds and labelers), or Bluesky's default silhouette. */
+export function Avatar({ uri, size, label, square = false, full = false }: AvatarProps) {
+  const t = useTheme();
+  const radius = square ? Math.max(6, size * 0.2) : size / 2;
   if (!uri) {
     return (
-      <ZStack frame={{ width: size, height: size }} background={brand} cornerRadius={radius} accessibilityLabel={label} accessibilityHidden={!label}>
-        <Image systemName={square ? "number" : "person.fill"} font={{ size: size * 0.5 }} foregroundStyle="white" />
+      <ZStack frame={{ width: size, height: size }} background={t.primary} cornerRadius={radius} accessibilityLabel={label} accessibilityHidden={!label}>
+        <Image systemName={square ? "number" : "person.fill"} font={{ size: size * 0.52 }} foregroundStyle="white" offset={{ y: square ? 0 : size * 0.06 }} />
       </ZStack>
     );
   }
   return (
     <Image
-      src={uri.replace("/img/avatar/plain/", "/img/avatar_thumbnail/plain/")}
+      src={full ? uri : uri.replace("/img/avatar/plain/", "/img/avatar_thumbnail/plain/")}
       contentMode="fill"
       frame={{ width: size, height: size }}
+      background={t.bg100}
       cornerRadius={radius}
-      border={{ color: "black/8", width: 0.5 }}
       accessibilityLabel={label}
       accessibilityHidden={!label}
     />
@@ -77,25 +98,49 @@ export function Avatar({ uri, size, label, square = false }: AvatarProps) {
 
 // MARK: Skeletons
 
-/** A gray post while the feed loads. */
-export function PostSkeleton() {
+/** A light band sweeping across whatever it's laid over (the gaps are the background, so it shows on the shapes). */
+export function Shimmer() {
+  const t = useTheme();
+  const width = useWindowWidth();
   return (
-    <HStack alignment="top" spacing={GUTTER} padding={{ horizontal: H_PADDING, vertical: 12 }} accessibilityHidden>
-      <Circle fill="systemGray5" frame={{ width: AVATAR, height: AVATAR }} />
-      <VStack alignment="leading" spacing={8}>
+    <Overlay alignment="leading">
+      <Rectangle
+        fill={{ gradient: ["clear", t.shimmer, "clear"], start: "leading", end: "trailing" }}
+        frame={{ width: 140, maxHeight: "infinity" }}
+        offset={{ x: -160 }}
+        keyframes={{ steps: [{ x: width + 320, animation: { type: "easeInOut", duration: 1.15 } }, { x: width + 320, duration: 0.35 }], settle: { type: "linear", duration: 0.01 }, repeat: true }}
+        allowsHitTesting={false}
+      />
+    </Overlay>
+  );
+}
+
+function Bar({ width, height = 12, strong = false }: { width?: number; height?: number; strong?: boolean }) {
+  const t = useTheme();
+  return <RoundedRectangle cornerRadius={4} fill={strong ? t.bg100 : t.bg50} frame={width ? { width, height } : { maxWidth: "infinity", height }} />;
+}
+
+/** A gray post while the feed loads (Bluesky's PostFeedLoadingPlaceholder). */
+export function PostSkeleton() {
+  const t = useTheme();
+  return (
+    <HStack alignment="top" spacing={GUTTER} padding={{ horizontal: H_PADDING, top: 14, bottom: 12 }} accessibilityHidden>
+      <Circle fill={t.bg50} frame={{ width: AVATAR, height: AVATAR }} />
+      <VStack alignment="leading" spacing={9} padding={{ top: 2 }}>
         <HStack spacing={6}>
-          <RoundedRectangle cornerRadius={4} fill="systemGray5" frame={{ width: 110, height: 13 }} />
-          <RoundedRectangle cornerRadius={4} fill="systemGray6" frame={{ width: 80, height: 13 }} />
+          <Bar width={96} strong />
+          <Bar width={72} />
         </HStack>
-        <RoundedRectangle cornerRadius={4} fill="systemGray6" frame={{ maxWidth: "infinity", height: 13 }} />
-        <RoundedRectangle cornerRadius={4} fill="systemGray6" frame={{ maxWidth: "infinity", height: 13 }} />
-        <RoundedRectangle cornerRadius={4} fill="systemGray6" frame={{ width: 160, height: 13 }} />
-        <HStack spacing={0} padding={{ top: 4 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <HStack key={i} frame={{ maxWidth: "infinity", alignment: "leading" }}>
-              <RoundedRectangle cornerRadius={4} fill="systemGray6" frame={{ width: 34, height: 12 }} />
+        <Bar />
+        <Bar />
+        <Bar width={150} />
+        <HStack spacing={0} padding={{ top: 6 }}>
+          {["bubble.left", "arrow.2.squarepath", "heart"].map((icon) => (
+            <HStack key={icon} frame={{ maxWidth: "infinity", alignment: "leading" }}>
+              <Image systemName={icon} font={{ size: 16 }} foregroundStyle={t.bg100} />
             </HStack>
           ))}
+          <Image systemName="ellipsis" font={{ size: 16 }} foregroundStyle={t.bg100} frame={{ width: 44, alignment: "trailing" }} />
         </HStack>
       </VStack>
     </HStack>
@@ -104,52 +149,88 @@ export function PostSkeleton() {
 
 export function FeedSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <VStack spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "top" }} keyframes={{ steps: [{ opacity: 0.55, duration: 0.8 }, { opacity: 1, duration: 0.8 }], repeat: true }} accessibilityLabel="Loading" accessibilityIdentifier="feed-loading">
+    <VStack spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "top" }} accessibilityLabel="Loading" accessibilityIdentifier="feed-loading">
       {Array.from({ length: count }, (_, i) => (
         <VStack key={i} spacing={0}>
           <PostSkeleton />
           <Separator />
         </VStack>
       ))}
+      <Shimmer />
+    </VStack>
+  );
+}
+
+/** Rows of people (followers, search results) while loading. */
+export function ProfileRowSkeleton({ count = 8 }: { count?: number }) {
+  const t = useTheme();
+  return (
+    <VStack spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "top" }} accessibilityLabel="Loading" accessibilityIdentifier="feed-loading">
+      {Array.from({ length: count }, (_, i) => (
+        <HStack key={i} spacing={12} padding={{ horizontal: H_PADDING, vertical: 12 }}>
+          <Circle fill={t.bg50} frame={{ width: 42, height: 42 }} />
+          <VStack alignment="leading" spacing={7}>
+            <Bar width={120} strong />
+            <Bar width={90} />
+          </VStack>
+          <ZStack frame={{ maxWidth: "infinity", alignment: "trailing" }}>
+            <RoundedRectangle cornerRadius={999} fill={t.bg50} frame={{ width: 74, height: 30 }} />
+          </ZStack>
+        </HStack>
+      ))}
+      <Shimmer />
     </VStack>
   );
 }
 
 export function Separator({ inset = 0 }: { inset?: number }) {
-  return <RoundedRectangle cornerRadius={0} fill={hairline} frame={{ maxWidth: "infinity", height: 0.5 }} padding={{ leading: inset }} />;
+  const t = useTheme();
+  return <Rectangle fill={t.border} frame={{ maxWidth: "infinity", height: 0.5 }} padding={{ leading: inset }} />;
+}
+
+/** Bluesky's spinner: the system one, in the theme's low-contrast color. */
+export function Spinner({ height = 72 }: { height?: number }) {
+  const t = useTheme();
+  return <ProgressView tint={t.textLow} frame={{ maxWidth: "infinity", height }} accessibilityIdentifier="loading-more" />;
 }
 
 // MARK: States
 
-export function ErrorView({ error, retry }: { error: unknown; retry(): void }) {
+export function ErrorView({ error, retry, title = "Oops!" }: { error: unknown; retry(): void; title?: string }) {
+  const t = useTheme();
   const message = error instanceof Error ? error.message : String(error);
   return (
-    <VStack spacing={12} padding={32} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} accessibilityIdentifier="error-view">
-      <Image systemName="exclamationmark.icloud" font={{ size: 44, weight: "light" }} foregroundStyle={subtle} />
-      <Text font="headline">Something went wrong</Text>
-      <Text font="subheadline" foregroundStyle={subtle} textAlignment="center">{message}</Text>
-      <Button buttonStyle="borderedProminent" tint={brand} onPress={retry} padding={{ top: 4 }}>
-        <Text fontWeight="semibold" padding={{ horizontal: 8 }}>Try again</Text>
-      </Button>
+    <VStack spacing={10} padding={{ horizontal: 32, vertical: 40 }} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background={t.bg} accessibilityIdentifier="error-view">
+      <Image systemName="exclamationmark" font={{ size: 24, weight: "bold" }} foregroundStyle={t.textMedium} frame={{ width: 56, height: 56 }} background={t.bg50} cornerRadius="capsule" />
+      <Text font={ty(T.xl, "bold")} foregroundStyle={t.text} padding={{ top: 4 }}>{title}</Text>
+      <Text font={ty(T.md)} foregroundStyle={t.textMedium} textAlignment="center">
+        {message || "Something went wrong. Check your connection and try again."}
+      </Text>
+      <VStack padding={{ top: 8 }}>
+        <PillButton title="Try again" systemImage="arrow.clockwise" onPress={retry} />
+      </VStack>
     </VStack>
   );
 }
 
-export function EmptyState({ icon, title, message }: { icon: string; title: string; message?: string }) {
+export function EmptyState({ icon, title, message, children }: { icon: string; title: string; message?: string; children?: ReactNode }) {
+  const t = useTheme();
   return (
-    <VStack spacing={10} padding={{ horizontal: 32, vertical: 48 }} frame={{ maxWidth: "infinity" }}>
-      <Image systemName={icon} font={{ size: 40, weight: "light" }} foregroundStyle={subtle} />
-      <Text font="headline">{title}</Text>
-      {message ? <Text font="subheadline" foregroundStyle={subtle} textAlignment="center">{message}</Text> : null}
+    <VStack spacing={10} padding={{ horizontal: 32, vertical: 56 }} frame={{ maxWidth: "infinity" }}>
+      <Image systemName={icon} font={{ size: 30, weight: "regular" }} foregroundStyle={t.textLow} frame={{ width: 64, height: 64 }} background={t.bg25} cornerRadius="capsule" />
+      <Text font={ty(T.lg, "bold")} foregroundStyle={t.text} textAlignment="center" padding={{ top: 4 }}>{title}</Text>
+      {message ? <Text font={ty(T.md)} foregroundStyle={t.textMedium} textAlignment="center">{message}</Text> : null}
+      {children}
     </VStack>
   );
 }
 
+/** Below the last post: a little room, like Bluesky (no "the end" banner). */
 export function EndOfFeed() {
+  const t = useTheme();
   return (
-    <VStack spacing={6} padding={{ vertical: 32 }} frame={{ maxWidth: "infinity" }}>
-      <Image systemName="checkmark.circle" font="title2" foregroundStyle={subtle} />
-      <Text font="footnote" foregroundStyle={subtle}>You've reached the end</Text>
+    <VStack padding={{ top: 28, bottom: 120 }} frame={{ maxWidth: "infinity" }} accessibilityIdentifier="end-of-feed">
+      <Circle fill={t.border} frame={{ width: 6, height: 6 }} />
     </VStack>
   );
 }
@@ -158,43 +239,122 @@ export function EndOfFeed() {
 
 export function ToastView() {
   const toast = useUI((s) => s.toast);
+  const t = useTheme();
   return (
     <VStack padding={{ bottom: 70 }} allowsHitTesting={false} animation="snappy">
       {toast ? (
         <HStack
           key={toast.id}
-          spacing={8}
-          padding={{ horizontal: 16, vertical: 11 }}
-          background="regularMaterial"
-          cornerRadius="capsule"
-          shadow={{ radius: 12, y: 4, color: "black/15" }}
+          spacing={10}
+          padding={{ horizontal: 16, vertical: 12 }}
+          background={t.bg}
+          cornerRadius={12}
+          border={{ color: t.border, width: 1 }}
+          shadow={{ radius: 16, y: 6, color: "black/20" }}
           transition={{ type: "move", edge: "bottom" }}
           accessibilityIdentifier="toast"
         >
-          <Image systemName={toast.icon} fontWeight="semibold" />
-          <Text font="subheadline" fontWeight="semibold">{toast.text}</Text>
+          <Image systemName={toast.icon} font={{ size: 15, weight: "semibold" }} foregroundStyle={t.primary} />
+          <Text font={ty(T.md, "medium")} foregroundStyle={t.text}>{toast.text}</Text>
         </HStack>
       ) : null}
     </VStack>
   );
 }
 
-/** A capsule-shaped primary button (Follow, Sign in). */
+// MARK: Buttons
+
+/**
+ * Bluesky's rounded buttons: "primary" (solid blue), "secondary" (gray fill),
+ * "outline". Small ones sit in rows (Follow), large ones on screens.
+ */
 export function PillButton({
-  title, systemImage, onPress, prominent = true, id, small = false,
-}: { title: string; systemImage?: string; onPress(): void; prominent?: boolean; id?: string; small?: boolean }) {
+  title, systemImage, onPress, prominent = true, variant, id, small = false, wide = false,
+}: {
+  title: string;
+  systemImage?: string;
+  onPress(): void;
+  prominent?: boolean;
+  variant?: "primary" | "secondary" | "outline" | "inverted";
+  id?: string;
+  small?: boolean;
+  wide?: boolean;
+}) {
+  const t = useTheme();
+  const kind = variant ?? (prominent ? "primary" : "secondary");
+  const bg = kind === "primary" ? t.primary : kind === "secondary" ? t.bg50 : kind === "inverted" ? t.text : "clear";
+  const fg = kind === "primary" ? "white" : kind === "inverted" ? t.bg : t.text;
   return (
-    <Button onPress={onPress} pressedOpacity={0.7} accessibilityIdentifier={id} accessibilityLabel={title}>
+    <Button onPress={onPress} pressedOpacity={0.75} accessibilityIdentifier={id} accessibilityLabel={title} frame={wide ? { maxWidth: "infinity" } : undefined}>
       <HStack
-        spacing={5}
-        padding={{ horizontal: small ? 12 : 16, vertical: small ? 6 : 9 }}
-        background={prominent ? brand : cardBackground}
+        spacing={small ? 4 : 6}
+        padding={{ horizontal: small ? 12 : 18, vertical: small ? 6.5 : 10 }}
+        frame={wide ? { maxWidth: "infinity" } : undefined}
+        background={bg}
         cornerRadius="capsule"
+        border={kind === "outline" ? { color: t.border, width: 1 } : undefined}
       >
-        {systemImage ? <Image systemName={systemImage} font={small ? "caption" : "subheadline"} fontWeight="semibold" foregroundStyle={prominent ? "white" : "label"} /> : null}
-        <Text font={small ? "footnote" : "subheadline"} fontWeight="semibold" foregroundStyle={prominent ? "white" : "label"}>{title}</Text>
+        {systemImage ? <Image systemName={systemImage} font={{ size: small ? 12 : 14, weight: "bold" }} foregroundStyle={fg} /> : null}
+        <Text font={ty(small ? T.sm : T.md, "semibold")} foregroundStyle={fg} lineLimit={1}>{title}</Text>
       </HStack>
     </Button>
   );
 }
 
+/** A circular icon button (headers, the profile's back / more on the banner). */
+export function IconButton({ icon, label, onPress, id, size = 34 }: { icon: string; label: string; onPress(): void; id?: string; size?: number }) {
+  const t = useTheme();
+  return (
+    <Button onPress={onPress} pressedOpacity={0.6} accessibilityLabel={label} accessibilityIdentifier={id}>
+      <Image systemName={icon} font={{ size: size * 0.55, weight: "medium" }} foregroundStyle={t.text} frame={{ width: size, height: size }} contentShape="rectangle" />
+    </Button>
+  );
+}
+
+/** Bluesky's toggle-button group: a capsule track with the chosen option raised. */
+export function Segmented<V extends string>({
+  options, value, onChange, id,
+}: { options: { value: V; label: string; icon?: string }[]; value: V; onChange(value: V): void; id?: string }) {
+  const t = useTheme();
+  return (
+    <HStack spacing={0} padding={3} background={t.bg50} cornerRadius="capsule" accessibilityElement="contain" accessibilityIdentifier={id}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <Button
+            key={o.value}
+            onPress={() => onChange(o.value)}
+            pressedOpacity={0.7}
+            accessibilityLabel={o.label}
+            accessibilityIdentifier={id ? `${id}-${o.value}` : undefined}
+            accessibilityTraits={on ? ["button", "selected"] : "button"}
+            frame={{ maxWidth: "infinity" }}
+          >
+            <HStack spacing={5} padding={{ vertical: 8 }} frame={{ maxWidth: "infinity" }} background={on ? t.bg : "clear"} cornerRadius="capsule" shadow={on ? { radius: 2, y: 1, color: "black/10" } : undefined} animation="snappy">
+              {o.icon ? <Image systemName={o.icon} font={{ size: 13, weight: "semibold" }} foregroundStyle={on ? t.text : t.textMedium} /> : null}
+              <Text font={ty(T.sm, "semibold")} foregroundStyle={on ? t.text : t.textMedium}>{o.label}</Text>
+            </HStack>
+          </Button>
+        );
+      })}
+    </HStack>
+  );
+}
+
+/**
+ * A butterfly mark in the brand blue (SF Symbols has none). A simple shape of
+ * our own, standing in for Bluesky's logo, which this example doesn't embed.
+ */
+export function Butterfly({ size = 28, color }: { size?: number; color?: import("swiftjsx").Color }) {
+  const t = useTheme();
+  return (
+    <Path
+      d="M32 27 C27 13 14 3 7 6 C1 9 3 21 13 25 C19 27.5 27 28.5 32 27 Z M32 27 C37 13 50 3 57 6 C63 9 61 21 51 25 C45 27.5 37 28.5 32 27 Z M31 29 C24 30 15 33 14.5 41 C14 49 24 51 30 39 Z M33 29 C40 30 49 33 49.5 41 C50 49 40 51 34 39 Z"
+      viewBox={[0, 0, 64, 52]}
+      preserveAspectRatio="fit"
+      fill={color ?? t.primary}
+      frame={{ width: size * 1.23, height: size }}
+      accessibilityLabel="Bluesky"
+    />
+  );
+}

@@ -2,7 +2,7 @@
 // follows (overriding what the AppView said until the next fetch), and UI
 // that any screen can open (image viewer, composer, sign-in, toast).
 import { create } from "zustand";
-import { hot, haptic } from "swiftjsx";
+import { hot, haptic, type Frame } from "swiftjsx";
 import * as api from "./api";
 import { useSession } from "./session";
 import type { ImageView, PostView, ProfileViewBasic } from "./types";
@@ -138,12 +138,23 @@ export function useIsFollowing(actor: ProfileViewBasic | undefined) {
 
 export type ComposeTarget = { replyTo?: PostView; root?: PostView; quote?: PostView } | null;
 
+export type Corners = { topLeading?: number; topTrailing?: number; bottomLeading?: number; bottomTrailing?: number };
+export type TabName = "home" | "search" | "notifications" | "profile";
+
 type UI = {
-  viewer: { images: ImageView[]; index: number } | null;
+  /** The image viewer: which images, from which thumbnail (its frame in the window, to zoom out of). */
+  viewer: { images: ImageView[]; index: number; origin: Frame | null; radius: Corners; id: number } | null;
+  drawerOpen: boolean;
+  /** The drawer is being dragged in from the edge (shown, not yet open). */
+  drawerPeek: boolean;
+  tab: TabName;
   compose: ComposeTarget | undefined;
   signIn: string | null;
   toast: { id: number; text: string; icon: string } | null;
-  openImages(images: ImageView[], index: number): void;
+  openImages(images: ImageView[], index: number, origin?: Frame | null, radius?: Corners): void;
+  setDrawerOpen(open: boolean): void;
+  setDrawerPeek(peek: boolean): void;
+  setTab(tab: TabName): void;
   closeImages(): void;
   openCompose(target?: ComposeTarget): void;
   closeCompose(): void;
@@ -155,10 +166,16 @@ type UI = {
 const makeUI = () =>
   create<UI>()((set, get) => ({
     viewer: null,
+    drawerOpen: false,
+    drawerPeek: false,
+    tab: "home",
     compose: undefined,
     signIn: null,
     toast: null,
-    openImages: (images, index) => set({ viewer: { images, index } }),
+    openImages: (images, index, origin = null, radius = {}) => set({ viewer: { images, index, origin, radius, id: Date.now() } }),
+    setDrawerOpen: (drawerOpen) => set({ drawerOpen, drawerPeek: false }),
+    setDrawerPeek: (drawerPeek) => set({ drawerPeek }),
+    setTab: (tab) => set({ tab, drawerOpen: false }),
     closeImages: () => set({ viewer: null }),
     openCompose: (target = null) => {
       if (!requireSignIn("post")) return;

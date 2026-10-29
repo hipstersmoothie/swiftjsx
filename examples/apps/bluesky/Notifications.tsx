@@ -2,7 +2,7 @@
 // 3 others liked your post"), replies, mentions and quotes as full posts.
 // Signed out: a sign-in prompt.
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, ProgressView, useNavigation } from "swiftjsx";
+import { Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, useNavigation, type Color } from "swiftjsx";
 import { getPosts, listNotifications } from "./api";
 import { ago, displayName } from "./format";
 import { PostCell } from "./PostCell";
@@ -10,9 +10,7 @@ import { ProfileScreen } from "./Profile";
 import { ThreadScreen } from "./Thread";
 import { useSession } from "./session";
 import { useUI } from "./store";
-import {
-  Avatar, EmptyState, ErrorView, FeedSkeleton, PillButton, Separator, brand, likeColor, repostColor, screenBackground, subtle, useNow,
-} from "./ui";
+import { Avatar, EmptyState, ErrorView, FeedSkeleton, PillButton, Separator, Spinner, T, ty, useNow, useTheme, type Palette } from "./ui";
 import type { Notification, PostView } from "./types";
 
 type Group = {
@@ -69,8 +67,9 @@ function group(pages: Awaited<ReturnType<typeof fetchPage>>[]): Group[] {
 
 export function NotificationsScreen() {
   const signedIn = useSession((s) => s.session !== null);
+  const t = useTheme();
   return (
-    <Screen title="Notifications" titleDisplayMode="inline">
+    <Screen title="Notifications" titleDisplayMode="inline" toolbarBackground={t.bg}>
       {signedIn ? <NotificationList /> : <SignedOutPrompt />}
     </Screen>
   );
@@ -78,20 +77,24 @@ export function NotificationsScreen() {
 
 function SignedOutPrompt() {
   const openSignIn = useUI((s) => s.openSignIn);
+  const t = useTheme();
   return (
-    <VStack spacing={14} padding={32} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} accessibilityIdentifier="notifications-signed-out">
-      <Image systemName="bell.badge" font={{ size: 52, weight: "light" }} foregroundStyle={brand} symbolRenderingMode="hierarchical" />
-      <Text font="title2" fontWeight="bold">Stay in the loop</Text>
-      <Text font="subheadline" foregroundStyle={subtle} textAlignment="center">
-        Sign in to see who liked, reposted and replied to your posts, and who followed you.
+    <VStack spacing={12} padding={32} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background={t.bg} accessibilityIdentifier="notifications-signed-out">
+      <Image systemName="bell.fill" font={{ size: 30 }} foregroundStyle={t.primary} frame={{ width: 72, height: 72 }} background={t.primarySubtle} cornerRadius="capsule" />
+      <Text font={ty(T.xxl, "bold")} foregroundStyle={t.text} padding={{ top: 6 }}>Never miss a thing</Text>
+      <Text font={ty(T.md)} foregroundStyle={t.textMedium} textAlignment="center" lineSpacing={2}>
+        Sign in to see who liked, reposted, quoted and replied to your posts, and who followed you.
       </Text>
-      <PillButton title="Sign in" onPress={() => openSignIn("see your notifications")} id="notifications-sign-in" />
+      <VStack padding={{ top: 6 }}>
+        <PillButton title="Sign in" onPress={() => openSignIn("see your notifications")} id="notifications-sign-in" />
+      </VStack>
     </VStack>
   );
 }
 
 function NotificationList() {
   const did = useSession((s) => s.session?.did);
+  const t = useTheme();
   const query = useInfiniteQuery({
     queryKey: ["notifications", did],
     queryFn: ({ pageParam, signal }) => fetchPage(pageParam, signal),
@@ -107,57 +110,70 @@ function NotificationList() {
       keyExtractor={(g) => g.key}
       estimatedItemHeight={110}
       renderItem={(g) => <NotificationRow group={g} />}
-      footer={query.hasNextPage ? <ProgressView frame={{ maxWidth: "infinity", height: 64 }} /> : groups.length ? null : <EmptyState icon="bell" title="No notifications yet" />}
+      footer={query.hasNextPage ? <Spinner height={64} /> : groups.length ? null : <EmptyState icon="bell" title="No notifications yet!" />}
       onEndReached={() => {
         if (query.hasNextPage && !query.isFetchingNextPage) query.fetchNextPage();
       }}
       onRefresh={() => query.refetch()}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-      background={screenBackground}
+      background={t.bg}
     />
   );
 }
 
-const ICONS: Partial<Record<Notification["reason"], { icon: string; color: import("swiftjsx").ColorValue; verb: string }>> = {
-  like: { icon: "heart.fill", color: likeColor, verb: "liked your post" },
-  "like-via-repost": { icon: "heart.fill", color: likeColor, verb: "liked your repost" },
-  repost: { icon: "arrow.2.squarepath", color: repostColor, verb: "reposted your post" },
-  "repost-via-repost": { icon: "arrow.2.squarepath", color: repostColor, verb: "reposted your repost" },
-  follow: { icon: "person.fill.badge.plus", color: brand, verb: "followed you" },
-  "starterpack-joined": { icon: "person.3.fill", color: brand, verb: "signed up with your starter pack" },
-  verified: { icon: "checkmark.seal.fill", color: brand, verb: "verified your account" },
-};
+function meta(reason: Notification["reason"], t: Palette): { icon: string; color: Color; verb: string } {
+  switch (reason) {
+    case "like":
+      return { icon: "heart.fill", color: t.like, verb: "liked your post" };
+    case "like-via-repost":
+      return { icon: "heart.fill", color: t.like, verb: "liked your repost" };
+    case "repost":
+      return { icon: "arrow.2.squarepath", color: t.repost, verb: "reposted your post" };
+    case "repost-via-repost":
+      return { icon: "arrow.2.squarepath", color: t.repost, verb: "reposted your repost" };
+    case "follow":
+      return { icon: "person.fill.badge.plus", color: t.primary, verb: "followed you" };
+    case "starterpack-joined":
+      return { icon: "person.3.fill", color: t.primary, verb: "signed up with your starter pack" };
+    case "verified":
+      return { icon: "checkmark.seal.fill", color: t.primary, verb: "verified your account" };
+    default:
+      return { icon: "bell.fill", color: t.primary, verb: reason };
+  }
+}
 
 function NotificationRow({ group: g }: { group: Group }) {
   const nav = useNavigation();
   const now = useNow();
+  const t = useTheme();
   if (AS_POST.has(g.reason) && g.post) return <PostCell post={g.post} />;
-  const meta = ICONS[g.reason] ?? { icon: "bell.fill", color: brand, verb: g.reason };
+  const m = meta(g.reason, t);
   const first = g.authors[0];
   const others = g.authors.length - 1;
   const open = () =>
     g.post ? nav.push(<ThreadScreen uri={g.post.uri} initial={g.post} />) : nav.push(<ProfileScreen actor={first.did} initial={first} />);
   return (
     <VStack spacing={0}>
-      <Button buttonStyle="plain" onPress={open}>
-        <HStack alignment="top" spacing={12} padding={{ horizontal: 14, vertical: 12 }} background={g.isRead ? "clear" : "blue/6"} contentShape="rectangle">
-          <Image systemName={meta.icon} font="title3" foregroundStyle={meta.color} frame={{ width: 42, alignment: "trailing" }} />
+      <Button pressedOpacity={0.7} onPress={open} accessibilityIdentifier="notification-row">
+        <HStack alignment="top" spacing={10} padding={{ horizontal: 16, top: 12, bottom: 14 }} background={g.isRead ? t.bg : t.primarySubtle} contentShape="rectangle">
+          <HStack frame={{ width: 42, alignment: "trailing" }}>
+            <Image systemName={m.icon} font={{ size: 26 }} foregroundStyle={m.color} />
+          </HStack>
           <VStack alignment="leading" spacing={8}>
-            <HStack spacing={-6}>
+            <HStack spacing={4}>
               {g.authors.slice(0, 6).map((a) => (
-                <VStack key={a.did} padding={1.5} background={screenBackground} cornerRadius="capsule">
-                  <Avatar uri={a.avatar} size={30} />
-                </VStack>
+                <Avatar key={a.did} uri={a.avatar} size={30} />
               ))}
+              {g.authors.length > 6 ? <Text font={ty(T.sm, "semibold")} foregroundStyle={t.textMedium} padding={{ leading: 2 }}>+{g.authors.length - 6}</Text> : null}
               <Spacer />
             </HStack>
-            <Text font="subheadline">
+            <Text font={ty(T.md)} foregroundStyle={t.text} lineSpacing={2}>
               <Text fontWeight="bold">{displayName(first)}</Text>
-              {others > 0 ? <Text>{` and ${others} ${others === 1 ? "other" : "others"}`}</Text> : null}
-              <Text>{` ${meta.verb}`}</Text>
-              <Text foregroundStyle={subtle}>{` · ${ago(g.indexedAt, now)}`}</Text>
+              {others > 0 ? <Text fontWeight="bold">{` and ${others} ${others === 1 ? "other" : "others"}`}</Text> : null}
+              <Text>{` ${m.verb}`}</Text>
+              <Text foregroundStyle={t.textMedium}>{` · ${ago(g.indexedAt, now)}`}</Text>
             </Text>
-            {g.post?.record.text ? <Text font="subheadline" foregroundStyle={subtle} lineLimit={3}>{g.post.record.text}</Text> : null}
+            {g.post?.record.text ? <Text font={ty(T.md)} foregroundStyle={t.textMedium} lineLimit={3} lineSpacing={2}>{g.post.record.text}</Text> : null}
           </VStack>
         </HStack>
       </Button>

@@ -9,7 +9,7 @@ import {
 import { createSession, DEFAULT_PDS, XrpcError } from "./api";
 import { useSession } from "./session";
 import { toast, useUI } from "./store";
-import { brand, likeColor, subtle } from "./ui";
+import { T, ty, useTheme } from "./ui";
 import type { Session } from "./types";
 
 export function SignInSheet() {
@@ -36,6 +36,7 @@ async function signIn(identifier: string, password: string, service: string): Pr
 }
 
 function SignInForm({ reason, onDone }: { reason: string; onDone(): void }) {
+  const t = useTheme();
   const setSession = useSession((s) => s.setSession);
   const client = useQueryClient();
   const [handle, setHandle] = useState("");
@@ -76,9 +77,9 @@ function SignInForm({ reason, onDone }: { reason: string; onDone(): void }) {
       <Form>
         <Section>
           <VStack spacing={10} padding={{ vertical: 8 }} frame={{ maxWidth: "infinity" }}>
-            <Image systemName="cloud.fill" font={{ size: 46 }} foregroundStyle={brand} />
+            <Image systemName="cloud.fill" font={{ size: 46 }} foregroundStyle={t.primary} />
             <Text font="title2" fontWeight="bold">Sign in to Bluesky</Text>
-            <Text font="subheadline" foregroundStyle={subtle} textAlignment="center">
+            <Text font="subheadline" foregroundStyle={t.textMedium} textAlignment="center">
               {reason ? `Sign in to ${reason}.` : "See your timeline and notifications, and post, like and follow."}
             </Text>
           </VStack>
@@ -113,7 +114,7 @@ function SignInForm({ reason, onDone }: { reason: string; onDone(): void }) {
             accessibilityIdentifier="sign-in-password"
           />
           <SectionFooter>
-            <Text font="footnote" foregroundStyle={subtle}>
+            <Text font="footnote" foregroundStyle={t.textMedium}>
               Use an app password, not your account password. Make one on bsky.app under Settings → Privacy and security → App passwords.
             </Text>
           </SectionFooter>
@@ -121,8 +122,8 @@ function SignInForm({ reason, onDone }: { reason: string; onDone(): void }) {
         {error ? (
           <Section>
             <HStack spacing={8}>
-              <Image systemName="exclamationmark.triangle.fill" foregroundStyle={likeColor} />
-              <Text font="subheadline" foregroundStyle={likeColor} accessibilityIdentifier="sign-in-error">{error}</Text>
+              <Image systemName="exclamationmark.triangle.fill" foregroundStyle={t.negative} />
+              <Text font="subheadline" foregroundStyle={t.negative} accessibilityIdentifier="sign-in-error">{error}</Text>
             </HStack>
           </Section>
         ) : null}
@@ -132,8 +133,8 @@ function SignInForm({ reason, onDone }: { reason: string; onDone(): void }) {
         <Section>
           <Button onPress={() => openURL("https://bsky.app/settings/app-passwords", { inApp: true })}>
             <HStack spacing={8}>
-              <Image systemName="key" foregroundStyle={brand} />
-              <Text foregroundStyle={brand}>Create an app password</Text>
+              <Image systemName="key" foregroundStyle={t.primary} />
+              <Text foregroundStyle={t.primary}>Create an app password</Text>
             </HStack>
           </Button>
         </Section>

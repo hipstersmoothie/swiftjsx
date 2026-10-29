@@ -12,7 +12,7 @@ import { MAX_GRAPHEMES, detect, facetsFor, graphemeLength } from "./richtext";
 import { toast, useUI, type ComposeTarget } from "./store";
 import { useSession } from "./session";
 import { useMyProfile } from "./Me";
-import { Avatar, brand, hairline, likeColor, subtle } from "./ui";
+import { Avatar, T, ty, useTheme } from "./ui";
 import type { PostView, StrongRef } from "./types";
 
 export function ComposeSheet() {
@@ -58,6 +58,7 @@ async function publish(text: string, target: ComposeTarget): Promise<string | nu
 }
 
 function Composer({ target, onClose }: { target: ComposeTarget; onClose(): void }) {
+  const t = useTheme();
   const session = useSession((s) => s.session);
   const me = useMyProfile();
   const [text, setText] = useState("");
@@ -97,7 +98,7 @@ function Composer({ target, onClose }: { target: ComposeTarget; onClose(): void 
         {posting ? (
           <ProgressView />
         ) : (
-          <Button onPress={submit} disabled={!canPost} buttonStyle="borderedProminent" tint={brand} accessibilityIdentifier="post-button">
+          <Button onPress={submit} disabled={!canPost} buttonStyle="borderedProminent" tint={t.primary} accessibilityIdentifier="post-button">
             <Text fontWeight="bold">{replyTo ? "Reply" : "Post"}</Text>
           </Button>
         )}
@@ -140,14 +141,15 @@ function Composer({ target, onClose }: { target: ComposeTarget; onClose(): void 
  * facet is listed under the field instead.
  */
 function Highlights({ text }: { text: string }) {
+  const t = useTheme();
   const found = detect(text);
   if (!found.length) return null;
   return (
     <HStack spacing={6}>
       {found.slice(0, 4).map((d, i) => (
         <HStack key={i} spacing={3} padding={{ horizontal: 7, vertical: 3 }} background="secondarySystemFill" cornerRadius="capsule">
-          <Image systemName={d.kind === "mention" ? "at" : d.kind === "link" ? "link" : "number"} font="caption2" foregroundStyle={brand} />
-          <Text font="caption" foregroundStyle={brand} lineLimit={1}>{text.slice(d.start, d.end)}</Text>
+          <Image systemName={d.kind === "mention" ? "at" : d.kind === "link" ? "link" : "number"} font="caption2" foregroundStyle={t.primary} />
+          <Text font="caption" foregroundStyle={t.primary} lineLimit={1}>{text.slice(d.start, d.end)}</Text>
         </HStack>
       ))}
     </HStack>
@@ -155,14 +157,15 @@ function Highlights({ text }: { text: string }) {
 }
 
 function CharacterRing({ length }: { length: number }) {
+  const t = useTheme();
   const left = MAX_GRAPHEMES - length;
   const progress = Math.min(1, length / MAX_GRAPHEMES);
-  const color = left < 0 ? likeColor : left <= 20 ? "orange" : brand;
+  const color = left < 0 ? t.negative : left <= 20 ? "orange" : t.primary;
   return (
     <HStack spacing={8} accessibilityElement="combine" accessibilityLabel={`${left} characters left`} accessibilityIdentifier="char-count">
       {left <= 20 ? <Text font="footnote" fontWeight="semibold" foregroundStyle={color} monospacedDigit>{left}</Text> : null}
       <VStack frame={{ width: 22, height: 22 }}>
-        <Circle stroke={hairline} lineWidth={3} />
+        <Circle stroke={t.border} lineWidth={3} />
         <Circle stroke={color} lineWidth={3} trim={[0, progress]} rotation={-90} animation="snappy" />
       </VStack>
     </HStack>
@@ -170,24 +173,26 @@ function CharacterRing({ length }: { length: number }) {
 }
 
 function ParentPreview({ post }: { post: PostView }) {
+  const t = useTheme();
   return (
     <HStack alignment="top" spacing={12} padding={{ bottom: 4 }}>
       <Avatar uri={post.author.avatar} size={40} />
       <VStack alignment="leading" spacing={3}>
         <Text font="subheadline" fontWeight="bold" lineLimit={1}>{displayName(post.author)}</Text>
-        <Text font="subheadline" lineLimit={5} foregroundStyle={subtle}>{post.record.text}</Text>
+        <Text font="subheadline" lineLimit={5} foregroundStyle={t.textMedium}>{post.record.text}</Text>
       </VStack>
     </HStack>
   );
 }
 
 function QuotePreview({ post }: { post: PostView }) {
+  const t = useTheme();
   return (
-    <VStack alignment="leading" spacing={4} padding={12} frame={{ maxWidth: "infinity", alignment: "leading" }} border={{ color: hairline, width: 1 }} cornerRadius={12}>
+    <VStack alignment="leading" spacing={4} padding={12} frame={{ maxWidth: "infinity", alignment: "leading" }} border={{ color: t.border, width: 1 }} cornerRadius={12}>
       <HStack spacing={6}>
         <Avatar uri={post.author.avatar} size={18} />
         <Text font="subheadline" fontWeight="semibold" lineLimit={1}>{displayName(post.author)}</Text>
-        <Text font="subheadline" foregroundStyle={subtle} lineLimit={1}>@{post.author.handle}</Text>
+        <Text font="subheadline" foregroundStyle={t.textMedium} lineLimit={1}>@{post.author.handle}</Text>
       </HStack>
       <Text font="subheadline" lineLimit={4}>{post.record.text}</Text>
     </VStack>

@@ -1,9 +1,9 @@
 // Post text with tappable runs: @mentions open the profile, #tags open a tag
 // search (signed in; signed out, bsky.app's tag page), links open in Safari.
-import { Text, openURL, useNavigation, type Font } from "swiftjsx";
+import { Text, openURL, useNavigation } from "swiftjsx";
 import { segments, detect, shortenLink, type Segment } from "./richtext";
 import { useSession } from "./session";
-import { brand } from "./ui";
+import { T, ty, useTheme } from "./ui";
 import { ProfileScreen } from "./Profile";
 import { PostSearchScreen } from "./Search";
 import type { Facet } from "./types";
@@ -11,7 +11,9 @@ import type { Facet } from "./types";
 type Props = {
   text: string;
   facets?: Facet[];
-  font?: Font;
+  /** Points (Inter or the system font). */
+  size?: number;
+  color?: import("swiftjsx").Color;
   lineLimit?: number;
   selectable?: boolean;
   /** Find mentions, links and tags in the text itself (profile bios have no facets). */
@@ -19,8 +21,9 @@ type Props = {
   id?: string;
 };
 
-export function RichText({ text, facets, font = "body", lineLimit, selectable, detectFacets = false, id }: Props) {
+export function RichText({ text, facets, size = T.post, color, lineLimit, selectable, detectFacets = false, id }: Props) {
   const nav = useNavigation();
+  const t = useTheme();
   const signedIn = useSession((s) => s.session !== null);
   const runs = detectFacets ? detectedSegments(text) : segments(text, facets);
   if (!runs.length) return null;
@@ -35,12 +38,12 @@ export function RichText({ text, facets, font = "body", lineLimit, selectable, d
   };
 
   return (
-    <Text font={font} lineLimit={lineLimit} selectable={selectable} accessibilityIdentifier={id}>
+    <Text font={ty(size)} foregroundStyle={color ?? t.text} lineSpacing={Math.round(size * 0.18)} lineLimit={lineLimit} selectable={selectable} accessibilityIdentifier={id}>
       {runs.map((run, i) =>
         run.kind === "text" ? (
           <Text key={i}>{run.text}</Text>
         ) : (
-          <Text key={i} foregroundStyle={brand} onPress={() => open(run)}>
+          <Text key={i} foregroundStyle={t.primary} onPress={() => open(run)}>
             {run.kind === "link" && run.text.startsWith("http") ? shortenLink(run.text) : run.text}
           </Text>
         ),

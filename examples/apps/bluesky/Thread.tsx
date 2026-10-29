@@ -4,18 +4,19 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, Rectangle, Background, ToolbarItem, useNavigation,
+  Screen, VirtualList, VStack, HStack, Text, Image, Button, Spacer, Rectangle, Background, SafeAreaInset, useNavigation,
 } from "swiftjsx";
 import { getPostThread, getLikes, getRepostedBy } from "./api";
 import { compact, counted, displayName, fullTimestamp } from "./format";
-import { ActionBar, PostCell } from "./PostCell";
+import { ActionBar, PostCell, Verified } from "./PostCell";
 import { RichText } from "./PostText";
-import { Embed } from "./Embeds";
+import { ContentHider, Embed, mediaWarning } from "./Embeds";
 import { ProfileScreen } from "./Profile";
 import { ActorListScreen } from "./ActorList";
 import { usePostState, useUI, useIsFollowing, useInteractions } from "./store";
-import { useMyDid } from "./session";
-import { Avatar, EmptyState, ErrorView, FeedSkeleton, H_PADDING, PillButton, hairline, screenBackground, subtle, useWindowWidth, brand } from "./ui";
+import { useMyDid, useSession } from "./session";
+import { useMyProfile } from "./Me";
+import { Avatar, EmptyState, ErrorView, FeedSkeleton, H_PADDING, PillButton, T, ty, useTheme, useWindowWidth } from "./ui";
 import type { PostView, ThreadNode } from "./types";
 
 type Row =
@@ -80,7 +81,8 @@ const rowKey = (row: Row) => (row.kind === "ancestor" || row.kind === "focus" ? 
 
 export function ThreadScreen({ uri, initial }: { uri: string; initial?: PostView }) {
   const query = useQuery({ queryKey: ["thread", uri], queryFn: ({ signal }) => getPostThread(uri, signal) });
-  const openCompose = useUI((s) => s.openCompose);
+  const signedIn = useSession((s) => s.session !== null);
+  const t = useTheme();
 
   const rows: Row[] = query.data ? flatten(query.data.thread) : initial ? [{ kind: "focus", post: initial, hasParent: false }] : [];
   const focusIndex = rows.findIndex((r) => r.kind === "focus");
@@ -88,14 +90,7 @@ export function ThreadScreen({ uri, initial }: { uri: string; initial?: PostView
   const focusPost = focused && focused.kind === "focus" ? focused.post : null;
 
   return (
-    <Screen title="Post" titleDisplayMode="inline">
-      {focusPost ? (
-        <ToolbarItem placement="primaryAction">
-          <Button onPress={() => openCompose({ replyTo: focusPost })} accessibilityLabel="Reply">
-            <Image systemName="arrowshape.turn.up.left" foregroundStyle={brand} />
-          </Button>
-        </ToolbarItem>
-      ) : null}
+    <Screen title="Post" titleDisplayMode="inline" toolbarBackground={t.bg}>
       {query.isError && !rows.length ? (
         <ErrorView error={query.error} retry={() => query.refetch()} />
       ) : (
@@ -110,22 +105,47 @@ export function ThreadScreen({ uri, initial }: { uri: string; initial?: PostView
             query.isPending ? (
               <FeedSkeleton count={3} />
             ) : (
-              <VStack padding={{ bottom: 240 }}>
+              <VStack padding={{ bottom: 320 }} background={t.bg}>
                 {rows.every((r) => r.kind !== "reply") ? <EmptyState icon="bubble.left.and.bubble.right" title="No replies yet" message="Be the first to reply." /> : null}
               </VStack>
             )
           }
           onRefresh={() => query.refetch()}
           frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-          background={screenBackground}
+          background={t.bg}
           accessibilityIdentifier="thread"
-        />
+        >
+          {signedIn && focusPost ? (
+            <SafeAreaInset edge="bottom">
+              <ReplyPrompt post={focusPost} />
+            </SafeAreaInset>
+          ) : null}
+        </VirtualList>
       )}
     </Screen>
   );
 }
 
+/** "Write your reply": a tap opens the composer (signed in). */
+function ReplyPrompt({ post }: { post: PostView }) {
+  const openCompose = useUI((s) => s.openCompose);
+  const me = useMyProfile();
+  const t = useTheme();
+  return (
+    <VStack spacing={0} background={t.bg}>
+      <Rectangle fill={t.border} frame={{ maxWidth: "infinity", height: 0.5 }} />
+      <Button onPress={() => openCompose({ replyTo: post })} pressedOpacity={0.7} padding={{ horizontal: 12, vertical: 8 }} accessibilityIdentifier="reply-prompt">
+        <HStack spacing={8} padding={{ horizontal: 10, vertical: 8 }} frame={{ maxWidth: "infinity", alignment: "leading" }} background={t.bg25} cornerRadius="capsule" border={{ color: t.border, width: 1 }}>
+          <Avatar uri={me.data?.avatar} size={24} />
+          <Text font={ty(T.md)} foregroundStyle={t.textLow}>Write your reply</Text>
+        </HStack>
+      </Button>
+    </VStack>
+  );
+}
+
 function ThreadRow({ row }: { row: Row }) {
+  const t = useTheme();
   switch (row.kind) {
     case "ancestor":
       return <PostCell post={row.post} lineAbove={!row.first} lineBelow hideSeparator />;
@@ -135,9 +155,9 @@ function ThreadRow({ row }: { row: Row }) {
       return <ReplyRow post={row.post} depth={row.depth} hasChildren={row.hasChildren} />;
     case "missing":
       return (
-        <HStack spacing={8} padding={{ horizontal: H_PADDING, vertical: 14 }}>
-          <Image systemName="trash" foregroundStyle={subtle} />
-          <Text font="subheadline" foregroundStyle={subtle}>{row.text}</Text>
+        <HStack spacing={8} padding={{ horizontal: H_PADDING, vertical: 14 }} frame={{ maxWidth: "infinity", alignment: "leading" }} background={t.bg}>
+          <Image systemName="trash" font={{ size: 14 }} foregroundStyle={t.textMedium} />
+          <Text font={ty(T.md)} foregroundStyle={t.textMedium}>{row.text}</Text>
         </HStack>
       );
     case "more":
@@ -145,13 +165,14 @@ function ThreadRow({ row }: { row: Row }) {
   }
 }
 
-/** Depth guides: one hairline per level, left of the reply. */
+/** Depth guides: one line per level, left of the reply. */
 function Guides({ depth }: { depth: number }) {
+  const t = useTheme();
   return (
     <HStack spacing={0} frame={{ maxHeight: "infinity" }} padding={{ leading: H_PADDING + 10 }}>
       {Array.from({ length: depth }, (_, i) => (
         <HStack key={i} spacing={0} frame={{ width: INDENT, maxHeight: "infinity", alignment: "leading" }}>
-          <Rectangle fill={hairline} frame={{ width: 1.5, maxHeight: "infinity" }} />
+          <Rectangle fill={t.bg100} frame={{ width: 2, maxHeight: "infinity" }} />
         </HStack>
       ))}
     </HStack>
@@ -174,11 +195,11 @@ function ReplyRow({ post, depth, hasChildren }: { post: PostView; depth: number;
 
 function MoreReplies({ post, depth }: { post: PostView; depth: number }) {
   const nav = useNavigation();
+  const t = useTheme();
   return (
-    <Button onPress={() => nav.push(<ThreadScreen uri={post.uri} initial={post} />)} buttonStyle="plain">
-      <HStack spacing={6} padding={{ leading: H_PADDING + depth * INDENT + 54, vertical: 10 }} frame={{ maxWidth: "infinity", alignment: "leading" }}>
-        <Text font="subheadline" fontWeight="semibold" foregroundStyle={brand}>Continue thread</Text>
-        <Image systemName="chevron.right" font="caption" fontWeight="semibold" foregroundStyle={brand} />
+    <Button onPress={() => nav.push(<ThreadScreen uri={post.uri} initial={post} />)} pressedOpacity={0.6}>
+      <HStack spacing={6} padding={{ leading: H_PADDING + depth * INDENT + 52, vertical: 12 }} frame={{ maxWidth: "infinity", alignment: "leading" }} background={t.bg}>
+        <Text font={ty(T.md, "semibold")} foregroundStyle={t.primary}>Continue thread…</Text>
       </HStack>
       <Background alignment="topLeading">
         <Guides depth={depth} />
@@ -191,12 +212,14 @@ function MoreReplies({ post, depth }: { post: PostView; depth: number }) {
 
 function FocusedPost({ post, hasParent }: { post: PostView; hasParent: boolean }) {
   const nav = useNavigation();
+  const t = useTheme();
   const width = useWindowWidth() - H_PADDING * 2;
   const state = usePostState(post);
   const author = post.author;
   const me = useMyDid();
   const following = useIsFollowing(author);
   const toggleFollow = useInteractions((s) => s.toggleFollow);
+  const warning = mediaWarning(post);
   const openProfile = () => nav.push(<ProfileScreen actor={author.did} initial={author} />);
   const stats = [
     { n: state.repostCount, one: "repost", other: "reposts", open: () => nav.push(<ActorListScreen title="Reposted by" queryKey={["reposts", post.uri]} fetchPage={(c, s) => getRepostedBy(post.uri, c, s)} />) },
@@ -205,51 +228,68 @@ function FocusedPost({ post, hasParent }: { post: PostView; hasParent: boolean }
   ].filter((s) => s.n > 0);
 
   return (
-    <VStack alignment="leading" spacing={12} padding={{ horizontal: H_PADDING, top: hasParent ? 4 : 14, bottom: 6 }} accessibilityIdentifier="focused-post" accessibilityElement="contain">
+    <VStack alignment="leading" spacing={0} padding={{ horizontal: H_PADDING, top: hasParent ? 4 : 14 }} background={t.bg} accessibilityIdentifier="focused-post" accessibilityElement="contain">
       <HStack spacing={10}>
         <Button onPress={openProfile} pressedOpacity={0.7} accessibilityLabel={`${displayName(author)}'s profile`}>
           <HStack spacing={10}>
-            <Avatar uri={author.avatar} size={46} />
+            <Avatar uri={author.avatar} size={42} />
             <VStack alignment="leading" spacing={1}>
-              <Text font="headline" lineLimit={1}>{displayName(author)}</Text>
-              <Text font="subheadline" foregroundStyle={subtle} lineLimit={1}>@{author.handle}</Text>
+              <HStack spacing={3}>
+                <Text font={ty(T.md + 1, "bold")} foregroundStyle={t.text} lineLimit={1}>{displayName(author)}</Text>
+                {author.verification?.verifiedStatus === "valid" ? <Verified size={14} /> : null}
+              </HStack>
+              <Text font={ty(T.md)} foregroundStyle={t.textMedium} lineLimit={1}>@{author.handle}</Text>
             </VStack>
           </HStack>
         </Button>
         <Spacer />
-        {me && me !== author.did && !following ? <PillButton title="Follow" systemImage="plus" small onPress={() => toggleFollow(author)} /> : null}
+        {me && me !== author.did ? (
+          <PillButton title={following ? "Following" : "Follow"} systemImage={following ? "checkmark" : "plus"} variant={following ? "secondary" : "primary"} small onPress={() => toggleFollow(author)} />
+        ) : null}
       </HStack>
-      <RichText text={post.record.text} facets={post.record.facets} font={{ size: 19 }} selectable id="focused-text" />
-      {post.embed ? <Embed embed={post.embed} width={width} /> : null}
-      <Text font="footnote" foregroundStyle={subtle}>{fullTimestamp(post.record.createdAt ?? post.indexedAt)}</Text>
-      {stats.length ? (
-        <VStack spacing={10} alignment="leading">
-          <Rectangle fill={hairline} frame={{ maxWidth: "infinity", height: 0.5 }} />
-          <HStack spacing={16}>
-            {stats.map((s) => {
-              const label = (
-                <Text font="subheadline">
-                  <Text fontWeight="bold">{compact(s.n)}</Text>
-                  <Text foregroundStyle={subtle}> {counted(s.n, s.one, s.other).split(" ").slice(1).join(" ")}</Text>
-                </Text>
-              );
-              return s.open ? (
-                <Button key={s.one} onPress={s.open} buttonStyle="plain" accessibilityIdentifier={`stat-${s.other}`}>
-                  {label}
-                </Button>
-              ) : (
-                <VStack key={s.one}>{label}</VStack>
-              );
-            })}
-          </HStack>
-        </VStack>
-      ) : null}
-      <Rectangle fill={hairline} frame={{ maxWidth: "infinity", height: 0.5 }} />
-      <ActionBar post={post} large />
-      <Rectangle fill={hairline} frame={{ maxWidth: "infinity", height: 0.5 }} />
+      <VStack alignment="leading" spacing={12} padding={{ top: 12 }}>
+        <RichText text={post.record.text} facets={post.record.facets} size={T.focus} selectable id="focused-text" />
+        {post.embed ? (
+          warning ? (
+            <ContentHider warning={warning} width={width}>
+              <Embed embed={post.embed} width={width} />
+            </ContentHider>
+          ) : (
+            <Embed embed={post.embed} width={width} />
+          )
+        ) : null}
+        <Text font={ty(T.sm)} foregroundStyle={t.textMedium} padding={{ top: 2 }}>{fullTimestamp(post.record.createdAt ?? post.indexedAt)}</Text>
+      </VStack>
+      <VStack spacing={0} padding={{ top: 12 }}>
+        {stats.length ? (
+          <VStack spacing={0}>
+            <Rectangle fill={t.border} frame={{ maxWidth: "infinity", height: 0.5 }} />
+            <HStack spacing={18} padding={{ vertical: 12 }} frame={{ maxWidth: "infinity", alignment: "leading" }}>
+              {stats.map((s) => {
+                const label = (
+                  <Text font={ty(T.md)} foregroundStyle={t.textMedium}>
+                    <Text fontWeight="bold" foregroundStyle={t.text}>{compact(s.n)}</Text>
+                    <Text> {counted(s.n, s.one, s.other).split(" ").slice(1).join(" ")}</Text>
+                  </Text>
+                );
+                return s.open ? (
+                  <Button key={s.one} onPress={s.open} pressedOpacity={0.6} accessibilityIdentifier={`stat-${s.other}`}>
+                    {label}
+                  </Button>
+                ) : (
+                  <VStack key={s.one}>{label}</VStack>
+                );
+              })}
+            </HStack>
+          </VStack>
+        ) : null}
+        <Rectangle fill={t.border} frame={{ maxWidth: "infinity", height: 0.5 }} />
+        <ActionBar post={post} large />
+      </VStack>
+      <Rectangle fill={t.border} frame={{ height: 0.5 }} padding={{ horizontal: -H_PADDING }} />
       {hasParent ? (
         <Background alignment="topLeading">
-          <Rectangle fill={hairline} frame={{ width: 2, height: 6 }} padding={{ leading: 22 }} />
+          <Rectangle fill={t.bg100} frame={{ width: 2, height: 4 }} padding={{ leading: H_PADDING + 20 }} />
         </Background>
       ) : null}
     </VStack>

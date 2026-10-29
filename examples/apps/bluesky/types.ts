@@ -14,7 +14,7 @@ export type ProfileViewBasic = {
   labels?: Label[];
   viewer?: ViewerState;
   createdAt?: string;
-  associated?: { labeler?: boolean };
+  associated?: { labeler?: boolean; feedgens?: number; lists?: number; starterPacks?: number };
   verification?: { verifiedStatus?: "valid" | "invalid" | "none" };
 };
 
@@ -34,6 +34,7 @@ export type ViewerState = {
   blocking?: AtUri;
   following?: AtUri;
   followedBy?: AtUri;
+  knownFollowers?: { count: number; followers: ProfileViewBasic[] };
 };
 
 // MARK: Rich text
@@ -165,6 +166,20 @@ export type GeneratorView = {
 };
 
 export type TrendingTopic = { topic: string; displayName?: string; description?: string; link: string };
+
+/** A trend (app.bsky.unspecced.getTrends): a topic with its post count, status and some posters. */
+export type Trend = {
+  topic: string;
+  displayName: string;
+  link: string;
+  startedAt: string;
+  postCount: number;
+  status?: "hot" | string;
+  category?: string;
+  actors: ProfileViewBasic[];
+};
+
+export type ListView = { uri: AtUri; name: string; purpose: string; avatar?: string; description?: string; creator: ProfileViewBasic; listItemCount?: number };
 
 export type NotificationReason = "like" | "repost" | "follow" | "mention" | "reply" | "quote" | "starterpack-joined" | "like-via-repost" | "repost-via-repost" | "subscribed-post" | "verified" | "unverified";
 

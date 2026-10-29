@@ -30,10 +30,13 @@ export const useMyDid = () => useSession((s) => s.session?.did ?? null);
 /** App settings (not secret), also in localStorage. */
 type Settings = {
   appearance: "system" | "light" | "dark";
+  /** Which dark theme: Bluesky's dark blue-gray "dim", or black. */
+  darkTheme: "dim" | "dark";
   autoplayVideos: boolean;
   /** Feeds pinned to Home (generator URIs), signed in. */
   pinnedFeeds: string[];
   setAppearance(appearance: Settings["appearance"]): void;
+  setDarkTheme(theme: Settings["darkTheme"]): void;
   setAutoplay(on: boolean): void;
   togglePinned(uri: string): void;
 };
@@ -43,9 +46,11 @@ const makeSettings = () =>
   persist(
     (set) => ({
       appearance: "system",
+      darkTheme: "dim",
       autoplayVideos: true,
       pinnedFeeds: [],
       setAppearance: (appearance) => set({ appearance }),
+      setDarkTheme: (darkTheme) => set({ darkTheme }),
       setAutoplay: (autoplayVideos) => set({ autoplayVideos }),
       togglePinned: (uri) =>
         set(({ pinnedFeeds }) => ({ pinnedFeeds: pinnedFeeds.includes(uri) ? pinnedFeeds.filter((u) => u !== uri) : [...pinnedFeeds, uri] })),

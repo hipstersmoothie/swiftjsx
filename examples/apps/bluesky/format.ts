@@ -5,7 +5,7 @@ const compactFormat = new Intl.NumberFormat(undefined, { notation: "compact", ma
 const fullNumber = new Intl.NumberFormat();
 const dateShort = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
 const dateWithYear = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
-const fullTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const fullTime = new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeStyle: "short" });
 const joined = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 
 /** 1234 → "1.2K". */

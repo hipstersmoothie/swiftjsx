@@ -1,100 +1,167 @@
-// Full-screen images: swipe between them, pinch or double tap to zoom (and
-// drag to pan while zoomed), swipe down to dismiss. Gestures are worklets,
-// so the image follows the finger on the main thread.
+// Bluesky's lightbox: the tapped thumbnail zooms out into a black, full-screen
+// viewer (and back into the thumbnail when it closes). Swipe between images,
+// pinch or double tap to zoom (drag to pan while zoomed), swipe down to
+// dismiss. It draws in a Portal (above the tab bar, like a cover), and the
+// gestures are worklets so the image follows the finger on the main thread.
 import { useEffect, useRef, useState } from "react";
 import {
-  Sheet, ScrollView, ZStack, VStack, HStack, Text, Image, Button, Spacer, ShareLink, useEnvironment,
-  useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, haptic, type HostInstance,
+  Portal, AbsoluteStack, ScrollView, ZStack, VStack, HStack, Text, Image, Button, Spacer, ShareLink, useEnvironment,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, withAnimation, runOnJS, haptic, type HostInstance, type Frame,
 } from "swiftjsx";
-import { useUI } from "./store";
+import { useUI, type Corners } from "./store";
+import { ty } from "./theme";
 import type { ImageView } from "./types";
 
 export function ImageViewer() {
   const viewer = useUI((s) => s.viewer);
   const close = useUI((s) => s.closeImages);
+  if (!viewer) return null;
   return (
-    <Sheet item={viewer} onDismiss={close} fullScreen background="clear">
-      {(v) => <Gallery images={v.images} start={v.index} onClose={close} />}
-    </Sheet>
+    <Portal interactive alignment="center">
+      <Gallery key={viewer.id} images={viewer.images} start={viewer.index} origin={viewer.origin} radius={viewer.radius} onClose={close} />
+    </Portal>
   );
 }
 
 const MAX_ZOOM = 4;
+const ZOOM = { type: "smooth", duration: 0.36 } as const;
 
-function Gallery({ images, start, onClose }: { images: ImageView[]; start: number; onClose(): void }) {
-  const { window } = useEnvironment();
+/** Where an image of this aspect ratio sits when fitted to the screen. */
+function fitted(image: ImageView, width: number, height: number): Frame {
+  const ratio = image.aspectRatio ? image.aspectRatio.width / image.aspectRatio.height : 1;
+  let w = width;
+  let h = width / ratio;
+  if (h > height) {
+    h = height;
+    w = height * ratio;
+  }
+  return { x: (width - w) / 2, y: (height - h) / 2, width: w, height: h };
+}
+
+type Phase = "opening" | "open" | "closing";
+
+function Gallery({ images, start, origin, radius, onClose }: { images: ImageView[]; start: number; origin: Frame | null; radius: Corners; onClose(): void }) {
+  const { window, safeAreaInsets } = useEnvironment();
   const [page, setPage] = useState(start);
   const [zoomed, setZoomed] = useState(false);
+  // The flying image's frame: the thumbnail's, then the fitted one (and back when closing).
+  const [phase, setPhase] = useState<Phase>("opening");
+  const [flight, setFlight] = useState<{ frame: Frame; radius: Corners | number; dim: number } | null>(
+    origin ? { frame: origin, radius, dim: 0 } : null,
+  );
   const pager = useRef<HostInstance>(null);
+  // The Portal centers its child in the safe area: this height puts its top at the top of the screen.
+  const height = window.height + safeAreaInsets.top - safeAreaInsets.bottom;
+  const screen = { width: window.width, height: window.height };
   // Vertical drag (to dismiss) and how dim the backdrop is.
   const drag = useSharedValue(0);
   const backdrop = useAnimatedStyle(() => ({ opacity: 1 - Math.min(Math.abs(drag.get()) / 400, 0.8) }));
   const follow = useAnimatedStyle(() => ({ offset: { x: 0, y: drag.get() }, scale: 1 - Math.min(Math.abs(drag.get()) / 2000, 0.1) }));
   const chrome = useAnimatedStyle(() => ({ opacity: 1 - Math.min(Math.abs(drag.get()) / 120, 1) }));
+  const image = images[Math.min(page, images.length - 1)];
 
   useEffect(() => {
     if (start > 0) pager.current?.scrollTo(start, { animated: false });
-  }, [start]);
+    // Zoom out of the thumbnail on the next turn (after the first frame drew it in place).
+    const timer = setTimeout(() => {
+      if (!origin) {
+        withAnimation({ type: "easeOut", duration: 0.2 }, () => setPhase("open"));
+        return;
+      }
+      withAnimation(
+        ZOOM,
+        () => setFlight({ frame: fitted(images[start], screen.width, screen.height), radius: 0, dim: 1 }),
+        () => {
+          setPhase("open");
+          setFlight(null);
+        },
+      );
+    }, 16);
+    return () => clearTimeout(timer);
+    // Once, when the viewer opens.
+  }, []);
 
-  const dismiss = () => {
+  /** Back into the thumbnail when we're still on it; otherwise fade away. `dy` is where a swipe left the image. */
+  const dismiss = (dy = 0) => {
     haptic("light");
-    setTimeout(onClose, 120);
+    if (origin && page === start) {
+      const from = fitted(images[start], screen.width, screen.height);
+      setFlight({ frame: { ...from, y: from.y + dy }, radius: 0, dim: Math.max(0.2, 1 - Math.abs(dy) / 400) });
+      setPhase("closing");
+      setTimeout(() => withAnimation(ZOOM, () => setFlight({ frame: origin, radius, dim: 0 }), onClose), 16);
+    } else {
+      withAnimation({ type: "easeIn", duration: 0.18 }, () => setPhase("closing"), onClose);
+    }
   };
-  const image = images[Math.min(page, images.length - 1)];
+
+  const open = phase === "open";
+  const dim = flight ? flight.dim : open ? 1 : 0;
 
   return (
-    <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }} colorScheme="dark" accessibilityIdentifier="image-viewer" accessibilityElement="contain" statusBarHidden={false}>
-      <VStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background="black" animatedStyle={backdrop} ignoresSafeArea />
-      <ScrollView
-        ref={pager}
-        axis="horizontal"
-        paging
-        // Zoomed in, a horizontal drag pans the image instead of paging.
-        scrollEnabled={!zoomed}
-        spacing={0}
-        showsIndicators={false}
-        onScrollIndexChange={(i) => {
-          setPage(i);
-          setZoomed(false);
-        }}
-        frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-        animatedStyle={follow}
-        ignoresSafeArea
-      >
-        {images.map((img, i) => (
-          <ZoomableImage
-            key={img.fullsize}
-            image={img}
-            width={window.width}
-            active={i === page}
-            zoomed={zoomed && i === page}
-            onZoomChange={setZoomed}
-            drag={drag}
-            onDismiss={dismiss}
-          />
-        ))}
-      </ScrollView>
+    <ZStack alignment="top" frame={{ width: window.width, height }} accessibilityIdentifier="image-viewer" accessibilityElement="contain">
+      <VStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background="black" opacity={dim} animatedStyle={open ? backdrop : undefined} />
+      <VStack frame={{ width: window.width, height: window.height }} opacity={open ? 1 : 0}>
+        <ScrollView
+          ref={pager}
+          axis="horizontal"
+          paging
+          // Zoomed in, a horizontal drag pans the image instead of paging.
+          scrollEnabled={!zoomed}
+          spacing={0}
+          showsIndicators={false}
+          onScrollIndexChange={(i) => {
+            setPage(i);
+            setZoomed(false);
+          }}
+          frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+          animatedStyle={follow}
+        >
+          {images.map((img, i) => (
+            <ZoomableImage
+              key={img.fullsize}
+              image={img}
+              width={window.width}
+              active={i === page}
+              zoomed={zoomed && i === page}
+              onZoomChange={setZoomed}
+              drag={drag}
+              onDismiss={dismiss}
+            />
+          ))}
+        </ScrollView>
+      </VStack>
+      {flight ? (
+        <AbsoluteStack frame={{ width: window.width, height: window.height }} allowsHitTesting={false}>
+          <Image src={images[start].thumb} contentMode="fill" position={flight.frame} cornerRadius={flight.radius} placeholder="none" />
+        </AbsoluteStack>
+      ) : null}
       {/* Chrome: close, position, share; the alt text at the bottom. */}
-      <VStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }} animatedStyle={chrome} allowsHitTesting={!zoomed}>
-        <HStack padding={{ horizontal: 12, top: 4 }}>
-          <Button onPress={onClose} accessibilityLabel="Close" accessibilityIdentifier="close-viewer">
-            <Image systemName="xmark" font="headline" foregroundStyle="white" frame={{ width: 38, height: 38 }} background="black/45" cornerRadius="capsule" />
+      <VStack
+        frame={{ width: window.width, height: window.height }}
+        padding={{ top: safeAreaInsets.top, bottom: safeAreaInsets.bottom }}
+        opacity={open ? 1 : 0}
+        animatedStyle={open ? chrome : undefined}
+        allowsHitTesting={open && !zoomed}
+      >
+        <HStack padding={{ horizontal: 14, top: 6 }}>
+          <Button onPress={() => dismiss()} accessibilityLabel="Close" accessibilityIdentifier="close-viewer" pressedOpacity={0.6}>
+            <Image systemName="xmark" font={{ size: 17, weight: "semibold" }} foregroundStyle="white" frame={{ width: 36, height: 36 }} background="white/18" cornerRadius="capsule" />
           </Button>
           <Spacer />
           {images.length > 1 ? (
-            <Text font="subheadline" fontWeight="semibold" foregroundStyle="white" monospacedDigit padding={{ horizontal: 12, vertical: 6 }} background="black/45" cornerRadius="capsule">
+            <Text font={ty(15, "semibold")} foregroundStyle="white" monospacedDigit accessibilityIdentifier="viewer-counter">
               {page + 1} of {images.length}
             </Text>
           ) : null}
           <Spacer />
           <ShareLink url={image.fullsize} accessibilityLabel="Share image">
-            <Image systemName="square.and.arrow.up" font="headline" foregroundStyle="white" frame={{ width: 38, height: 38 }} background="black/45" cornerRadius="capsule" />
+            <Image systemName="square.and.arrow.up" font={{ size: 16, weight: "semibold" }} foregroundStyle="white" frame={{ width: 36, height: 36 }} background="white/18" cornerRadius="capsule" offset={{ y: -1 }} />
           </ShareLink>
         </HStack>
         <Spacer />
         {image.alt ? (
-          <ScrollView frame={{ maxWidth: "infinity", maxHeight: 140 }} background={{ gradient: ["clear", "black/80"] }}>
-            <Text font="subheadline" foregroundStyle="white" padding={{ horizontal: 16, vertical: 14 }} frame={{ maxWidth: "infinity", alignment: "leading" }} selectable>
+          <ScrollView frame={{ maxWidth: "infinity", maxHeight: 160 }} background={{ gradient: ["clear", "black/85"] }}>
+            <Text font={ty(15)} foregroundStyle="white" lineSpacing={3} padding={{ horizontal: 18, top: 24, bottom: 14 }} frame={{ maxWidth: "infinity", alignment: "leading" }} selectable accessibilityIdentifier="viewer-alt">
               {image.alt}
             </Text>
           </ScrollView>
@@ -111,7 +178,7 @@ type ZoomProps = {
   zoomed: boolean;
   onZoomChange(zoomed: boolean): void;
   drag: ReturnType<typeof useSharedValue<number>>;
-  onDismiss(): void;
+  onDismiss(dy: number): void;
 };
 
 function ZoomableImage({ image, width, active, zoomed, onZoomChange, drag, onDismiss }: ZoomProps) {
@@ -153,8 +220,9 @@ function ZoomableImage({ image, width, active, zoomed, onZoomChange, drag, onDis
         if (zoom.get() > 1.01) return;
         const y = e.translation.y;
         if (Math.abs(y) > 110 || Math.abs(e.predictedEndTranslation.y) > 420) {
-          drag.set(withTiming(y > 0 ? 1000 : -1000, { duration: 0.2, easing: "easeIn" }));
-          runOnJS(onDismiss)();
+          // The flying image takes over from where the finger left it.
+          runOnJS(onDismiss)(y);
+          drag.set(withTiming(0, { duration: 0.01 }));
         } else {
           drag.set(withSpring(0, { duration: 0.3, bounce: 0.25 }));
         }

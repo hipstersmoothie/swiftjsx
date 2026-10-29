@@ -433,22 +433,93 @@ final class GalleryTests: XCTestCase {
     }
 
     func testBluesky() {
+        // Screenshots go into the result bundle, and (in the simulator) to
+        // $BSKY_SHOTS when it's set, so they survive a run that has to be stopped.
+        let folder = ProcessInfo.processInfo.environment["BSKY_SHOTS"] ?? "/tmp/bsky-live"
+        try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+        var shots = 0
+        func shot(_ name: String) {
+            snapshot(name)
+            shots += 1
+            let file = URL(fileURLWithPath: folder).appendingPathComponent(String(format: "%02d-%@.png", shots, name))
+            try? XCUIScreen.main.screenshot().pngRepresentation.write(to: file)
+        }
         openApp("Bluesky")
-        // Discover (public AppView, signed out).
+        // The tab bar shows icons only: find its buttons by label, else by identifier.
+        func tab(_ name: String) -> XCUIElement {
+            let byLabel = app.tabBars.buttons[name]
+            return byLabel.exists ? byLabel : app.tabBars.buttons["tab-\(name.lowercased())"]
+        }
+        // Discover (public AppView, signed out), after the splash.
         let post = element("feed-item")
-        XCTAssert(post.waitForExistence(timeout: 20), "no posts loaded")
+        XCTAssert(post.waitForExistence(timeout: 25), "no posts loaded")
         sleep(4)  // images
-        snapshot("bsky-feed")
+        shot("bsky-feed")
+
+        // Feed tabs: tap one (the pager scrolls to it), then swipe back.
+        let scienceTab = element("feed-tab-2")
+        if scienceTab.waitForExistence(timeout: 5) {
+            scienceTab.tap()
+            sleep(4)
+            shot("bsky-feed-tabs")
+            // Swipe back a page at a time (the pager follows the finger).
+            for _ in 0..<2 {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.6))
+                    .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.6)), withVelocity: .fast, thenHoldForDuration: 0)
+                sleep(1)
+            }
+            sleep(1)
+            shot("bsky-feed-swiped-back")
+            let discover = element("feed-tab-0")
+            if discover.exists && !discover.isSelected { discover.tap(); sleep(2) }
+        }
+        // Scrolling down tucks the header away; scrolling up brings it back.
+        app.swipeUp(velocity: .slow)
+        sleep(2)
+        shot("bsky-feed-scrolled")
+        app.swipeDown(velocity: .slow)
+        sleep(2)
+        shot("bsky-feed-header-back")
+
+        // The drawer, from the header's menu button, or a swipe in from the leading edge.
+        let drawer = element("drawer-home")
+        let openDrawer = element("open-drawer")
+        if openDrawer.waitForExistence(timeout: 5) { openDrawer.tap() }
+        sleep(2)
+        if !(drawer.exists && drawer.isHittable) {
+            shot("bsky-debug-drawer-tap")
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.55))
+                .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.55)))
+            sleep(2)
+        }
+        shot("bsky-drawer")
+        if drawer.exists && drawer.isHittable { drawer.tap() } else {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        }
+        sleep(1)
+        // The header's Sign in opens the sign-in sheet.
+        let signIn = element("toolbar-sign-in")
+        if signIn.exists {
+            signIn.tap()
+            if app.buttons["Cancel"].waitForExistence(timeout: 3) {
+                shot("bsky-sign-in")
+                app.buttons["Cancel"].tap()
+                sleep(1)
+            } else {
+                shot("bsky-debug-sign-in-tap")
+            }
+        }
 
         // A thread: tap the post's relative time (plain text in the cell, not a button).
+        if !post.waitForExistence(timeout: 15) { shot("bsky-debug-no-post") }
         post.staticTexts.matching(NSPredicate(format: "label BEGINSWITH '· '")).firstMatch.tap()
         let focused = element("focused-post")
         XCTAssert(focused.waitForExistence(timeout: 15), "thread didn't open")
         sleep(3)
-        snapshot("bsky-thread")
+        shot("bsky-thread")
         app.swipeUp(velocity: .slow)
         sleep(2)
-        snapshot("bsky-thread-replies")
+        shot("bsky-thread-replies")
         app.swipeDown(velocity: .fast)
         sleep(1)
 
@@ -456,10 +527,18 @@ final class GalleryTests: XCTestCase {
         focused.buttons.matching(NSPredicate(format: "label ENDSWITH \"'s profile\"")).firstMatch.tap()
         XCTAssert(element("profile-header").waitForExistence(timeout: 15), "profile didn't open")
         sleep(4)
-        snapshot("bsky-profile")
-        element("profile-tab-replies").tap()
+        shot("bsky-profile")
+        // Scrolled: the banner collapses into the bar and the tabs pin under it.
+        app.swipeUp(velocity: .slow)
+        sleep(2)
+        shot("bsky-profile-collapsed")
+        let pinnedReplies = element("pinned-tab-replies")
+        if pinnedReplies.exists && pinnedReplies.isHittable { pinnedReplies.tap() } else {
+            for _ in 0..<6 where !element("profile-tab-replies").isHittable { app.swipeDown(velocity: .fast) }
+            element("profile-tab-replies").tap()
+        }
         sleep(4)
-        snapshot("bsky-profile-replies")
+        shot("bsky-profile-replies")
         // A reply shown under its parent (joined by a thread line) opens a
         // thread with the ancestors above, scrolled to the reply.
         let times = "label BEGINSWITH '· '"
@@ -472,33 +551,46 @@ final class GalleryTests: XCTestCase {
             sleep(1)
         }
         if let item = withParent {
-            snapshot("bsky-profile-reply-with-parent")
+            shot("bsky-profile-reply-with-parent")
             item.staticTexts.matching(NSPredicate(format: times)).element(boundBy: 1).tap()
             XCTAssert(element("focused-post").waitForExistence(timeout: 15), "reply thread didn't open")
             sleep(3)
-            snapshot("bsky-thread-ancestors")
+            shot("bsky-thread-ancestors")
             app.navigationBars.buttons.element(boundBy: 0).tap()
             sleep(1)
         }
-        // Back up to the tabs (the search above may have scrolled them away).
-        let media = element("profile-tab-media")
-        for _ in 0..<8 where !(media.exists && media.isHittable) { app.swipeDown(velocity: .fast) }
-        media.tap()
+        // The Media tab: pinned while scrolled, else in the header.
+        let pinnedMedia = element("pinned-tab-media")
+        if pinnedMedia.exists && pinnedMedia.isHittable { pinnedMedia.tap() } else {
+            let media = element("profile-tab-media")
+            for _ in 0..<8 where !(media.exists && media.isHittable) { app.swipeDown(velocity: .fast) }
+            media.tap()
+        }
         sleep(4)
-        snapshot("bsky-profile-media")
+        shot("bsky-profile-media")
+        // Back to Home's root (the feed).
+        for _ in 0..<4 where !(element("open-drawer").exists && element("open-drawer").isHittable) {
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            sleep(1)
+        }
 
-        // Search: trending topics and feeds, then people as you type.
-        app.tabBars.buttons["Search"].tap()
+        // Explore: trending topics, suggested accounts and feeds; then people as you type.
+        tab("Search").tap()
         XCTAssert(element("trending-topic").waitForExistence(timeout: 15), "no trending topics")
-        sleep(3)
-        snapshot("bsky-search")
+        sleep(4)
+        shot("bsky-search")
+        app.swipeUp(velocity: .slow)
+        sleep(2)
+        shot("bsky-explore-more")
+        app.swipeDown(velocity: .fast)
+        sleep(1)
         let search = app.searchFields.firstMatch
         XCTAssert(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("jay")
         XCTAssert(element("actor-row").waitForExistence(timeout: 15), "no typeahead results")
         sleep(3)
-        snapshot("bsky-search-typeahead")
+        shot("bsky-search-typeahead")
         // Put the field (and the keyboard) away so the tab bar comes back.
         for name in ["Cancel", "Close"] where app.buttons[name].exists {
             app.buttons[name].firstMatch.tap()
@@ -507,32 +599,43 @@ final class GalleryTests: XCTestCase {
         sleep(1)
 
         // Signed out: notifications and profile ask you to sign in.
-        app.tabBars.buttons["Notifications"].tap()
+        tab("Notifications").tap()
         XCTAssert(element("notifications-signed-out").waitForExistence(timeout: 5))
-        snapshot("bsky-notifications-signed-out")
-        app.tabBars.buttons["Profile"].tap()
+        shot("bsky-notifications-signed-out")
+        tab("Profile").tap()
         XCTAssert(element("sign-in-card").waitForExistence(timeout: 5))
-        snapshot("bsky-me-signed-out")
-        // Dark mode, from the app's own setting.
-        app.buttons["Dark"].tap()
+        shot("bsky-me-signed-out")
+        // Dark mode is Dim by default; then Dark (black). From the app's own settings.
+        element("color-mode-dark").tap()
         sleep(1)
-        app.tabBars.buttons["Home"].tap()
+        shot("bsky-settings-dim")
+        tab("Home").tap()
         sleep(2)
-        snapshot("bsky-feed-dark")
-        app.tabBars.buttons["Profile"].tap()
-        app.buttons["System"].tap()
+        shot("bsky-feed-dim")
+        tab("Profile").tap()
+        element("dark-theme-dark").tap()
+        tab("Home").tap()
+        sleep(2)
+        shot("bsky-feed-dark")
+        tab("Profile").tap()
+        element("dark-theme-dim").tap()
+        element("color-mode-system").tap()
 
-        // The image viewer, from the first image in the feed.
-        app.tabBars.buttons["Home"].tap()
+        // The image viewer, from the first image in the feed: it zooms out of the thumbnail.
+        tab("Home").tap()
+        sleep(1)
+        if element("feed-tab-0").exists { element("feed-tab-0").tap(); sleep(3) }
         let image = element("post-image")
         for _ in 0..<8 where !(image.exists && image.isHittable) {
             app.swipeUp(velocity: .slow)
         }
         if image.exists && image.isHittable {
             image.tap()
+            usleep(150_000)
+            shot("bsky-image-viewer-opening")
             XCTAssert(element("image-viewer").waitForExistence(timeout: 5), "viewer didn't open")
             sleep(3)
-            snapshot("bsky-image-viewer")
+            shot("bsky-image-viewer")
             app.swipeDown(velocity: .fast)
             XCTAssert(element("image-viewer").waitForNonExistence(timeout: 5), "swipe down didn't dismiss")
         }
