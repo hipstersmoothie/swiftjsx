@@ -32,6 +32,7 @@ import { StylesDemo } from "./screens/Styles";
 import { ControlsDemo } from "./screens/Controls";
 import { ChartsDemo } from "./screens/Charts";
 import { CanvasDemo } from "./screens/CanvasDemo";
+import { KitDemo } from "./screens/KitDemo";
 import { AnimationDemo } from "./screens/Animation";
 import { MediaDemo } from "./screens/Media";
 
@@ -52,6 +53,7 @@ const demos: Demo[] = [
   { title: "Media", subtitle: "Video, web views, maps", icon: "play.rectangle.on.rectangle", color: "red", screen: () => <MediaDemo /> },
   { title: "Charts", subtitle: "Swift Charts: bars, lines, areas, rules, scrubbing", icon: "chart.bar.xaxis", color: "pink", screen: () => <ChartsDemo /> },
   { title: "Canvas", subtitle: "Immediate-mode drawing from worklets: a pad, animated bars, a clock", icon: "scribble.variable", color: "indigo", screen: () => <CanvasDemo /> },
+  { title: "App kit", subtitle: "Toasts, empty states, live dates, avatars, chips, rings, a pager", icon: "shippingbox", color: "teal", screen: () => <KitDemo /> },
   { title: "Images", subtitle: "Remote images: cached, decoded off main", icon: "photo.on.rectangle", color: "cyan", screen: () => <ImagesDemo /> },
   { title: "Native", subtitle: "Objective-C APIs from JS, onMain()", icon: "cpu", color: "indigo", screen: () => <NativeDemo /> },
 ];

@@ -196,6 +196,11 @@ build reads `build/app.js` from the repo, so Fast Refresh works there too).
     `usePersistentState(key, initial)`.
   - `format.compact / percent / currency / bytes / duration / count / list /
     relativeTime / relativeDay`, with the Intl formatters cached (slow to make without a JIT).
+  - Views: `<Avatar src name ring badge>` (initials when there's no picture),
+    `<IconTile systemImage color>`, `<Chip label selected onPress>`, `<Badge value max>`,
+    `<ProgressRing value>{center}</ProgressRing>`, `<PageIndicator count page style>` (dots,
+    capsule, counter, story segments) and `<Pager page autoAdvance indicator>`. The gallery's
+    "App kit" screen shows them all.
 - **Platform services.** `haptic()`, `navigator.clipboard`, `openURL`; local
   `notifications` (permission, `schedule({ title, at | seconds, data })`, cancel, badge,
   action buttons via `setCategories` (text replies too), attachments, time-sensitive

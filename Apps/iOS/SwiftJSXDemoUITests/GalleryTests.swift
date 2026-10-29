@@ -1127,4 +1127,23 @@ final class GalleryTests: XCTestCase {
         XCTAssertEqual(element(id).frame.minY, before, accuracy: 6, "\(id) stays where it was")
         XCTAssertFalse(element("post--1").exists && element("post--1").isHittable, "the new posts are above, out of view")
     }
+    func testAppKit() {
+        open("App kit")
+        XCTAssert(element("pager").waitForExistence(timeout: 5))
+        sleep(1)
+        snapshot("kit-top")
+        element("chip-Unread").tap()
+        element("toast-saved").tap()
+        XCTAssert(element("toast").waitForExistence(timeout: 3), "the toast shows")
+        snapshot("kit-toast")
+        app.swipeUp()
+        let search = element("kit-search")
+        for _ in 0..<4 where !(search.exists && search.isHittable) { app.swipeUp() }
+        search.tap()
+        search.typeText("abc")
+        XCTAssert(XCTWaiter().wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'abc'"), evaluatedWith: element("kit-debounced"))], timeout: 3) == .completed)
+        app.swipeUp()
+        sleep(1)
+        snapshot("kit-bottom")
+    }
 }

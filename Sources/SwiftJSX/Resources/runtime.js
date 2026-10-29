@@ -242,7 +242,7 @@
                       });
                       return value;
                     },
-                    useEffect: function useEffect6(create) {
+                    useEffect: function useEffect7(create) {
                       nextHook();
                       hookLog.push({
                         displayName: null,
@@ -315,7 +315,7 @@
                       return [initialArg, function() {
                       }];
                     },
-                    useRef: function useRef7(initialValue) {
+                    useRef: function useRef8(initialValue) {
                       var hook = nextHook();
                       initialValue = null !== hook ? hook.memoizedState : {
                         current: initialValue
@@ -330,7 +330,7 @@
                       });
                       return initialValue;
                     },
-                    useState: function useState10(initialState) {
+                    useState: function useState11(initialState) {
                       var hook = nextHook();
                       initialState = null !== hook ? hook.memoizedState : "function" === typeof initialState ? initialState() : initialState;
                       hookLog.push({
@@ -34958,12 +34958,15 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     AnimatePresence: () => AnimatePresence,
     AreaMark: () => AreaMark,
     AsyncStorage: () => AsyncStorage,
+    Avatar: () => Avatar,
     Background: () => Background,
+    Badge: () => Badge,
     BarMark: () => BarMark,
     Button: () => Button,
     Canvas: () => Canvas,
     Capsule: () => Capsule,
     Chart: () => Chart,
+    Chip: () => Chip,
     Circle: () => Circle,
     ColorPicker: () => ColorPicker,
     ConfirmationDialog: () => ConfirmationDialog,
@@ -34980,6 +34983,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     GridRow: () => GridRow,
     HStack: () => HStack,
     HostInstance: () => HostInstance,
+    IconTile: () => IconTile,
     Image: () => Image,
     Label: () => Label,
     LabeledContent: () => LabeledContent,
@@ -35005,12 +35009,15 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     NavigationStack: () => NavigationStack,
     Navigator: () => Navigator,
     Overlay: () => Overlay,
+    PageIndicator: () => PageIndicator,
+    Pager: () => Pager,
     Path: () => Path,
     Picker: () => Picker,
     PickerHost: () => PickerHost,
     PointMark: () => PointMark,
     Polyline: () => Polyline,
     Portal: () => Portal,
+    ProgressRing: () => ProgressRing,
     ProgressView: () => ProgressView,
     Rectangle: () => Rectangle,
     RectangleMark: () => RectangleMark,
@@ -35053,6 +35060,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
     geolocation: () => geolocation,
     haptic: () => haptic,
     hot: () => hot,
+    initials: () => initials,
     isNativeAvailable: () => isNativeAvailable,
     keepAlive: () => keepAlive,
     keepAwake: () => keepAwake,
@@ -36696,13 +36704,949 @@ ${e.stack}` : String(e);
   }
   addRootElement("swiftjsx-toasts", /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ToastHost, {}));
 
-  // js/native-view.tsx
-  var import_compiler_runtime5 = __toESM(require_compiler_runtime(), 1);
-  var import_react6 = __toESM(require_react(), 1);
-
-  // js/native.ts
+  // js/kit-views.tsx
   var import_compiler_runtime4 = __toESM(require_compiler_runtime(), 1);
   var import_react5 = __toESM(require_react(), 1);
+  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+  function initials(name) {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return "";
+    const letters = words.length === 1 ? [...words[0]].slice(0, 2) : [[...words[0]][0], [...words[words.length - 1]][0]];
+    return letters.join("").toLocaleUpperCase();
+  }
+  var AVATAR_COLORS = ["blue", "indigo", "purple", "pink", "red", "orange", "teal", "green", "mint", "cyan"];
+  function colorFor(name) {
+    let hash = 0;
+    for (const ch of name) hash = hash * 31 + ch.codePointAt(0) | 0;
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  }
+  function Avatar(t0) {
+    const $ = (0, import_compiler_runtime4.c)(46);
+    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
+      for (let $i = 0; $i < 46; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+    }
+    let badge;
+    let color;
+    let props;
+    let ring;
+    let src;
+    let t1;
+    let t2;
+    let t3;
+    let t4;
+    let t5;
+    if ($[1] !== t0) {
+      ({
+        src,
+        name: t1,
+        size: t2,
+        shape: t3,
+        color,
+        ring,
+        ringWidth: t4,
+        ringGap: t5,
+        badge,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = badge;
+      $[3] = color;
+      $[4] = props;
+      $[5] = ring;
+      $[6] = src;
+      $[7] = t1;
+      $[8] = t2;
+      $[9] = t3;
+      $[10] = t4;
+      $[11] = t5;
+    } else {
+      badge = $[2];
+      color = $[3];
+      props = $[4];
+      ring = $[5];
+      src = $[6];
+      t1 = $[7];
+      t2 = $[8];
+      t3 = $[9];
+      t4 = $[10];
+      t5 = $[11];
+    }
+    const name = t1 === void 0 ? "" : t1;
+    const size = t2 === void 0 ? 40 : t2;
+    const shape = t3 === void 0 ? "circle" : t3;
+    const ringWidth = t4 === void 0 ? 2.5 : t4;
+    const ringGap = t5 === void 0 ? 2 : t5;
+    const corner = shape === "circle" ? "capsule" : size * 0.22;
+    const t6 = size * 0.4;
+    let t7;
+    if ($[12] !== t6) {
+      t7 = {
+        size: t6,
+        weight: "semibold"
+      };
+      $[12] = t6;
+      $[13] = t7;
+    } else {
+      t7 = $[13];
+    }
+    let t8;
+    if ($[14] !== size) {
+      t8 = {
+        width: size,
+        height: size
+      };
+      $[14] = size;
+      $[15] = t8;
+    } else {
+      t8 = $[15];
+    }
+    let t9;
+    if ($[16] !== color || $[17] !== name) {
+      t9 = color ?? colorFor(name);
+      $[16] = color;
+      $[17] = name;
+      $[18] = t9;
+    } else {
+      t9 = $[18];
+    }
+    let t10;
+    if ($[19] !== name) {
+      t10 = initials(name);
+      $[19] = name;
+      $[20] = t10;
+    } else {
+      t10 = $[20];
+    }
+    let t11;
+    if ($[21] !== t10 || $[22] !== t7 || $[23] !== t8 || $[24] !== t9) {
+      t11 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { font: t7, foregroundStyle: "white", frame: t8, background: t9, children: t10 });
+      $[21] = t10;
+      $[22] = t7;
+      $[23] = t8;
+      $[24] = t9;
+      $[25] = t11;
+    } else {
+      t11 = $[25];
+    }
+    const fallback = t11;
+    let t12;
+    if ($[26] !== corner || $[27] !== fallback || $[28] !== size || $[29] !== src) {
+      t12 = src ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { src, contentMode: "fill", frame: {
+        width: size,
+        height: size
+      }, cornerRadius: corner, children: fallback }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ZStack, { frame: {
+        width: size,
+        height: size
+      }, cornerRadius: corner, children: fallback });
+      $[26] = corner;
+      $[27] = fallback;
+      $[28] = size;
+      $[29] = src;
+      $[30] = t12;
+    } else {
+      t12 = $[30];
+    }
+    const picture = t12;
+    const outer = size + (ring ? (ringWidth + ringGap) * 2 : 0);
+    let t13;
+    if ($[31] !== outer) {
+      t13 = {
+        width: outer,
+        height: outer
+      };
+      $[31] = outer;
+      $[32] = t13;
+    } else {
+      t13 = $[32];
+    }
+    const t14 = name || void 0;
+    let t15;
+    if ($[33] !== ring || $[34] !== ringWidth || $[35] !== shape) {
+      t15 = ring ? shape === "circle" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: ring, lineWidth: ringWidth }) : null : null;
+      $[33] = ring;
+      $[34] = ringWidth;
+      $[35] = shape;
+      $[36] = t15;
+    } else {
+      t15 = $[36];
+    }
+    let t16;
+    if ($[37] !== badge) {
+      t16 = badge ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Overlay, { alignment: "bottomTrailing", children: badge }) : null;
+      $[37] = badge;
+      $[38] = t16;
+    } else {
+      t16 = $[38];
+    }
+    let t17;
+    if ($[39] !== picture || $[40] !== props || $[41] !== t13 || $[42] !== t14 || $[43] !== t15 || $[44] !== t16) {
+      t17 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(ZStack, { frame: t13, accessibilityElement: "ignore", accessibilityLabel: t14, ...props, children: [
+        t15,
+        picture,
+        t16
+      ] });
+      $[39] = picture;
+      $[40] = props;
+      $[41] = t13;
+      $[42] = t14;
+      $[43] = t15;
+      $[44] = t16;
+      $[45] = t17;
+    } else {
+      t17 = $[45];
+    }
+    return t17;
+  }
+  function IconTile(t0) {
+    const $ = (0, import_compiler_runtime4.c)(20);
+    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
+      for (let $i = 0; $i < 20; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+    }
+    let props;
+    let systemImage;
+    let t1;
+    let t2;
+    let t3;
+    let t4;
+    if ($[1] !== t0) {
+      ({
+        systemImage,
+        color: t1,
+        size: t2,
+        shape: t3,
+        foreground: t4,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = props;
+      $[3] = systemImage;
+      $[4] = t1;
+      $[5] = t2;
+      $[6] = t3;
+      $[7] = t4;
+    } else {
+      props = $[2];
+      systemImage = $[3];
+      t1 = $[4];
+      t2 = $[5];
+      t3 = $[6];
+      t4 = $[7];
+    }
+    const color = t1 === void 0 ? "blue" : t1;
+    const size = t2 === void 0 ? 29 : t2;
+    const shape = t3 === void 0 ? "rounded" : t3;
+    const foreground = t4 === void 0 ? "white" : t4;
+    const t5 = size * 0.55;
+    let t6;
+    if ($[8] !== t5) {
+      t6 = {
+        size: t5,
+        weight: "semibold"
+      };
+      $[8] = t5;
+      $[9] = t6;
+    } else {
+      t6 = $[9];
+    }
+    let t7;
+    if ($[10] !== size) {
+      t7 = {
+        width: size,
+        height: size
+      };
+      $[10] = size;
+      $[11] = t7;
+    } else {
+      t7 = $[11];
+    }
+    const t8 = shape === "circle" ? "capsule" : size * 0.225;
+    let t9;
+    if ($[12] !== color || $[13] !== foreground || $[14] !== props || $[15] !== systemImage || $[16] !== t6 || $[17] !== t7 || $[18] !== t8) {
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { systemName: systemImage, font: t6, foregroundStyle: foreground, frame: t7, background: color, cornerRadius: t8, accessibilityHidden: true, ...props });
+      $[12] = color;
+      $[13] = foreground;
+      $[14] = props;
+      $[15] = systemImage;
+      $[16] = t6;
+      $[17] = t7;
+      $[18] = t8;
+      $[19] = t9;
+    } else {
+      t9 = $[19];
+    }
+    return t9;
+  }
+  function Chip(t0) {
+    const $ = (0, import_compiler_runtime4.c)(28);
+    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
+      for (let $i = 0; $i < 28; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+    }
+    let label;
+    let onPress;
+    let props;
+    let systemImage;
+    let t1;
+    let t2;
+    if ($[1] !== t0) {
+      ({
+        label,
+        systemImage,
+        selected: t1,
+        tint: t2,
+        onPress,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = label;
+      $[3] = onPress;
+      $[4] = props;
+      $[5] = systemImage;
+      $[6] = t1;
+      $[7] = t2;
+    } else {
+      label = $[2];
+      onPress = $[3];
+      props = $[4];
+      systemImage = $[5];
+      t1 = $[6];
+      t2 = $[7];
+    }
+    const selected = t1 === void 0 ? false : t1;
+    const tint = t2 === void 0 ? "accent" : t2;
+    let t3;
+    if ($[8] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t3 = {
+        horizontal: 12,
+        vertical: 6
+      };
+      $[8] = t3;
+    } else {
+      t3 = $[8];
+    }
+    const t4 = selected ? tint : "secondarySystemFill";
+    const t5 = selected ? "white" : "primary";
+    let t6;
+    if ($[9] !== systemImage) {
+      t6 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Image, { systemName: systemImage, font: "caption" }) : null;
+      $[9] = systemImage;
+      $[10] = t6;
+    } else {
+      t6 = $[10];
+    }
+    let t7;
+    if ($[11] !== label) {
+      t7 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { font: "subheadline", fontWeight: "medium", children: label });
+      $[11] = label;
+      $[12] = t7;
+    } else {
+      t7 = $[12];
+    }
+    let t8;
+    if ($[13] !== t4 || $[14] !== t5 || $[15] !== t6 || $[16] !== t7) {
+      t8 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(HStack, { spacing: 5, padding: t3, background: t4, foregroundStyle: t5, cornerRadius: "capsule", children: [
+        t6,
+        t7
+      ] });
+      $[13] = t4;
+      $[14] = t5;
+      $[15] = t6;
+      $[16] = t7;
+      $[17] = t8;
+    } else {
+      t8 = $[17];
+    }
+    const body = t8;
+    if (!onPress) {
+      let t92;
+      if ($[18] !== body || $[19] !== props) {
+        t92 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(HStack, { accessibilityElement: "combine", ...props, children: body });
+        $[18] = body;
+        $[19] = props;
+        $[20] = t92;
+      } else {
+        t92 = $[20];
+      }
+      return t92;
+    }
+    let t9;
+    if ($[21] !== selected) {
+      t9 = selected ? ["selected"] : void 0;
+      $[21] = selected;
+      $[22] = t9;
+    } else {
+      t9 = $[22];
+    }
+    let t10;
+    if ($[23] !== body || $[24] !== onPress || $[25] !== props || $[26] !== t9) {
+      t10 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Button, { buttonStyle: "plain", onPress, accessibilityTraits: t9, ...props, children: body });
+      $[23] = body;
+      $[24] = onPress;
+      $[25] = props;
+      $[26] = t9;
+      $[27] = t10;
+    } else {
+      t10 = $[27];
+    }
+    return t10;
+  }
+  function Badge(t0) {
+    const $ = (0, import_compiler_runtime4.c)(13);
+    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
+      for (let $i = 0; $i < 13; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+    }
+    let props;
+    let t1;
+    let t2;
+    let value;
+    if ($[1] !== t0) {
+      ({
+        value,
+        max: t1,
+        color: t2,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = props;
+      $[3] = t1;
+      $[4] = t2;
+      $[5] = value;
+    } else {
+      props = $[2];
+      t1 = $[3];
+      t2 = $[4];
+      value = $[5];
+    }
+    const max = t1 === void 0 ? 99 : t1;
+    const color = t2 === void 0 ? "red" : t2;
+    if (value === 0 || value === "") {
+      return null;
+    }
+    const text = typeof value === "number" && value > max ? `${max}+` : String(value);
+    let t3;
+    if ($[6] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t3 = {
+        size: 12,
+        weight: "bold"
+      };
+      $[6] = t3;
+    } else {
+      t3 = $[6];
+    }
+    let t4;
+    let t5;
+    if ($[7] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t4 = {
+        horizontal: 6,
+        vertical: 2
+      };
+      t5 = {
+        minWidth: 20,
+        minHeight: 20
+      };
+      $[7] = t4;
+      $[8] = t5;
+    } else {
+      t4 = $[7];
+      t5 = $[8];
+    }
+    let t6;
+    if ($[9] !== color || $[10] !== props || $[11] !== text) {
+      t6 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { font: t3, monospacedDigit: true, foregroundStyle: "white", padding: t4, frame: t5, background: color, cornerRadius: "capsule", fixedSize: true, ...props, children: text });
+      $[9] = color;
+      $[10] = props;
+      $[11] = text;
+      $[12] = t6;
+    } else {
+      t6 = $[12];
+    }
+    return t6;
+  }
+  function ProgressRing(t0) {
+    const $ = (0, import_compiler_runtime4.c)(33);
+    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
+      for (let $i = 0; $i < 33; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+    }
+    let children;
+    let props;
+    let t1;
+    let t2;
+    let t3;
+    let t4;
+    let t5;
+    let value;
+    if ($[1] !== t0) {
+      ({
+        value,
+        total: t1,
+        lineWidth: t2,
+        color: t3,
+        track: t4,
+        allowsOverflow: t5,
+        children,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = children;
+      $[3] = props;
+      $[4] = t1;
+      $[5] = t2;
+      $[6] = t3;
+      $[7] = t4;
+      $[8] = t5;
+      $[9] = value;
+    } else {
+      children = $[2];
+      props = $[3];
+      t1 = $[4];
+      t2 = $[5];
+      t3 = $[6];
+      t4 = $[7];
+      t5 = $[8];
+      value = $[9];
+    }
+    const total = t1 === void 0 ? 1 : t1;
+    const lineWidth = t2 === void 0 ? 8 : t2;
+    const color = t3 === void 0 ? "accent" : t3;
+    const track = t4 === void 0 ? "systemFill" : t4;
+    const allowsOverflow = t5 === void 0 ? false : t5;
+    const fraction = total > 0 ? value / total : 0;
+    const shown = allowsOverflow ? fraction : Math.min(Math.max(fraction, 0), 1);
+    const first = Math.max(1e-4, Math.min(shown, 1));
+    let t6;
+    if ($[10] !== fraction) {
+      t6 = Math.round(fraction * 100);
+      $[10] = fraction;
+      $[11] = t6;
+    } else {
+      t6 = $[11];
+    }
+    const t7 = `${t6}%`;
+    let t8;
+    if ($[12] !== lineWidth || $[13] !== track) {
+      t8 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: track, lineWidth });
+      $[12] = lineWidth;
+      $[13] = track;
+      $[14] = t8;
+    } else {
+      t8 = $[14];
+    }
+    let t9;
+    if ($[15] !== first) {
+      t9 = [0, first];
+      $[15] = first;
+      $[16] = t9;
+    } else {
+      t9 = $[16];
+    }
+    const t10 = shown > 0 ? 1 : 0;
+    let t11;
+    if ($[17] !== color || $[18] !== lineWidth || $[19] !== t10 || $[20] !== t9) {
+      t11 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: color, lineWidth, lineCap: "round", trim: t9, rotation: -90, opacity: t10 });
+      $[17] = color;
+      $[18] = lineWidth;
+      $[19] = t10;
+      $[20] = t9;
+      $[21] = t11;
+    } else {
+      t11 = $[21];
+    }
+    let t12;
+    if ($[22] !== color || $[23] !== lineWidth || $[24] !== shown) {
+      t12 = shown > 1 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Circle, { stroke: color, lineWidth, lineCap: "round", trim: [0, Math.min(shown - 1, 1)], rotation: -90, shadow: {
+        radius: 2
+      } }) : null;
+      $[22] = color;
+      $[23] = lineWidth;
+      $[24] = shown;
+      $[25] = t12;
+    } else {
+      t12 = $[25];
+    }
+    let t13;
+    if ($[26] !== children || $[27] !== props || $[28] !== t11 || $[29] !== t12 || $[30] !== t7 || $[31] !== t8) {
+      t13 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(ZStack, { accessibilityElement: "combine", accessibilityValue: t7, ...props, children: [
+        t8,
+        t11,
+        t12,
+        children
+      ] });
+      $[26] = children;
+      $[27] = props;
+      $[28] = t11;
+      $[29] = t12;
+      $[30] = t7;
+      $[31] = t8;
+      $[32] = t13;
+    } else {
+      t13 = $[32];
+    }
+    return t13;
+  }
+  function PageIndicator(t0) {
+    const $ = (0, import_compiler_runtime4.c)(47);
+    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
+      for (let $i = 0; $i < 47; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+    }
+    let count;
+    let inactive;
+    let onSelect;
+    let page;
+    let props;
+    let t1;
+    let t2;
+    let t3;
+    if ($[1] !== t0) {
+      ({
+        count,
+        page,
+        style: t1,
+        tint: t2,
+        inactive,
+        progress: t3,
+        onSelect,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = count;
+      $[3] = inactive;
+      $[4] = onSelect;
+      $[5] = page;
+      $[6] = props;
+      $[7] = t1;
+      $[8] = t2;
+      $[9] = t3;
+    } else {
+      count = $[2];
+      inactive = $[3];
+      onSelect = $[4];
+      page = $[5];
+      props = $[6];
+      t1 = $[7];
+      t2 = $[8];
+      t3 = $[9];
+    }
+    const style = t1 === void 0 ? "dots" : t1;
+    const tint = t2 === void 0 ? "white" : t2;
+    const progress = t3 === void 0 ? 1 : t3;
+    const label = `Page ${page + 1} of ${count}`;
+    if (style === "counter") {
+      let t42;
+      if ($[10] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+        t42 = {
+          horizontal: 9,
+          vertical: 4
+        };
+        $[10] = t42;
+      } else {
+        t42 = $[10];
+      }
+      const t52 = `${page + 1} / ${count}`;
+      let t6;
+      if ($[11] !== label || $[12] !== props || $[13] !== t52) {
+        t6 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { font: "caption", fontWeight: "semibold", monospacedDigit: true, foregroundStyle: "white", padding: t42, background: "black/55", cornerRadius: "capsule", accessibilityLabel: label, ...props, children: t52 });
+        $[11] = label;
+        $[12] = props;
+        $[13] = t52;
+        $[14] = t6;
+      } else {
+        t6 = $[14];
+      }
+      return t6;
+    }
+    if (style === "segments") {
+      let t42;
+      if ($[15] !== count || $[16] !== inactive || $[17] !== page || $[18] !== progress || $[19] !== tint) {
+        let t53;
+        if ($[21] !== inactive || $[22] !== page || $[23] !== progress || $[24] !== tint) {
+          t53 = (_, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Capsule, { fill: inactive ?? "white/35", frame: {
+            maxWidth: "infinity",
+            height: 3
+          }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Overlay, { alignment: "leading", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Capsule, { fill: tint, scaleX: i < page ? 1 : i === page ? Math.max(1e-3, Math.min(progress, 1)) : 1e-3, transformAnchor: "leading", opacity: i <= page ? 1 : 0 }) }) }, i);
+          $[21] = inactive;
+          $[22] = page;
+          $[23] = progress;
+          $[24] = tint;
+          $[25] = t53;
+        } else {
+          t53 = $[25];
+        }
+        t42 = Array.from({
+          length: count
+        }, t53);
+        $[15] = count;
+        $[16] = inactive;
+        $[17] = page;
+        $[18] = progress;
+        $[19] = tint;
+        $[20] = t42;
+      } else {
+        t42 = $[20];
+      }
+      let t52;
+      if ($[26] !== label || $[27] !== props || $[28] !== t42) {
+        t52 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(HStack, { spacing: 4, accessibilityElement: "ignore", accessibilityLabel: label, ...props, children: t42 });
+        $[26] = label;
+        $[27] = props;
+        $[28] = t42;
+        $[29] = t52;
+      } else {
+        t52 = $[29];
+      }
+      return t52;
+    }
+    let t4;
+    if ($[30] !== count || $[31] !== inactive || $[32] !== onSelect || $[33] !== page || $[34] !== style || $[35] !== tint) {
+      let t52;
+      if ($[37] !== inactive || $[38] !== onSelect || $[39] !== page || $[40] !== style || $[41] !== tint) {
+        t52 = (__0, i_0) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Capsule, { fill: i_0 === page ? tint : inactive ?? "white/45", frame: {
+          width: style === "capsule" && i_0 === page ? 18 : 7,
+          height: 7
+        }, animation: "snappy", onTapGesture: onSelect ? () => onSelect(i_0) : void 0 }, i_0);
+        $[37] = inactive;
+        $[38] = onSelect;
+        $[39] = page;
+        $[40] = style;
+        $[41] = tint;
+        $[42] = t52;
+      } else {
+        t52 = $[42];
+      }
+      t4 = Array.from({
+        length: count
+      }, t52);
+      $[30] = count;
+      $[31] = inactive;
+      $[32] = onSelect;
+      $[33] = page;
+      $[34] = style;
+      $[35] = tint;
+      $[36] = t4;
+    } else {
+      t4 = $[36];
+    }
+    let t5;
+    if ($[43] !== label || $[44] !== props || $[45] !== t4) {
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(HStack, { spacing: 6, accessibilityElement: "ignore", accessibilityLabel: label, ...props, children: t4 });
+      $[43] = label;
+      $[44] = props;
+      $[45] = t4;
+      $[46] = t5;
+    } else {
+      t5 = $[46];
+    }
+    return t5;
+  }
+  function Pager(t0) {
+    const $ = (0, import_compiler_runtime4.c)(43);
+    if ($[0] !== "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f") {
+      for (let $i = 0; $i < 43; $i += 1) {
+        $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
+      }
+      $[0] = "c9cab7e929baab6e21f65ca4c7d2650c441b3d92316e25db01c172dae9e2e70f";
+    }
+    let autoAdvance;
+    let children;
+    let indicatorTint;
+    let onPageChange;
+    let page;
+    let props;
+    let t1;
+    let t2;
+    let t3;
+    if ($[1] !== t0) {
+      ({
+        children,
+        page,
+        onPageChange,
+        autoAdvance,
+        indicator: t1,
+        indicatorAlignment: t2,
+        indicatorTint,
+        spacing: t3,
+        ...props
+      } = t0);
+      $[1] = t0;
+      $[2] = autoAdvance;
+      $[3] = children;
+      $[4] = indicatorTint;
+      $[5] = onPageChange;
+      $[6] = page;
+      $[7] = props;
+      $[8] = t1;
+      $[9] = t2;
+      $[10] = t3;
+    } else {
+      autoAdvance = $[2];
+      children = $[3];
+      indicatorTint = $[4];
+      onPageChange = $[5];
+      page = $[6];
+      props = $[7];
+      t1 = $[8];
+      t2 = $[9];
+      t3 = $[10];
+    }
+    const indicator = t1 === void 0 ? "dots" : t1;
+    const indicatorAlignment = t2 === void 0 ? "bottom" : t2;
+    const spacing = t3 === void 0 ? 0 : t3;
+    let t4;
+    if ($[11] !== children) {
+      t4 = children.filter(_temp7);
+      $[11] = children;
+      $[12] = t4;
+    } else {
+      t4 = $[12];
+    }
+    const pages = t4;
+    const ref = (0, import_react5.useRef)(null);
+    const [shown, setShown] = (0, import_react5.useState)(page ?? 0);
+    const [dragging, setDragging] = (0, import_react5.useState)(false);
+    let t5;
+    if ($[13] !== page || $[14] !== shown) {
+      t5 = () => {
+        if (page === void 0 || page === shown) {
+          return;
+        }
+        ref.current?.scrollTo(page, {
+          animated: true
+        });
+      };
+      $[13] = page;
+      $[14] = shown;
+      $[15] = t5;
+    } else {
+      t5 = $[15];
+    }
+    let t6;
+    if ($[16] !== page) {
+      t6 = [page];
+      $[16] = page;
+      $[17] = t6;
+    } else {
+      t6 = $[17];
+    }
+    (0, import_react5.useEffect)(t5, t6);
+    let t7;
+    let t8;
+    if ($[18] !== autoAdvance || $[19] !== dragging || $[20] !== pages.length || $[21] !== shown) {
+      t7 = () => {
+        if (!autoAdvance || dragging || pages.length < 2) {
+          return;
+        }
+        const timer2 = setTimeout(() => ref.current?.scrollTo((shown + 1) % pages.length, {
+          animated: true
+        }), autoAdvance * 1e3);
+        return () => clearTimeout(timer2);
+      };
+      t8 = [autoAdvance, dragging, shown, pages.length];
+      $[18] = autoAdvance;
+      $[19] = dragging;
+      $[20] = pages.length;
+      $[21] = shown;
+      $[22] = t7;
+      $[23] = t8;
+    } else {
+      t7 = $[22];
+      t8 = $[23];
+    }
+    (0, import_react5.useEffect)(t7, t8);
+    let t9;
+    if ($[24] !== onPageChange) {
+      t9 = (i) => {
+        setShown(i);
+        onPageChange?.(i);
+      };
+      $[24] = onPageChange;
+      $[25] = t9;
+    } else {
+      t9 = $[25];
+    }
+    let t10;
+    if ($[26] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
+      t10 = (phase) => setDragging(phase === "tracking" || phase === "interacting");
+      $[26] = t10;
+    } else {
+      t10 = $[26];
+    }
+    let t11;
+    if ($[27] !== pages) {
+      t11 = pages.map(_temp23);
+      $[27] = pages;
+      $[28] = t11;
+    } else {
+      t11 = $[28];
+    }
+    let t12;
+    if ($[29] !== spacing || $[30] !== t11 || $[31] !== t9) {
+      t12 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ScrollView, { ref, axis: "horizontal", paging: true, spacing, showsIndicators: false, onScrollIndexChange: t9, onScrollPhaseChange: t10, children: t11 });
+      $[29] = spacing;
+      $[30] = t11;
+      $[31] = t9;
+      $[32] = t12;
+    } else {
+      t12 = $[32];
+    }
+    let t13;
+    if ($[33] !== indicator || $[34] !== indicatorAlignment || $[35] !== indicatorTint || $[36] !== pages.length || $[37] !== shown) {
+      t13 = indicator !== "none" && pages.length > 1 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Overlay, { alignment: indicatorAlignment, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PageIndicator, { count: pages.length, page: shown, style: indicator, tint: indicatorTint, padding: 12, onSelect: (i_1) => ref.current?.scrollTo(i_1, {
+        animated: true
+      }) }) }) : null;
+      $[33] = indicator;
+      $[34] = indicatorAlignment;
+      $[35] = indicatorTint;
+      $[36] = pages.length;
+      $[37] = shown;
+      $[38] = t13;
+    } else {
+      t13 = $[38];
+    }
+    let t14;
+    if ($[39] !== props || $[40] !== t12 || $[41] !== t13) {
+      t14 = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(ZStack, { ...props, children: [
+        t12,
+        t13
+      ] });
+      $[39] = props;
+      $[40] = t12;
+      $[41] = t13;
+      $[42] = t14;
+    } else {
+      t14 = $[42];
+    }
+    return t14;
+  }
+  function _temp23(child, i_0) {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ZStack, { relativeWidth: 1, children: child }, i_0);
+  }
+  function _temp7(c) {
+    return c != null && c !== false;
+  }
+
+  // js/native-view.tsx
+  var import_compiler_runtime6 = __toESM(require_compiler_runtime(), 1);
+  var import_react7 = __toESM(require_react(), 1);
+
+  // js/native.ts
+  var import_compiler_runtime5 = __toESM(require_compiler_runtime(), 1);
+  var import_react6 = __toESM(require_react(), 1);
   var host2 = globalThis;
   function isNativeAvailable() {
     return host2.native != null;
@@ -36755,7 +37699,7 @@ ${e.stack}` : String(e);
     return (...args) => void onJS(() => fn(...args));
   }
   function useNativeValue(read, t0) {
-    const $ = (0, import_compiler_runtime4.c)(18);
+    const $ = (0, import_compiler_runtime5.c)(18);
     if ($[0] !== "01044f7b19a7d200b4ede2040d495e951247117197376ea9cf4680edcfbfea03") {
       for (let $i = 0; $i < 18; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36777,7 +37721,7 @@ ${e.stack}` : String(e);
       mainThread: t2
     } = options;
     const mainThread = t2 === void 0 ? true : t2;
-    const [value, setValue] = (0, import_react5.useState)(void 0);
+    const [value, setValue] = (0, import_react6.useState)(void 0);
     let t3;
     if ($[3] !== notifications2) {
       t3 = notifications2 == null ? [] : Array.isArray(notifications2) ? notifications2 : [notifications2];
@@ -36804,14 +37748,14 @@ ${e.stack}` : String(e);
     } else {
       t5 = $[8];
     }
-    const readNow = (0, import_react5.useEffectEvent)(t5);
+    const readNow = (0, import_react6.useEffectEvent)(t5);
     let t6;
     if ($[9] !== mainThread || $[10] !== names || $[11] !== poll || $[12] !== readNow) {
       t6 = () => {
         let live2 = true;
         const refresh = () => {
           const result = mainThread ? onMain(readNow) : Promise.resolve().then(readNow);
-          result.then((v) => live2 && setValue(() => v)).catch(_temp7);
+          result.then((v) => live2 && setValue(() => v)).catch(_temp8);
         };
         refresh();
         const center = native.NSNotificationCenter.defaultCenter;
@@ -36843,10 +37787,10 @@ ${e.stack}` : String(e);
     } else {
       t7 = $[17];
     }
-    (0, import_react5.useEffect)(t6, t7);
+    (0, import_react6.useEffect)(t6, t7);
     return value;
   }
-  function _temp7(e) {
+  function _temp8(e) {
     return console.error(e);
   }
   function defineNativeClass(name, spec) {
@@ -36969,12 +37913,12 @@ ${e.stack}` : String(e);
   }
 
   // js/native-view.tsx
-  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
   var NativeViewHost = "NativeView";
   var nextView = 1;
   var newViewKey = () => `swiftjsx.nativeView.${nextView++}`;
   function NativeView(t0) {
-    const $ = (0, import_compiler_runtime5.c)(16);
+    const $ = (0, import_compiler_runtime6.c)(16);
     if ($[0] !== "9d8dd83b5dbb3502064eb5ad226218425b63bbe8b8a7e3caea576c7922252ed3") {
       for (let $i = 0; $i < 16; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -36999,7 +37943,7 @@ ${e.stack}` : String(e);
       onCreate = $[3];
       props = $[4];
     }
-    const [key, setKey] = (0, import_react6.useState)(null);
+    const [key, setKey] = (0, import_react7.useState)(null);
     let t1;
     if ($[5] !== create || $[6] !== onCreate) {
       t1 = {
@@ -37012,7 +37956,7 @@ ${e.stack}` : String(e);
     } else {
       t1 = $[7];
     }
-    const latest = (0, import_react6.useRef)(t1);
+    const latest = (0, import_react7.useRef)(t1);
     let t2;
     if ($[8] !== create || $[9] !== onCreate) {
       t2 = () => {
@@ -37027,7 +37971,7 @@ ${e.stack}` : String(e);
     } else {
       t2 = $[10];
     }
-    (0, import_react6.useEffect)(t2);
+    (0, import_react7.useEffect)(t2);
     let t3;
     let t4;
     if ($[11] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
@@ -37038,10 +37982,10 @@ ${e.stack}` : String(e);
           const view = latest.current.create();
           native.NSThread.mainThread.threadDictionary.setObjectForKey(view, id);
           latest.current.onCreate?.(view);
-        }).then(() => live2 && setKey(id), _temp8);
+        }).then(() => live2 && setKey(id), _temp9);
         return () => {
           live2 = false;
-          onMain(() => native.NSThread.mainThread.threadDictionary.removeObjectForKey(id)).catch(_temp23);
+          onMain(() => native.NSThread.mainThread.threadDictionary.removeObjectForKey(id)).catch(_temp24);
         };
       };
       t4 = [];
@@ -37051,10 +37995,10 @@ ${e.stack}` : String(e);
       t3 = $[11];
       t4 = $[12];
     }
-    (0, import_react6.useEffect)(t3, t4);
+    (0, import_react7.useEffect)(t3, t4);
     let t5;
     if ($[13] !== key || $[14] !== props) {
-      t5 = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(NativeViewHost, { ...props, viewKey: key });
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(NativeViewHost, { ...props, viewKey: key });
       $[13] = key;
       $[14] = props;
       $[15] = t5;
@@ -37063,16 +38007,16 @@ ${e.stack}` : String(e);
     }
     return t5;
   }
-  function _temp23() {
+  function _temp24() {
   }
-  function _temp8(error) {
+  function _temp9(error) {
     return console.error("NativeView create() failed:", error);
   }
 
   // js/navigation.tsx
-  var import_compiler_runtime6 = __toESM(require_compiler_runtime(), 1);
-  var import_react7 = __toESM(require_react(), 1);
-  var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
+  var import_compiler_runtime7 = __toESM(require_compiler_runtime(), 1);
+  var import_react8 = __toESM(require_react(), 1);
+  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
   var attachers = /* @__PURE__ */ new WeakMap();
   function attach(ref, nav) {
     attachers.get(ref)?.(nav);
@@ -37100,9 +38044,9 @@ ${e.stack}` : String(e);
     });
     return ref;
   }
-  var NavigationContext = (0, import_react7.createContext)(null);
+  var NavigationContext = (0, import_react8.createContext)(null);
   function Navigator(t0) {
-    const $ = (0, import_compiler_runtime6.c)(27);
+    const $ = (0, import_compiler_runtime7.c)(27);
     if ($[0] !== "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7") {
       for (let $i = 0; $i < 27; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37134,8 +38078,8 @@ ${e.stack}` : String(e);
     } else {
       t1 = $[5];
     }
-    const [stack, setStack] = (0, import_react7.useState)(t1);
-    const lastKey = (0, import_react7.useRef)(0);
+    const [stack, setStack] = (0, import_react8.useState)(t1);
+    const lastKey = (0, import_react8.useRef)(0);
     let t2;
     let t3;
     let t4;
@@ -37148,7 +38092,7 @@ ${e.stack}` : String(e);
           screen
         }]);
       };
-      t3 = () => setStack(_temp9);
+      t3 = () => setStack(_temp10);
       t4 = () => setStack([]);
       t5 = (screen_0) => {
         const key_0 = lastKey.current = lastKey.current + 1;
@@ -37197,7 +38141,7 @@ ${e.stack}` : String(e);
     } else {
       t7 = $[14];
     }
-    (0, import_react7.useLayoutEffect)(t7);
+    (0, import_react8.useLayoutEffect)(t7);
     let t8;
     if ($[15] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
       t8 = (depth) => setStack((s_2) => s_2.slice(0, depth));
@@ -37207,7 +38151,7 @@ ${e.stack}` : String(e);
     }
     let t9;
     if ($[16] !== children) {
-      t9 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(NavigationPage, { children });
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(NavigationPage, { children });
       $[16] = children;
       $[17] = t9;
     } else {
@@ -37215,7 +38159,7 @@ ${e.stack}` : String(e);
     }
     let t10;
     if ($[18] !== stack) {
-      t10 = stack.map(_temp24);
+      t10 = stack.map(_temp25);
       $[18] = stack;
       $[19] = t10;
     } else {
@@ -37223,7 +38167,7 @@ ${e.stack}` : String(e);
     }
     let t11;
     if ($[20] !== modifiers || $[21] !== t10 || $[22] !== t9) {
-      t11 = /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(NavigationStack, { ...modifiers, onPathChange: t8, children: [
+      t11 = /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(NavigationStack, { ...modifiers, onPathChange: t8, children: [
         t9,
         t10
       ] });
@@ -37236,7 +38180,7 @@ ${e.stack}` : String(e);
     }
     let t12;
     if ($[24] !== nav || $[25] !== t11) {
-      t12 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(NavigationContext.Provider, { value: nav, children: t11 });
+      t12 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(NavigationContext.Provider, { value: nav, children: t11 });
       $[24] = nav;
       $[25] = t11;
       $[26] = t12;
@@ -37245,28 +38189,28 @@ ${e.stack}` : String(e);
     }
     return t12;
   }
-  function _temp24(entry) {
-    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(NavigationPage, { children: entry.screen }, entry.key);
+  function _temp25(entry) {
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(NavigationPage, { children: entry.screen }, entry.key);
   }
-  function _temp9(s_0) {
+  function _temp10(s_0) {
     return s_0.slice(0, -1);
   }
   function useNavigation() {
-    const $ = (0, import_compiler_runtime6.c)(1);
+    const $ = (0, import_compiler_runtime7.c)(1);
     if ($[0] !== "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
       $[0] = "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7";
     }
-    const nav = (0, import_react7.useContext)(NavigationContext);
+    const nav = (0, import_react8.useContext)(NavigationContext);
     if (!nav) {
       throw new Error("useNavigation() must be used inside <Navigator>");
     }
     return nav;
   }
   function NavigationSplitView(t0) {
-    const $ = (0, import_compiler_runtime6.c)(22);
+    const $ = (0, import_compiler_runtime7.c)(22);
     if ($[0] !== "26ea8436df9f403f3292c1d57bb10aa908b472a1cf467d1a1ed2bbc7b3c07de7") {
       for (let $i = 0; $i < 22; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37334,7 +38278,7 @@ ${e.stack}` : String(e);
     if ($[16] !== columns || $[17] !== content) {
       t5 = columns.map((t62) => {
         const [column, children] = t62;
-        return column === "content" && content === void 0 ? null : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SplitColumn, { column, children }, column);
+        return column === "content" && content === void 0 ? null : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(SplitColumn, { column, children }, column);
       });
       $[16] = columns;
       $[17] = content;
@@ -37344,7 +38288,7 @@ ${e.stack}` : String(e);
     }
     let t6;
     if ($[19] !== props || $[20] !== t5) {
-      t6 = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(NavigationSplitViewHost, { ...props, children: t5 });
+      t6 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(NavigationSplitViewHost, { ...props, children: t5 });
       $[19] = props;
       $[20] = t5;
       $[21] = t6;
@@ -37355,16 +38299,16 @@ ${e.stack}` : String(e);
   }
 
   // js/virtual-list.tsx
-  var import_compiler_runtime7 = __toESM(require_compiler_runtime(), 1);
-  var import_react8 = __toESM(require_react(), 1);
-  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+  var import_compiler_runtime8 = __toESM(require_compiler_runtime(), 1);
+  var import_react9 = __toESM(require_react(), 1);
+  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
   var VirtualListHost = "VirtualList";
   var VirtualListHeader = "VirtualListHeader";
   var VirtualListStickyHeader = "VirtualListStickyHeader";
   var VirtualListFooter = "VirtualListFooter";
   var VirtualRow = "VirtualRow";
   function VirtualList(t0) {
-    const $ = (0, import_compiler_runtime7.c)(48);
+    const $ = (0, import_compiler_runtime8.c)(48);
     if ($[0] !== "159be349b7ebc5d346c8be3d423b8766511beb80945bea5a9f2e56e85ae8f712") {
       for (let $i = 0; $i < 48; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37440,9 +38384,9 @@ ${e.stack}` : String(e);
     } else {
       t5 = $[15];
     }
-    const [range, setRange] = (0, import_react8.useState)(t5);
-    const previousFirst = (0, import_react8.useRef)(0);
-    const endReachedAt = (0, import_react8.useRef)(-1);
+    const [range, setRange] = (0, import_react9.useState)(t5);
+    const previousFirst = (0, import_react9.useRef)(0);
+    const endReachedAt = (0, import_react9.useRef)(-1);
     let t6;
     if ($[16] !== data.length || $[17] !== onEndReached || $[18] !== onEndReachedThreshold || $[19] !== overscan) {
       t6 = (t72) => {
@@ -37489,7 +38433,7 @@ ${e.stack}` : String(e);
       rows = [];
       const end = Math.min(range.end, data.length);
       for (let i = range.start; i < end; i++) {
-        rows.push(/* @__PURE__ */ (0, import_jsx_runtime4.jsx)(VirtualRow, { index: i, children: renderItem(data[i], i) }, keyExtractor ? keyExtractor(data[i], i) : i));
+        rows.push(/* @__PURE__ */ (0, import_jsx_runtime5.jsx)(VirtualRow, { index: i, children: renderItem(data[i], i) }, keyExtractor ? keyExtractor(data[i], i) : i));
       }
       $[21] = data;
       $[22] = keyExtractor;
@@ -37512,7 +38456,7 @@ ${e.stack}` : String(e);
     }
     let t8;
     if ($[31] !== header) {
-      t8 = header != null ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(VirtualListHeader, { children: header }) : null;
+      t8 = header != null ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(VirtualListHeader, { children: header }) : null;
       $[31] = header;
       $[32] = t8;
     } else {
@@ -37520,7 +38464,7 @@ ${e.stack}` : String(e);
     }
     let t9;
     if ($[33] !== stickyHeader) {
-      t9 = stickyHeader != null ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(VirtualListStickyHeader, { children: stickyHeader }) : null;
+      t9 = stickyHeader != null ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(VirtualListStickyHeader, { children: stickyHeader }) : null;
       $[33] = stickyHeader;
       $[34] = t9;
     } else {
@@ -37528,7 +38472,7 @@ ${e.stack}` : String(e);
     }
     let t10;
     if ($[35] !== footer) {
-      t10 = footer != null ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(VirtualListFooter, { children: footer }) : null;
+      t10 = footer != null ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(VirtualListFooter, { children: footer }) : null;
       $[35] = footer;
       $[36] = t10;
     } else {
@@ -37536,7 +38480,7 @@ ${e.stack}` : String(e);
     }
     let t11;
     if ($[37] !== children || $[38] !== data.length || $[39] !== estimatedItemHeight || $[40] !== onRangeChange || $[41] !== rest || $[42] !== rows || $[43] !== t10 || $[44] !== t7 || $[45] !== t8 || $[46] !== t9) {
-      t11 = /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, anchorKeys: t7, children: [
+      t11 = /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, anchorKeys: t7, children: [
         children,
         t8,
         t9,
@@ -37561,11 +38505,11 @@ ${e.stack}` : String(e);
   }
 
   // js/presentations.tsx
-  var import_compiler_runtime8 = __toESM(require_compiler_runtime(), 1);
-  var import_react9 = __toESM(require_react(), 1);
-  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+  var import_compiler_runtime9 = __toESM(require_compiler_runtime(), 1);
+  var import_react10 = __toESM(require_react(), 1);
+  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
   function usePresentation(props) {
-    const $ = (0, import_compiler_runtime8.c)(9);
+    const $ = (0, import_compiler_runtime9.c)(9);
     if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 9; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37573,16 +38517,16 @@ ${e.stack}` : String(e);
       $[0] = "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510";
     }
     const presented = props.item !== void 0 ? props.item !== null : !!props.isPresented;
-    const [shown, setShown] = (0, import_react9.useState)(props.item);
-    const [wasPresented, setWasPresented] = (0, import_react9.useState)(presented);
-    const [generation, setGeneration] = (0, import_react9.useState)(0);
+    const [shown, setShown] = (0, import_react10.useState)(props.item);
+    const [wasPresented, setWasPresented] = (0, import_react10.useState)(presented);
+    const [generation, setGeneration] = (0, import_react10.useState)(0);
     if (props.item != null && props.item !== shown) {
       setShown(props.item);
     }
     if (presented !== wasPresented) {
       setWasPresented(presented);
       if (presented) {
-        setGeneration(_temp10);
+        setGeneration(_temp11);
       }
     }
     let t0;
@@ -37613,11 +38557,11 @@ ${e.stack}` : String(e);
     }
     return t1;
   }
-  function _temp10(g4) {
+  function _temp11(g4) {
     return g4 + 1;
   }
   function Sheet(props) {
-    const $ = (0, import_compiler_runtime8.c)(22);
+    const $ = (0, import_compiler_runtime9.c)(22);
     if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 22; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37629,7 +38573,7 @@ ${e.stack}` : String(e);
       generation,
       content
     } = usePresentation(props);
-    const [mounted, setMounted] = (0, import_react9.useState)(presented);
+    const [mounted, setMounted] = (0, import_react10.useState)(presented);
     if (presented && !mounted) {
       setMounted(true);
     }
@@ -37649,7 +38593,7 @@ ${e.stack}` : String(e);
     }
     let t1;
     if ($[4] !== content || $[5] !== generation || $[6] !== mounted || $[7] !== props.keepState) {
-      t1 = mounted || props.keepState ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Fresh, { children: content }, props.keepState ? 0 : generation) : null;
+      t1 = mounted || props.keepState ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Fresh, { children: content }, props.keepState ? 0 : generation) : null;
       $[4] = content;
       $[5] = generation;
       $[6] = mounted;
@@ -37660,7 +38604,7 @@ ${e.stack}` : String(e);
     }
     let t2;
     if ($[9] !== presented || $[10] !== props.background || $[11] !== props.cornerRadius || $[12] !== props.detents || $[13] !== props.dragIndicator || $[14] !== props.fullScreen || $[15] !== props.interactiveDismissDisabled || $[16] !== props.onDismiss || $[17] !== props.onDismissAttempt || $[18] !== props.zoomFrom || $[19] !== t0 || $[20] !== t1) {
-      t2 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, onDismissAttempt: props.onDismissAttempt, onDismissed: t0, detents: props.detents, fullScreen: props.fullScreen, zoomFrom: props.zoomFrom, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
+      t2 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, onDismissAttempt: props.onDismissAttempt, onDismissed: t0, detents: props.detents, fullScreen: props.fullScreen, zoomFrom: props.zoomFrom, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
       $[9] = presented;
       $[10] = props.background;
       $[11] = props.cornerRadius;
@@ -37680,7 +38624,7 @@ ${e.stack}` : String(e);
     return t2;
   }
   function useDialog(props) {
-    const $ = (0, import_compiler_runtime8.c)(13);
+    const $ = (0, import_compiler_runtime9.c)(13);
     if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 13; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37732,7 +38676,7 @@ ${e.stack}` : String(e);
     return t3;
   }
   function Alert(props) {
-    const $ = (0, import_compiler_runtime8.c)(7);
+    const $ = (0, import_compiler_runtime9.c)(7);
     if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37747,7 +38691,7 @@ ${e.stack}` : String(e);
     } = useDialog(props);
     let t0;
     if ($[1] !== content || $[2] !== message || $[3] !== presented || $[4] !== props.onDismiss || $[5] !== title) {
-      t0 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(AlertHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
+      t0 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(AlertHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
       $[1] = content;
       $[2] = message;
       $[3] = presented;
@@ -37760,7 +38704,7 @@ ${e.stack}` : String(e);
     return t0;
   }
   function ConfirmationDialog(props) {
-    const $ = (0, import_compiler_runtime8.c)(7);
+    const $ = (0, import_compiler_runtime9.c)(7);
     if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37775,7 +38719,7 @@ ${e.stack}` : String(e);
     } = useDialog(props);
     let t0;
     if ($[1] !== content || $[2] !== message || $[3] !== presented || $[4] !== props.onDismiss || $[5] !== title) {
-      t0 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(ConfirmationDialogHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
+      t0 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ConfirmationDialogHost, { isPresented: presented, onDismiss: props.onDismiss, title, message, children: content });
       $[1] = content;
       $[2] = message;
       $[3] = presented;
@@ -37788,7 +38732,7 @@ ${e.stack}` : String(e);
     return t0;
   }
   function Fresh(t0) {
-    const $ = (0, import_compiler_runtime8.c)(3);
+    const $ = (0, import_compiler_runtime9.c)(3);
     if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 3; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37800,7 +38744,7 @@ ${e.stack}` : String(e);
     } = t0;
     let t1;
     if ($[1] !== children) {
-      t1 = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_jsx_runtime5.Fragment, { children });
+      t1 = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_jsx_runtime6.Fragment, { children });
       $[1] = children;
       $[2] = t1;
     } else {
@@ -37810,11 +38754,11 @@ ${e.stack}` : String(e);
   }
 
   // js/presence.tsx
-  var import_compiler_runtime9 = __toESM(require_compiler_runtime(), 1);
-  var import_react10 = __toESM(require_react(), 1);
-  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
+  var import_compiler_runtime10 = __toESM(require_compiler_runtime(), 1);
+  var import_react11 = __toESM(require_react(), 1);
+  var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
   function AnimatePresence(t0) {
-    const $ = (0, import_compiler_runtime9.c)(6);
+    const $ = (0, import_compiler_runtime10.c)(6);
     if ($[0] !== "8ecf1b7eae8f4e3c2a0591ce3ba1a5711c38705a613d5b71ba58611290f190e6") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37828,9 +38772,9 @@ ${e.stack}` : String(e);
       onExitComplete
     } = t0;
     const animation = t1 === void 0 ? "default" : t1;
-    const current3 = import_react10.Children.toArray(children).filter(import_react10.isValidElement);
-    const [leaving, setLeaving] = (0, import_react10.useState)(_temp11);
-    const [previous, setPrevious] = (0, import_react10.useState)({
+    const current3 = import_react11.Children.toArray(children).filter(import_react11.isValidElement);
+    const [leaving, setLeaving] = (0, import_react11.useState)(_temp12);
+    const [previous, setPrevious] = (0, import_react11.useState)({
       children,
       elements: current3
     });
@@ -37839,7 +38783,7 @@ ${e.stack}` : String(e);
         children,
         elements: current3
       });
-      const keys = new Set(current3.map(_temp25));
+      const keys = new Set(current3.map(_temp26));
       let next = leaving;
       previous.elements.forEach((element, index) => {
         if (keys.has(element.key) || next.has(element.key)) {
@@ -37874,7 +38818,7 @@ ${e.stack}` : String(e);
     } else {
       t2 = $[1];
     }
-    const started = (0, import_react10.useRef)(t2);
+    const started = (0, import_react11.useRef)(t2);
     let t3;
     if ($[2] !== animation || $[3] !== leaving || $[4] !== onExitComplete) {
       t3 = () => {
@@ -37907,7 +38851,7 @@ ${e.stack}` : String(e);
     } else {
       t3 = $[5];
     }
-    (0, import_react10.useLayoutEffect)(t3);
+    (0, import_react11.useLayoutEffect)(t3);
     const rendered = [...current3];
     [...leaving.values()].sort(_temp32).forEach((t4) => {
       const {
@@ -37915,30 +38859,30 @@ ${e.stack}` : String(e);
         index: index_0,
         exiting
       } = t4;
-      const shown = exiting ? (0, import_react10.cloneElement)(element_0, {
+      const shown = exiting ? (0, import_react11.cloneElement)(element_0, {
         ...typeof exit === "function" ? exit(element_0) : exit,
         allowsHitTesting: false
       }) : element_0;
       rendered.splice(Math.min(index_0, rendered.length), 0, shown);
     });
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_jsx_runtime6.Fragment, { children: rendered });
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_jsx_runtime7.Fragment, { children: rendered });
   }
   function _temp32(a, b) {
     return a.index - b.index;
   }
-  function _temp25(c) {
+  function _temp26(c) {
     return c.key;
   }
-  function _temp11() {
+  function _temp12() {
     return /* @__PURE__ */ new Map();
   }
 
   // js/controls.tsx
-  var import_compiler_runtime10 = __toESM(require_compiler_runtime(), 1);
-  var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
+  var import_compiler_runtime11 = __toESM(require_compiler_runtime(), 1);
+  var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
   var DatePickerHost = "DatePicker";
   function DatePicker(t0) {
-    const $ = (0, import_compiler_runtime10.c)(21);
+    const $ = (0, import_compiler_runtime11.c)(21);
     if ($[0] !== "e60ea6e76857fa3a80aab38b9e5a86053ce2834216d1406b82c1fee460da4dff") {
       for (let $i = 0; $i < 21; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -37971,7 +38915,7 @@ ${e.stack}` : String(e);
       props = $[5];
       value = $[6];
     }
-    const ms = _temp12;
+    const ms = _temp13;
     let t1;
     if ($[7] !== value) {
       t1 = ms(value);
@@ -38006,7 +38950,7 @@ ${e.stack}` : String(e);
     }
     let t5;
     if ($[15] !== props || $[16] !== t1 || $[17] !== t2 || $[18] !== t3 || $[19] !== t4) {
-      t5 = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(DatePickerHost, { ...props, value: t1, min: t2, max: t3, onChange: t4 });
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(DatePickerHost, { ...props, value: t1, min: t2, max: t3, onChange: t4 });
       $[15] = props;
       $[16] = t1;
       $[17] = t2;
@@ -38018,11 +38962,11 @@ ${e.stack}` : String(e);
     }
     return t5;
   }
-  function _temp12(d) {
+  function _temp13(d) {
     return d === void 0 ? void 0 : typeof d === "number" ? d : d.getTime();
   }
   function TimePicker(t0) {
-    const $ = (0, import_compiler_runtime10.c)(24);
+    const $ = (0, import_compiler_runtime11.c)(24);
     if ($[0] !== "e60ea6e76857fa3a80aab38b9e5a86053ce2834216d1406b82c1fee460da4dff") {
       for (let $i = 0; $i < 24; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -38059,7 +39003,7 @@ ${e.stack}` : String(e);
       props = $[6];
       value = $[7];
     }
-    const today2 = _temp26;
+    const today2 = _temp27;
     let t1;
     if ($[8] !== minuteInterval || $[9] !== onChange) {
       t1 = (ms) => {
@@ -38106,7 +39050,7 @@ ${e.stack}` : String(e);
     }
     let t5;
     if ($[17] !== change || $[18] !== minuteInterval || $[19] !== props || $[20] !== t2 || $[21] !== t3 || $[22] !== t4) {
-      t5 = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(DatePickerHost, { ...props, components: "hourAndMinute", minuteInterval, value: t2, min: t3, max: t4, onChange: change });
+      t5 = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(DatePickerHost, { ...props, components: "hourAndMinute", minuteInterval, value: t2, min: t3, max: t4, onChange: change });
       $[17] = change;
       $[18] = minuteInterval;
       $[19] = props;
@@ -38119,11 +39063,11 @@ ${e.stack}` : String(e);
     }
     return t5;
   }
-  function _temp26(t) {
+  function _temp27(t) {
     return t === void 0 ? void 0 : (/* @__PURE__ */ new Date()).setHours(t.hour, t.minute, 0, 0);
   }
   function NavigationRow(t0) {
-    const $ = (0, import_compiler_runtime10.c)(33);
+    const $ = (0, import_compiler_runtime11.c)(33);
     if ($[0] !== "e60ea6e76857fa3a80aab38b9e5a86053ce2834216d1406b82c1fee460da4dff") {
       for (let $i = 0; $i < 33; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -38175,7 +39119,7 @@ ${e.stack}` : String(e);
     const iconColor = t1 === void 0 ? "gray" : t1;
     let t2;
     if ($[11] !== iconColor || $[12] !== systemImage) {
-      t2 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Image, { systemName: systemImage, font: "callout", foregroundStyle: "white", frame: {
+      t2 = systemImage ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Image, { systemName: systemImage, font: "callout", foregroundStyle: "white", frame: {
         width: 29,
         height: 29
       }, background: iconColor, cornerRadius: 7 }) : null;
@@ -38187,9 +39131,9 @@ ${e.stack}` : String(e);
     }
     let t3;
     if ($[14] !== children || $[15] !== subtitle || $[16] !== title) {
-      t3 = children ?? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(VStack, { alignment: "leading", spacing: 2, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { children: title }),
-        subtitle ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { font: "caption", foregroundStyle: "secondary", children: subtitle }) : null
+      t3 = children ?? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(VStack, { alignment: "leading", spacing: 2, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Text, { children: title }),
+        subtitle ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Text, { font: "caption", foregroundStyle: "secondary", children: subtitle }) : null
       ] });
       $[14] = children;
       $[15] = subtitle;
@@ -38200,14 +39144,14 @@ ${e.stack}` : String(e);
     }
     let t4;
     if ($[18] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t4 = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Spacer, {});
+      t4 = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Spacer, {});
       $[18] = t4;
     } else {
       t4 = $[18];
     }
     let t5;
     if ($[19] !== value) {
-      t5 = value != null ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { foregroundStyle: "secondary", lineLimit: 1, children: value }) : null;
+      t5 = value != null ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Text, { foregroundStyle: "secondary", lineLimit: 1, children: value }) : null;
       $[19] = value;
       $[20] = t5;
     } else {
@@ -38215,7 +39159,7 @@ ${e.stack}` : String(e);
     }
     let t6;
     if ($[21] !== badge) {
-      t6 = badge ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { font: "footnote", fontWeight: "semibold", foregroundStyle: "white", padding: {
+      t6 = badge ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Text, { font: "footnote", fontWeight: "semibold", foregroundStyle: "white", padding: {
         horizontal: 7,
         vertical: 2
       }, background: "red", cornerRadius: "capsule", children: String(badge) }) : null;
@@ -38226,14 +39170,14 @@ ${e.stack}` : String(e);
     }
     let t7;
     if ($[23] === /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel")) {
-      t7 = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Image, { systemName: "chevron.right", font: "footnote", fontWeight: "semibold", foregroundStyle: "tertiary" });
+      t7 = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Image, { systemName: "chevron.right", font: "footnote", fontWeight: "semibold", foregroundStyle: "tertiary" });
       $[23] = t7;
     } else {
       t7 = $[23];
     }
     let t8;
     if ($[24] !== t2 || $[25] !== t3 || $[26] !== t5 || $[27] !== t6) {
-      t8 = /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(HStack, { spacing: 12, children: [
+      t8 = /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(HStack, { spacing: 12, children: [
         t2,
         t3,
         t4,
@@ -38251,7 +39195,7 @@ ${e.stack}` : String(e);
     }
     let t9;
     if ($[29] !== modifiers || $[30] !== onPress || $[31] !== t8) {
-      t9 = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onPress, tint: "primary", ...modifiers, children: t8 });
+      t9 = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Button, { onPress, tint: "primary", ...modifiers, children: t8 });
       $[29] = modifiers;
       $[30] = onPress;
       $[31] = t8;
@@ -38262,7 +39206,7 @@ ${e.stack}` : String(e);
     return t9;
   }
   function Picker(t0) {
-    const $ = (0, import_compiler_runtime10.c)(16);
+    const $ = (0, import_compiler_runtime11.c)(16);
     if ($[0] !== "e60ea6e76857fa3a80aab38b9e5a86053ce2834216d1406b82c1fee460da4dff") {
       for (let $i = 0; $i < 16; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -38316,7 +39260,7 @@ ${e.stack}` : String(e);
     }
     let t4;
     if ($[11] !== props || $[12] !== t1 || $[13] !== t2 || $[14] !== t3) {
-      t4 = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(PickerHost, { ...props, value: t1, onChange: t2, options: t3 });
+      t4 = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(PickerHost, { ...props, value: t1, onChange: t2, options: t3 });
       $[11] = props;
       $[12] = t1;
       $[13] = t2;
@@ -38335,8 +39279,8 @@ ${e.stack}` : String(e);
   }
 
   // js/services.ts
-  var import_compiler_runtime11 = __toESM(require_compiler_runtime(), 1);
-  var import_react11 = __toESM(require_react(), 1);
+  var import_compiler_runtime12 = __toESM(require_compiler_runtime(), 1);
+  var import_react12 = __toESM(require_react(), 1);
   var listeners3 = /* @__PURE__ */ new Map();
   var heldResponses = [];
   globalThis.__swiftjsx_emit = (name, payload) => {
@@ -38417,14 +39361,14 @@ ${e.stack}` : String(e);
     }
   };
   function useNotificationListener(type, listener) {
-    const $ = (0, import_compiler_runtime11.c)(6);
+    const $ = (0, import_compiler_runtime12.c)(6);
     if ($[0] !== "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
       $[0] = "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753";
     }
-    const latest = (0, import_react11.useRef)(listener);
+    const latest = (0, import_react12.useRef)(listener);
     let t0;
     if ($[1] !== listener) {
       t0 = () => {
@@ -38435,7 +39379,7 @@ ${e.stack}` : String(e);
     } else {
       t0 = $[2];
     }
-    (0, import_react11.useEffect)(t0);
+    (0, import_react12.useEffect)(t0);
     let t1;
     let t2;
     if ($[3] !== type) {
@@ -38448,7 +39392,7 @@ ${e.stack}` : String(e);
       t1 = $[4];
       t2 = $[5];
     }
-    (0, import_react11.useEffect)(t1, t2);
+    (0, import_react12.useEffect)(t1, t2);
   }
   var nextUtterance = 1;
   var speech = {
@@ -38507,7 +39451,7 @@ ${e.stack}` : String(e);
     };
   }
   function useKeepAwake(t0) {
-    const $ = (0, import_compiler_runtime11.c)(4);
+    const $ = (0, import_compiler_runtime12.c)(4);
     if ($[0] !== "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753") {
       for (let $i = 0; $i < 4; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -38527,7 +39471,7 @@ ${e.stack}` : String(e);
       t1 = $[2];
       t2 = $[3];
     }
-    (0, import_react11.useEffect)(t1, t2);
+    (0, import_react12.useEffect)(t1, t2);
   }
   function positionError(code, message) {
     return {
@@ -38585,7 +39529,7 @@ ${e.stack}` : String(e);
   };
   globalThis.navigator.geolocation = geolocation;
   function useGeolocation(t0) {
-    const $ = (0, import_compiler_runtime11.c)(8);
+    const $ = (0, import_compiler_runtime12.c)(8);
     if ($[0] !== "bee0fed61b30845a1f3659111b5804811cad0bee53b0bb21f7ee3c50e749b753") {
       for (let $i = 0; $i < 8; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
@@ -38611,7 +39555,7 @@ ${e.stack}` : String(e);
     } else {
       t2 = $[3];
     }
-    const [state2, setState] = (0, import_react11.useState)(t2);
+    const [state2, setState] = (0, import_react12.useState)(t2);
     const {
       enabled: t3,
       enableHighAccuracy
@@ -38644,13 +39588,13 @@ ${e.stack}` : String(e);
       t4 = $[6];
       t5 = $[7];
     }
-    (0, import_react11.useEffect)(t4, t5);
+    (0, import_react12.useEffect)(t4, t5);
     return state2;
   }
 
   // js/environment.ts
-  var import_compiler_runtime12 = __toESM(require_compiler_runtime(), 1);
-  var import_react12 = __toESM(require_react(), 1);
+  var import_compiler_runtime13 = __toESM(require_compiler_runtime(), 1);
+  var import_react13 = __toESM(require_react(), 1);
   var current2 = {
     horizontalSizeClass: "compact",
     verticalSizeClass: "regular",
@@ -38712,20 +39656,20 @@ ${e.stack}` : String(e);
     return () => listeners4.delete(listener);
   }
   function useEnvironment() {
-    const $ = (0, import_compiler_runtime12.c)(1);
+    const $ = (0, import_compiler_runtime13.c)(1);
     if ($[0] !== "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
       $[0] = "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b";
     }
-    return (0, import_react12.useSyncExternalStore)(subscribe2, _temp13);
+    return (0, import_react13.useSyncExternalStore)(subscribe2, _temp14);
   }
-  function _temp13() {
+  function _temp14() {
     return current2;
   }
   function useColorScheme() {
-    const $ = (0, import_compiler_runtime12.c)(1);
+    const $ = (0, import_compiler_runtime13.c)(1);
     if ($[0] !== "5abc9fe4371e2dfbdb88f570de8960661ae8cdc8de51bc0209f17298bb20a56b") {
       for (let $i = 0; $i < 1; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
