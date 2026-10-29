@@ -607,7 +607,7 @@ extension WorkletRuntime {
               cancel(m.id);
               assign(m.id, m.value, null, false);
               const now = Date.now();
-              if (now - (scrollSyncs.get(m.id) ?? 0) > 100) {
+              if (m.final || now - (scrollSyncs.get(m.id) ?? 0) > 100) {
                 scrollSyncs.set(m.id, now);
                 toJS.set(m.id, m.value);
               }

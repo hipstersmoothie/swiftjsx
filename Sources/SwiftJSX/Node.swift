@@ -26,6 +26,9 @@ public final class Node: Identifiable {
     var focusRequest = FocusRequest()
     var selectionRequest = SelectionRequest()
     var scrollRequest: ScrollRequest?
+    /// The last `scrollRequest` a scroll view carried out: a view that appears
+    /// again (back from a pushed screen) doesn't replay it.
+    @ObservationIgnored var handledScroll = 0
     /// Last laid-out frame in window coordinates, for `ref.current.measure()`.
     @ObservationIgnored private(set) var frame: CGRect = .zero
     /// `measure()` calls made before the first layout, answered by it.
@@ -138,7 +141,7 @@ public final class Node: Identifiable {
         "onTapGesture", "hidden", "onDisappear", "colorScheme", "zIndex", "layoutPriority", "gridColumns",
         "fixedSize", "allowsHitTesting", "preferredColorScheme", "tag", "redacted", "ignoresSafeArea", "interactiveDismissDisabled", "position",
         "controlSize", "labelStyle", "statusBarHidden", "persistentSystemOverlays", "transitionSource",
-        "draggable", "onDrop", "onDropTargetChange",
+        "draggable", "onDrop", "onDropTargetChange", "blur", "clipped",
     ]).union(featureKeys.map(\.0)).subtracting(["__ref"])
 
     /// Views with state of their own get the wrapper from the start, so even

@@ -266,7 +266,7 @@ export type AnimatableProps = Partial<
   Pick<
     Modifiers,
     | "padding" | "frame" | "background" | "foregroundStyle" | "cornerRadius" | "border" | "shadow" | "opacity"
-    | "offset" | "scale" | "rotation" | "disabled"
+    | "offset" | "scale" | "rotation" | "disabled" | "blur"
   >
 >;
 

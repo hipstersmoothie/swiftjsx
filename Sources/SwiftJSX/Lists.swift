@@ -40,6 +40,7 @@ struct ScrollViewHost: View {
             .modifier(Position(node: node, horizontal: horizontal, edges: edges))
             .scrollPosition($position)
             .onChange(of: node.scrollRequest) { _, request in
+                if let request { node.handledScroll = request.seq }
                 if let request, let offset = request.target.base as? ScrollOffset {
                     let jump = { position.scrollTo(point: CGPoint(x: offset.x ?? 0, y: offset.y ?? 0)) }
                     if request.animated { withAnimation(.default, jump) } else { jump() }
@@ -47,8 +48,13 @@ struct ScrollViewHost: View {
                     scroll(proxy, request)
                 }
             }
-            // A scrollTo from before the scroll view appeared (a mount effect).
-            .onAppear { scroll(proxy, node.scrollRequest) }
+            // A scrollTo from before the scroll view appeared (a mount effect),
+            // not one it already did (it appears again after a pop).
+            .onAppear {
+                guard let request = node.scrollRequest, request.seq != node.handledScroll else { return }
+                node.handledScroll = request.seq
+                scroll(proxy, request)
+            }
         }
     }
 
@@ -91,21 +97,32 @@ final class ChildEdges {
     var leading: [Int: CGFloat] = [:]
 }
 
-/// `scrollOffset={sharedValue}`: the content offset (`{ x, y }`, 0 at rest,
-/// negative when pulled past the top) written into a shared value on the main
-/// thread every frame, so animated styles and canvases follow the scroll in
-/// the same frame (a collapsing header, a stretching banner).
+/// `scrollOffset={sharedValue}`: `{ x, y, dragging }` written into a shared
+/// value on the main thread every frame, so animated styles and canvases
+/// follow the scroll in the same frame (a collapsing header, a stretching
+/// banner). `y` is 0 at rest and negative when pulled past the top;
+/// `dragging` is whether a finger is on it (a header that follows the finger
+/// and settles when it lifts).
 struct ScrollOffsetDriver: ViewModifier {
     let node: Node
     @Environment(\.jsxRuntime) private var runtime
+    @State private var offset = CGPoint.zero
+    @State private var dragging = false
 
     func body(content: Content) -> some View {
         if let id = ((node.prop("scrollOffset") as? [String: Any])?["__shared"] as? NSNumber)?.intValue {
-            content.onScrollGeometryChange(for: CGPoint.self) { geo in
-                CGPoint(x: geo.contentOffset.x + geo.contentInsets.leading, y: geo.contentOffset.y + geo.contentInsets.top)
-            } action: { _, offset in
-                runtime?.worklets.scrolled(id, x: offset.x, y: offset.y)
-            }
+            content
+                .onScrollGeometryChange(for: CGPoint.self) { geo in
+                    CGPoint(x: geo.contentOffset.x + geo.contentInsets.leading, y: geo.contentOffset.y + geo.contentInsets.top)
+                } action: { _, new in
+                    offset = new
+                    runtime?.worklets.scrolled(id, x: new.x, y: new.y, dragging: dragging, final: false)
+                }
+                .onScrollPhaseChange { _, phase in
+                    dragging = phase == .tracking || phase == .interacting
+                    // At rest: the JS thread hears the final offset (between, it's throttled).
+                    runtime?.worklets.scrolled(id, x: offset.x, y: offset.y, dragging: dragging, final: phase == .idle)
+                }
         } else {
             content
         }
@@ -147,11 +164,21 @@ struct ScrollOptions: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scrollIndicators(node.has("showsIndicators") && !node.bool("showsIndicators") ? .hidden : .automatic)
+            .scrollDismissesKeyboard(keyboardDismiss)
             .defaultScrollAnchor(unitPoint(node.string("defaultScrollAnchor")))
             .contentMargins(.all, insets(node.prop("contentMargins")) ?? EdgeInsets(), for: .scrollContent)
             .modifier(Paging(mode: node.prop("paging")))
             .modifier(Events(node: node, runtime: runtime))
             .modifier(Phase(node: node, runtime: runtime))
+    }
+
+    private var keyboardDismiss: ScrollDismissesKeyboardMode {
+        switch node.string("scrollDismissesKeyboard") {
+        case "immediately": .immediately
+        case "interactively": .interactively
+        case "never": .never
+        default: .automatic
+        }
     }
 
     /// `paging`: true snaps to pages the size of the scroll view; "view" snaps
@@ -461,10 +488,15 @@ private struct VirtualStack<Slots: View>: View {
         .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height } action: { _, height in viewport = height }
         .onChange(of: node.scrollRequest) { _, request in
             guard let request else { return }
+            node.handledScroll = request.seq
             let jump = { scroll(to: request, spacing: spacing) }
             if request.animated { withAnimation(.default, jump) } else { jump() }
         }
-        .onAppear { if let request = node.scrollRequest { scroll(to: request, spacing: spacing) } }
+        .onAppear {
+            guard let request = node.scrollRequest, request.seq != node.handledScroll else { return }
+            node.handledScroll = request.seq
+            scroll(to: request, spacing: spacing)
+        }
         .onChange(of: InitialScroll(node: node, count: count), initial: true) { _, initial in
             guard let index = initial.index, initial.ready, index != initialApplied else { return }
             initialApplied = index
@@ -499,9 +531,13 @@ private struct VirtualStack<Slots: View>: View {
         let header = node.children.first { $0.type == "VirtualListHeader" }
         let footer = node.children.first { $0.type == "VirtualListFooter" }
         if let sticky {
+            // The header as an empty section's footer: full width in a grid
+            // too (a plain view would be a grid cell), and footers don't pin.
             if let header {
-                NodeView(node: header)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+                Section {} footer: {
+                    NodeView(node: header)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+                }
             }
             Section {
                 slots(layout)

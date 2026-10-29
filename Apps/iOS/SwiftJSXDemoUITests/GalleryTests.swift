@@ -570,7 +570,10 @@ final class GalleryTests: XCTestCase {
         }
         if let item = withParent {
             shot("bsky-profile-reply-with-parent")
-            item.staticTexts.matching(NSPredicate(format: times)).element(boundBy: 1).tap()
+            // A tap while the list still coasts from the swipe only stops it: tap again.
+            let time = item.staticTexts.matching(NSPredicate(format: times)).element(boundBy: 1)
+            time.tap()
+            if !element("focused-post").waitForExistence(timeout: 4), time.exists { time.tap() }
             XCTAssert(element("focused-post").waitForExistence(timeout: 15), "reply thread didn't open")
             sleep(3)
             shot("bsky-thread-ancestors")

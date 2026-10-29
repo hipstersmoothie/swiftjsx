@@ -121,8 +121,9 @@ final class WorkletRuntime {
     }
 
     /// A scroll view's offset into its `scrollOffset` shared value, every frame.
-    func scrolled(_ id: Int, x: Double, y: Double) {
-        api.invokeMethod("message", withArguments: [["type": "scroll", "id": id, "value": ["x": x, "y": y]]])
+    func scrolled(_ id: Int, x: Double, y: Double, dragging: Bool, final: Bool) {
+        let value: [String: Any] = ["x": x, "y": y, "dragging": dragging]
+        api.invokeMethod("message", withArguments: [["type": "scroll", "id": id, "value": value, "final": final]])
         flush()
     }
 

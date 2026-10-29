@@ -152,6 +152,10 @@ export interface Modifiers {
   /** The tappable area: the whole shape, not just what's drawn (e.g. a row with a Spacer). */
   contentShape?: "rectangle" | "capsule" | "circle";
   /** Called with the view's size after layout, and when it changes (like React Native's onLayout). */
+  /** A Gaussian blur of this radius (animatable). */
+  blur?: number;
+  /** Cuts off content drawn outside the frame (as `cornerRadius` does, without rounding). */
+  clipped?: boolean;
   onLayout?: (size: { width: number; height: number }) => void;
   /**
    * This view's safe area insets (the navigation bar's height under a bar,
@@ -421,12 +425,16 @@ export const AbsoluteStack = host<Modifiers & WithChildren>("AbsoluteStack");
 /** Options shared by ScrollView and VirtualList. */
 export type ScrollProps = {
   /**
-   * A shared value (`useSharedValue({ x: 0, y: 0 })`) that gets the scroll
-   * offset on the main thread every frame, for animated styles and canvases
-   * that follow the scroll (collapsing headers, stretching banners). Negative
-   * y when pulled past the top.
+   * A shared value (`useSharedValue({ x: 0, y: 0, dragging: false })`) that
+   * gets the scroll offset on the main thread every frame, for animated
+   * styles and canvases that follow the scroll (collapsing headers,
+   * stretching banners). `y` is negative when pulled past the top; `dragging`
+   * is whether a finger is on it. The JS thread hears it about ten times a
+   * second, and when scrolling stops.
    */
   scrollOffset?: { readonly __shared: number };
+  /** Whether scrolling dismisses the keyboard: "interactively" follows the finger (a composer). */
+  scrollDismissesKeyboard?: "automatic" | "immediately" | "interactively" | "never";
   showsIndicators?: boolean;
   /**
    * true: snap to pages the size of the scroll view (carousels). "view"

@@ -232,6 +232,13 @@ for the record.
 - [ ] Bars: `toolbarBackground` can't be a view (a blurred banner); tab items can't be
       custom views (an avatar); `keyframes` can't loop without settling back.
 - [ ] Children added later to a paging horizontal ScrollView may not draw (unconfirmed).
+- [x] From the second pass: `scrollOffset` carries `dragging` and always sends the final
+      offset to JS; `blur`, `clipped`, `scrollDismissesKeyboard`. Fixed: a `scrollTo` was
+      replayed when its scroll view appeared again (back from a pushed screen);
+      `stickyHeader` with `columns` put the header in a grid cell.
+- [ ] `tabBarMinimizeBehavior` doesn't react to vertical lists inside a horizontal paging
+      ScrollView (the system picks the scroll view), and stays minimized after a pop.
+- [ ] `toolbarColorScheme="dark"` doesn't reach a `Menu` in the toolbar (its icon stays dark).
 - [ ] A container's `accessibilityIdentifier` disappears when it's nested inside another
       `accessibilityElement="contain"` container (XCUITest sees only the outer one).
 - [ ] `TextField` can't style ranges of its text (highlighting mentions and links while

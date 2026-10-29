@@ -74,7 +74,8 @@ struct Modifiers: ViewModifier {
                     .fill(fill(node.prop("background")) ?? AnyShapeStyle(Color.clear))
                     .ignoresSafeArea(edges: corners.isSquare ? .all : [])
             }
-            .clipShape(BoxShape(corners: hasMaterialBackground ? Corners(nil) : corners, unbounded: true))
+            // `clipped`: content outside the frame is cut off, even without corners.
+            .clipShape(BoxShape(corners: hasMaterialBackground ? Corners(nil) : corners, unbounded: !node.bool("clipped")))
             .overlay {
                 if let border = node.dict("border") {
                     BoxShape(corners: Corners(node.prop("cornerRadius")))
@@ -86,6 +87,7 @@ struct Modifiers: ViewModifier {
             .ignoresSafeArea(.all, edges: safeAreaEdges(node.prop("ignoresSafeArea")))
             .shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
             .opacity(node.bool("hidden") ? 0 : node.double("opacity") ?? 1)
+            .modifier(BlurModifier(radius: node.cgFloat("blur")))
             .fixedSize(horizontal: fixedSize.horizontal, vertical: fixedSize.vertical)
             .allowsHitTesting(!node.has("allowsHitTesting") || node.bool("allowsHitTesting"))
             .preferredColorScheme(colorScheme(node.string("preferredColorScheme")))
@@ -894,5 +896,14 @@ func safeAreaEdges(_ value: Any?) -> Edge.Set {
         case "all": edges.formUnion(.all)
         default: break
         }
+    }
+}
+
+/// `blur={radius}`: a Gaussian blur (animatable: a header that blurs in as
+/// you scroll). Only applied while set.
+struct BlurModifier: ViewModifier {
+    let radius: CGFloat?
+    func body(content: Content) -> some View {
+        if let radius { content.blur(radius: radius) } else { content }
     }
 }
