@@ -87,20 +87,21 @@ private struct ScreenToolbar: ToolbarContent {
     // before iOS 26 (Xcode 27's back-deploys it).
     var body: some ToolbarContent {
         let regular = items.filter { !Self.barPlacements.contains($0.string("placement") ?? "") }
-        item(regular, 0)
-        item(regular, 1)
-        item(regular, 2)
-        item(regular, 3)
-        item(regular, 4)
-        item(regular, 5)
-        item(regular, 6)
-        item(regular, 7)
-        item(regular, 8)
-        item(regular, 9)
-        item(regular, 10)
-        item(regular, 11)
+        // In sixes: Xcode 26's toolbar builder takes at most ten entries.
+        six(regular, from: 0)
+        six(regular, from: 6)
         bar("keyboard")
         bar("bottomBar")
+    }
+
+    @ToolbarContentBuilder
+    private func six(_ list: [Node], from start: Int) -> some ToolbarContent {
+        item(list, start)
+        item(list, start + 1)
+        item(list, start + 2)
+        item(list, start + 3)
+        item(list, start + 4)
+        item(list, start + 5)
     }
 
     @ToolbarContentBuilder
