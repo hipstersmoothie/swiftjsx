@@ -59,8 +59,9 @@ jobs:
           npx tsc --noEmit
 
   ios:
-    name: iOS demo builds
+    name: iOS demo and UI tests
     runs-on: macos-26
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -73,9 +74,18 @@ jobs:
           xcodebuild -version
       - run: npm ci && npm run build
       - run: brew install xcodegen
-      - name: Build for the simulator
+      - name: Generate the Xcode project
         working-directory: Apps/iOS
+        run: xcodegen generate
+      - name: UI tests (the ones that don't need the network)
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/ui-tests.xcresult
         run: |
-          xcodegen generate
-          xcodebuild build -project SwiftJSXDemo.xcodeproj -scheme SwiftJSXDemo \
-            -destination 'generic/platform=iOS Simulator' -derivedDataPath build | tail -20
+          scripts/ui-tests.sh testGestures testControls testAnimation testCanvas testWorkletAnimations testTabs \
+            testVirtualListInitialScrollIndex testVirtualListKeepsPositionOnInsert testPortal testCalculator testKanban testFitness
+      - name: Keep the UI test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-tests.xcresult
+          path: ${{ runner.temp }}/ui-tests.xcresult

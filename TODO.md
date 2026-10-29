@@ -241,6 +241,10 @@ for the record.
 - [ ] `tabBarMinimizeBehavior` doesn't react to vertical lists inside a horizontal paging
       ScrollView (the system picks the scroll view), and stays minimized after a pop.
 - [ ] `toolbarColorScheme="dark"` doesn't reach a `Menu` in the toolbar (its icon stays dark).
+- [ ] `<Sheet onDismissAttempt>` doesn't fire on the iOS 26.5 simulator: the locked sheet
+      stays, but UIKit never reports the attempt (checked with a proxy delegate, a re-wrapped
+      delegate, and a hook on SwiftUI's delegate class; none is called). testHabits' discard
+      step fails, so it's left out of CI. It worked on earlier iOS builds.
 - [ ] A container's `accessibilityIdentifier` disappears when it's nested inside another
       `accessibilityElement="contain"` container (XCUITest sees only the outer one).
 - [ ] `TextField` can't style ranges of its text (highlighting mentions and links while
@@ -347,8 +351,9 @@ for the record.
       packaged template, the iOS demo build. Builds with Xcode 26 and 27.
 - [x] React DevTools: the standalone app (`npx react-devtools`) over WebSocket, in the
       development runtime only (it adds ~0.9 MB and ~60 ms to a development launch).
-- [ ] The XCUITest suite in CI (about 10 minutes; needs a
-      simulator and network for the toy apps).
+- [x] UI tests in CI: twelve that don't need the network (`scripts/ui-tests.sh`, which also
+      works around the hang below and "0 tests executed" runs); the result bundle is
+      uploaded when they fail. The network ones (the toy apps' live APIs) run locally.
 - [ ] `xcodebuild test` hangs after the UI tests finish (an Xcode quirk while writing
       the results); it has to be stopped once it prints "Executed N tests".
 - [x] Hot reload on devices: `npm run dev` serves the bundle (long polling, port 8081);
