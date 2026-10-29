@@ -35143,11 +35143,11 @@ Content-Type: ${value.type || "application/octet-stream"}\r
   }
   function useSharedValue(initial) {
     const $ = (0, import_compiler_runtime.c)(6);
-    if ($[0] !== "23af1aefb74eebad2fc4a92fd168aecf3e6222f47c38332a3bba54dfdef3de41") {
+    if ($[0] !== "db8a4f82b9bbbbafc3b0b2e32665a107c5b64e16e052a4237c50e8ebae95c55f") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "23af1aefb74eebad2fc4a92fd168aecf3e6222f47c38332a3bba54dfdef3de41";
+      $[0] = "db8a4f82b9bbbbafc3b0b2e32665a107c5b64e16e052a4237c50e8ebae95c55f";
     }
     let t0;
     if ($[1] !== initial) {
@@ -35286,11 +35286,11 @@ Content-Type: ${value.type || "application/octet-stream"}\r
   var newReactionId = () => nextReaction++;
   function useDerivedValue(fn) {
     const $ = (0, import_compiler_runtime.c)(7);
-    if ($[0] !== "23af1aefb74eebad2fc4a92fd168aecf3e6222f47c38332a3bba54dfdef3de41") {
+    if ($[0] !== "db8a4f82b9bbbbafc3b0b2e32665a107c5b64e16e052a4237c50e8ebae95c55f") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "23af1aefb74eebad2fc4a92fd168aecf3e6222f47c38332a3bba54dfdef3de41";
+      $[0] = "db8a4f82b9bbbbafc3b0b2e32665a107c5b64e16e052a4237c50e8ebae95c55f";
     }
     const shared = useSharedValue(void 0);
     const worklet = fn;
@@ -35326,11 +35326,11 @@ Content-Type: ${value.type || "application/octet-stream"}\r
   }
   function useAnimatedReaction(prepare, react) {
     const $ = (0, import_compiler_runtime.c)(6);
-    if ($[0] !== "23af1aefb74eebad2fc4a92fd168aecf3e6222f47c38332a3bba54dfdef3de41") {
+    if ($[0] !== "db8a4f82b9bbbbafc3b0b2e32665a107c5b64e16e052a4237c50e8ebae95c55f") {
       for (let $i = 0; $i < 6; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "23af1aefb74eebad2fc4a92fd168aecf3e6222f47c38332a3bba54dfdef3de41";
+      $[0] = "db8a4f82b9bbbbafc3b0b2e32665a107c5b64e16e052a4237c50e8ebae95c55f";
     }
     const [id] = (0, import_react.useState)(newReactionId);
     if (!prepare.__worklet || !react.__worklet) {
@@ -36658,12 +36658,12 @@ ${e.stack}` : String(e);
   var VirtualListFooter = "VirtualListFooter";
   var VirtualRow = "VirtualRow";
   function VirtualList(t0) {
-    const $ = (0, import_compiler_runtime5.c)(43);
-    if ($[0] !== "5e3ecbaacfebb8c050123577d321672f925cc1da912941c0075e3b3e8fa10b62") {
-      for (let $i = 0; $i < 43; $i += 1) {
+    const $ = (0, import_compiler_runtime5.c)(48);
+    if ($[0] !== "159be349b7ebc5d346c8be3d423b8766511beb80945bea5a9f2e56e85ae8f712") {
+      for (let $i = 0; $i < 48; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "5e3ecbaacfebb8c050123577d321672f925cc1da912941c0075e3b3e8fa10b62";
+      $[0] = "159be349b7ebc5d346c8be3d423b8766511beb80945bea5a9f2e56e85ae8f712";
     }
     let children;
     let data;
@@ -36795,52 +36795,63 @@ ${e.stack}` : String(e);
       rows = $[26];
     }
     let t7;
-    if ($[27] !== header) {
-      t7 = header != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListHeader, { children: header }) : null;
-      $[27] = header;
-      $[28] = t7;
+    if ($[27] !== data || $[28] !== keyExtractor || $[29] !== rest.maintainVisibleContentPosition) {
+      t7 = rest.maintainVisibleContentPosition && keyExtractor ? data.map((item, i_0) => String(keyExtractor(item, i_0))) : void 0;
+      $[27] = data;
+      $[28] = keyExtractor;
+      $[29] = rest.maintainVisibleContentPosition;
+      $[30] = t7;
     } else {
-      t7 = $[28];
+      t7 = $[30];
     }
     let t8;
-    if ($[29] !== stickyHeader) {
-      t8 = stickyHeader != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListStickyHeader, { children: stickyHeader }) : null;
-      $[29] = stickyHeader;
-      $[30] = t8;
+    if ($[31] !== header) {
+      t8 = header != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListHeader, { children: header }) : null;
+      $[31] = header;
+      $[32] = t8;
     } else {
-      t8 = $[30];
+      t8 = $[32];
     }
     let t9;
-    if ($[31] !== footer) {
-      t9 = footer != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListFooter, { children: footer }) : null;
-      $[31] = footer;
-      $[32] = t9;
+    if ($[33] !== stickyHeader) {
+      t9 = stickyHeader != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListStickyHeader, { children: stickyHeader }) : null;
+      $[33] = stickyHeader;
+      $[34] = t9;
     } else {
-      t9 = $[32];
+      t9 = $[34];
     }
     let t10;
-    if ($[33] !== children || $[34] !== data.length || $[35] !== estimatedItemHeight || $[36] !== onRangeChange || $[37] !== rest || $[38] !== rows || $[39] !== t7 || $[40] !== t8 || $[41] !== t9) {
-      t10 = /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, children: [
+    if ($[35] !== footer) {
+      t10 = footer != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListFooter, { children: footer }) : null;
+      $[35] = footer;
+      $[36] = t10;
+    } else {
+      t10 = $[36];
+    }
+    let t11;
+    if ($[37] !== children || $[38] !== data.length || $[39] !== estimatedItemHeight || $[40] !== onRangeChange || $[41] !== rest || $[42] !== rows || $[43] !== t10 || $[44] !== t7 || $[45] !== t8 || $[46] !== t9) {
+      t11 = /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, anchorKeys: t7, children: [
         children,
-        t7,
         t8,
         t9,
+        t10,
         rows
       ] });
-      $[33] = children;
-      $[34] = data.length;
-      $[35] = estimatedItemHeight;
-      $[36] = onRangeChange;
-      $[37] = rest;
-      $[38] = rows;
-      $[39] = t7;
-      $[40] = t8;
-      $[41] = t9;
-      $[42] = t10;
+      $[37] = children;
+      $[38] = data.length;
+      $[39] = estimatedItemHeight;
+      $[40] = onRangeChange;
+      $[41] = rest;
+      $[42] = rows;
+      $[43] = t10;
+      $[44] = t7;
+      $[45] = t8;
+      $[46] = t9;
+      $[47] = t11;
     } else {
-      t10 = $[42];
+      t11 = $[47];
     }
-    return t10;
+    return t11;
   }
 
   // js/presentations.tsx

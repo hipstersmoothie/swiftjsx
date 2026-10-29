@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Screen, ToolbarItem, VirtualList, HStack, VStack, Text, Image, Button, Spacer, HostInstance, useNavigation, type Color } from "swiftjsx";
+import { Screen, ToolbarItem, VirtualList, HStack, VStack, Text, Image, Button, Spacer, Menu, HostInstance, useNavigation, type Color } from "swiftjsx";
 
 const colors: Color[] = ["red", "orange", "yellow", "green", "teal", "blue", "indigo", "purple", "pink"];
 const icons = ["star.fill", "bolt.fill", "leaf.fill", "flame.fill", "drop.fill", "moon.fill", "sun.max.fill", "cloud.fill"];
@@ -31,7 +31,10 @@ export function VirtualListDemo() {
         <Button title="Jump to 50,000" onPress={() => list.current?.scrollTo(50_000, { anchor: "top" })} />
       </ToolbarItem>
       <ToolbarItem placement="topBarLeading">
-        <Button title="Thread" onPress={() => nav.push(<ThreadListDemo />)} />
+        <Menu title="More">
+          <Button title="Thread" onPress={() => nav.push(<ThreadListDemo />)} />
+          <Button title="New posts" onPress={() => nav.push(<NewPostsDemo />)} />
+        </Menu>
       </ToolbarItem>
       <VirtualList
         ref={list}
@@ -102,6 +105,39 @@ function ThreadListDemo() {
             <Text font={row.kind === "focus" ? "title3" : "headline"}>{row.kind === "focus" ? "The post you tapped" : row.kind === "ancestor" ? `Ancestor ${row.id.slice(1)}` : `Reply ${row.id.slice(1)}`}</Text>
             {Array.from({ length: row.lines }, (_, i) => (
               <Text key={i} foregroundStyle="secondary">A line of text in this post.</Text>
+            ))}
+          </VStack>
+        )}
+      />
+    </Screen>
+  );
+}
+
+type Post = { id: number; lines: number };
+const post = (id: number): Post => ({ id, lines: 1 + (Math.abs(id) % 4) });
+
+/**
+ * A feed that gets newer posts above the one you're reading:
+ * `maintainVisibleContentPosition` keeps what's on screen where it is.
+ */
+function NewPostsDemo() {
+  const [posts, setPosts] = useState<Post[]>(() => Array.from({ length: 40 }, (_, i) => post(i)));
+  const loadNewer = () => setPosts((list) => [...Array.from({ length: 5 }, (_, i) => post(list[0].id - 5 + i)), ...list]);
+  return (
+    <Screen title="New posts" titleDisplayMode="inline">
+      <ToolbarItem placement="primaryAction">
+        <Button title="Load newer" onPress={loadNewer} />
+      </ToolbarItem>
+      <VirtualList
+        data={posts}
+        keyExtractor={(p) => p.id}
+        estimatedItemHeight={70}
+        maintainVisibleContentPosition
+        renderItem={(p) => (
+          <VStack alignment="leading" spacing={4} padding={16} frame={{ maxWidth: "infinity", alignment: "leading" }} accessibilityElement="combine" accessibilityIdentifier={`post-${p.id}`}>
+            <Text font="headline">{`Post ${p.id}`}</Text>
+            {Array.from({ length: p.lines }, (_, i) => (
+              <Text key={i} foregroundStyle="secondary">Some text in this post.</Text>
             ))}
           </VStack>
         )}

@@ -165,6 +165,10 @@ export type SpringConfig = {
   bounce?: number;
   /** Starting speed in units per second (a drag's `velocity`); default: the interrupted animation's. */
   velocity?: number | Record<string, number> | number[];
+  /** Physical parameters instead of duration / bounce (as in Reanimated): defaults 100, 10, 1. */
+  stiffness?: number;
+  damping?: number;
+  mass?: number;
   delay?: number;
 };
 

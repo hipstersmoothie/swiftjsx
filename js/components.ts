@@ -633,6 +633,15 @@ export type CanvasContext = {
   font: string | number | { size?: number; weight?: FontWeight };
   textAlign: "start" | "left" | "center" | "end" | "right";
   textBaseline: "top" | "middle" | "alphabetic" | "bottom";
+  /** Shadows under what's drawn next (`shadowColor` must be set, as on the web). */
+  shadowColor: ColorValue;
+  shadowBlur: number;
+  shadowOffsetX: number;
+  shadowOffsetY: number;
+  /** Blend modes: "multiply", "screen", "overlay", "destination-out" (erase), "lighter"… */
+  globalCompositeOperation: string;
+  /** The size of one line of text in the current font. */
+  measureText(text: string): { width: number; height: number };
   beginPath(): void;
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
@@ -652,8 +661,11 @@ export type CanvasContext = {
   strokeRect(x: number, y: number, width: number, height: number): void;
   clearRect(x: number, y: number, width: number, height: number): void;
   fillText(text: string, x: number, y: number): void;
-  /** An SF Symbol in a rect, tinted with `fillStyle`. */
-  drawImage(systemName: string, x: number, y: number, width: number, height: number): void;
+  /**
+   * An image URL in a rect (drawn once loaded; the canvas draws again then),
+   * or an SF Symbol name, tinted with `fillStyle`.
+   */
+  drawImage(source: string, x: number, y: number, width: number, height: number): void;
   setLineDash(segments: number[]): void;
   save(): void;
   restore(): void;

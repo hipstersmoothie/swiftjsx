@@ -158,8 +158,15 @@ extension WorkletRuntime {
       };
       const easing = (e) => (Array.isArray(e) ? bezier(...e) : easings[e ?? "easeInOut"] ?? easings.easeInOut);
 
-      /** SwiftUI's spring parameters: perceptual duration and bounce. */
+      /**
+       * SwiftUI's spring parameters (perceptual duration and bounce), or
+       * physical ones (stiffness, damping, mass; as in Reanimated).
+       */
       function springShape(d) {
+        if (d.stiffness !== undefined || d.damping !== undefined || d.mass !== undefined) {
+          const k = Math.max(0.01, d.stiffness ?? 100), c = Math.max(0, d.damping ?? 10), m = Math.max(0.01, d.mass ?? 1);
+          return { omega: Math.sqrt(k / m), zeta: c / (2 * Math.sqrt(k * m)) };
+        }
         const named = { bouncy: [0.5, 0.3], snappy: [0.5, 0.15], smooth: [0.5, 0] }[d.preset];
         const duration = d.duration ?? named?.[0] ?? 0.5;
         const bounce = Math.min(0.99, d.bounce ?? named?.[1] ?? 0);
@@ -494,9 +501,18 @@ extension WorkletRuntime {
         const commands = [];
         let path = [];
         const state = { fillStyle: "black", strokeStyle: "black", lineWidth: 1, lineCap: "butt", lineJoin: "miter",
-          globalAlpha: 1, font: 12, fontWeight: "regular", textAlign: "start", textBaseline: "alphabetic", dash: [] };
+          globalAlpha: 1, font: 12, fontWeight: "regular", textAlign: "start", textBaseline: "alphabetic", dash: [],
+          shadowColor: "transparent", shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, globalCompositeOperation: "source-over" };
         const stack = [];
         const style = (s) => (s && typeof s === "object" && s.__gradient ? { gradient: s.__gradient } : s);
+        /** Shadow and blend mode for one drawing command (the last element), or null. */
+        const fx = () => {
+          const shadow = state.shadowColor !== "transparent" && (state.shadowBlur > 0 || state.shadowOffsetX || state.shadowOffsetY)
+            ? [state.shadowColor, state.shadowBlur, state.shadowOffsetX, state.shadowOffsetY] : null;
+          const blend = state.globalCompositeOperation === "source-over" ? null : state.globalCompositeOperation;
+          return shadow || blend ? { shadow, blend } : null;
+        };
+        const isURL = (s) => /^(https?|file|data):/i.test(s);
         const ctx = {
           get commands() { return commands; },
           beginPath() { path = []; },
@@ -510,20 +526,32 @@ extension WorkletRuntime {
           roundRect(x, y, w, h, r = 0) { path.push("RR", x, y, w, h, typeof r === "number" ? r : r?.[0] ?? 0); },
           circle(x, y, r) { path.push("E", x - r, y - r, r * 2, r * 2); },
           closePath() { path.push("Z"); },
-          fill(s) { commands.push(["fill", path.slice(), style(s ?? state.fillStyle), state.globalAlpha]); },
+          fill(s) { commands.push(["fill", path.slice(), style(s ?? state.fillStyle), state.globalAlpha, fx()]); },
           stroke(s) {
-            commands.push(["stroke", path.slice(), style(s ?? state.strokeStyle), state.globalAlpha, state.lineWidth, state.lineCap, state.lineJoin, state.dash.slice()]);
+            commands.push(["stroke", path.slice(), style(s ?? state.strokeStyle), state.globalAlpha, state.lineWidth, state.lineCap, state.lineJoin, state.dash.slice(), fx()]);
           },
           clip() { commands.push(["clip", path.slice()]); },
-          fillRect(x, y, w, h) { commands.push(["fill", ["R", x, y, w, h], style(state.fillStyle), state.globalAlpha]); },
+          fillRect(x, y, w, h) { commands.push(["fill", ["R", x, y, w, h], style(state.fillStyle), state.globalAlpha, fx()]); },
           strokeRect(x, y, w, h) {
-            commands.push(["stroke", ["R", x, y, w, h], style(state.strokeStyle), state.globalAlpha, state.lineWidth, state.lineCap, state.lineJoin, state.dash.slice()]);
+            commands.push(["stroke", ["R", x, y, w, h], style(state.strokeStyle), state.globalAlpha, state.lineWidth, state.lineCap, state.lineJoin, state.dash.slice(), fx()]);
           },
           clearRect(x, y, w, h) { commands.push(["clear", x, y, w, h]); },
           fillText(text, x, y) {
-            commands.push(["text", String(text), x, y, style(state.fillStyle), state.globalAlpha, state.font, state.fontWeight, state.textAlign, state.textBaseline]);
+            commands.push(["text", String(text), x, y, style(state.fillStyle), state.globalAlpha, state.font, state.fontWeight, state.textAlign, state.textBaseline, fx()]);
           },
-          drawImage(systemName, x, y, w, h) { commands.push(["symbol", String(systemName), x, y, w, h, style(state.fillStyle), state.globalAlpha]); },
+          /** `{ width, height }` of a line of text in the current font. */
+          measureText(text) {
+            return __host.measureText(String(text), state.font, state.fontWeight);
+          },
+          /**
+           * An image URL (drawn once loaded; the canvas draws again then) or an
+           * SF Symbol name (tinted with fillStyle), in a rect.
+           */
+          drawImage(source, x, y, w, h) {
+            const name = String(source);
+            if (isURL(name)) commands.push(["image", name, x, y, w, h, state.globalAlpha, fx()]);
+            else commands.push(["symbol", name, x, y, w, h, style(state.fillStyle), state.globalAlpha, fx()]);
+          },
           setLineDash(d) { state.dash = d ?? []; },
           save() { stack.push({ ...state, dash: state.dash.slice() }); commands.push(["save"]); },
           restore() { if (stack.length) Object.assign(state, stack.pop()); commands.push(["restore"]); },
@@ -540,7 +568,8 @@ extension WorkletRuntime {
             return { __gradient: g, addColorStop(offset, color) { g.stops.push([offset, color]); } };
           },
         };
-        for (const key of ["fillStyle", "strokeStyle", "lineWidth", "lineCap", "lineJoin", "globalAlpha", "textAlign", "textBaseline"]) {
+        for (const key of ["fillStyle", "strokeStyle", "lineWidth", "lineCap", "lineJoin", "globalAlpha", "textAlign", "textBaseline",
+          "shadowColor", "shadowBlur", "shadowOffsetX", "shadowOffsetY", "globalCompositeOperation"]) {
           Object.defineProperty(ctx, key, { get: () => state[key], set: (v) => { state[key] = v; }, enumerable: true });
         }
         // "bold 16px", 16, or { size, weight }.

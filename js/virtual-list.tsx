@@ -15,6 +15,12 @@ export type VirtualListProps<T> = Omit<Modifiers, "ref"> & ScrollProps & {
    */
   initialScrollIndex?: number;
   /**
+   * Rows inserted (or removed) above the top visible row don't move what's on
+   * screen: new posts arriving above a feed you're reading. At the very top,
+   * new rows show. Needs `keyExtractor`.
+   */
+  maintainVisibleContentPosition?: boolean;
+  /**
    * Every row is exactly this tall. Fastest option (like FlatList's
    * getItemLayout): no measuring, and no jump when a placeholder becomes a row.
    */
@@ -133,7 +139,14 @@ export function VirtualList<T>({
   }
 
   return (
-    <VirtualListHost {...rest} count={data.length} estimatedItemHeight={estimatedItemHeight} onRangeChange={onRangeChange}>
+    <VirtualListHost
+      {...rest}
+      count={data.length}
+      estimatedItemHeight={estimatedItemHeight}
+      onRangeChange={onRangeChange}
+      // Row identities, so Swift can keep the top visible row in place.
+      anchorKeys={rest.maintainVisibleContentPosition && keyExtractor ? data.map((item, i) => String(keyExtractor(item, i))) : undefined}
+    >
       {children}
       {header != null ? <VirtualListHeader>{header}</VirtualListHeader> : null}
       {stickyHeader != null ? <VirtualListStickyHeader>{stickyHeader}</VirtualListStickyHeader> : null}

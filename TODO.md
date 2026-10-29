@@ -46,7 +46,9 @@ for the record.
 - [x] `<Canvas draw>`: a worklet with a web-style 2D context (paths, arcs, rects, text,
       gradients, transforms, clipping, SF Symbols), redrawn when the shared values it reads
       change or every frame (`continuous`). The Canvas demo has a drawing pad.
-- [ ] Canvas: no images from URLs, `measureText`, shadows or blend modes; map clustering,
+- [x] Canvas: `drawImage(url, …)` (draws again once loaded), `measureText`, shadows
+      (`shadowColor` / `shadowBlur` / offsets), `globalCompositeOperation` blend modes.
+- [ ] Map clustering,
       look-around, directions.
 
 ## Layout
@@ -196,8 +198,8 @@ for the record.
       `withSequence`, `withRepeat`, `cancelAnimation`, springs with a starting `velocity`
       (and retargeting keeps speed), `useDerivedValue`, `useAnimatedReaction`. Colors and
       booleans still go to SwiftUI's `withAnimation`.
-- [ ] Worklet springs are SwiftUI-style (duration and bounce): no stiffness/damping/mass
-      config; decay has no rubber-banding past `clamp`.
+- [x] Worklet springs take `stiffness` / `damping` / `mass` as well as duration / bounce.
+- [ ] Decay has no rubber-banding past `clamp`.
 - [x] Transforms: `rotation3D` (card flips), `scaleX` / `scaleY`, `transformAnchor`.
 - [x] Animate on appear: `initial={{ opacity, scale, x, y, rotation }}` (+ `initialAnimation`).
 - [x] Value-keyed animations: `animationKey` (animate only commits that change it).
@@ -245,8 +247,9 @@ for the record.
       composing).
 - [ ] Gesture props (`dragAxis`, enabled) can't be driven by shared values: switching them
       from a worklet takes a round trip through React.
-- [ ] `VirtualList` can't keep the visible rows in place when rows are inserted above them
-      (beyond `initialScrollIndex`): "new posts" at the top of a feed.
+- [x] `VirtualList maintainVisibleContentPosition`: rows inserted above the top visible
+      row don't move it (new posts above a feed you're reading); it follows the row's
+      measured position while the new rows settle.
 
 ## Rendering
 

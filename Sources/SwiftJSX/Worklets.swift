@@ -58,6 +58,12 @@ final class WorkletRuntime {
             MainActor.assumeIsolated { playHaptic(name) }
         }
         host.setObject(haptic, forKeyedSubscript: "haptic" as NSString)
+        // Canvas `measureText`: the system font, as canvas text is drawn.
+        let measure: @convention(block) (String, Double, String) -> [String: Double] = { text, size, weight in
+            let size = CanvasReplay.measure(text, size: size, weight: weight)
+            return ["width": size.width, "height": size.height]
+        }
+        host.setObject(measure, forKeyedSubscript: "measureText" as NSString)
         context.setObject(host, forKeyedSubscript: "__host" as NSString)
         api = context.evaluateScript(Self.prelude)!
 

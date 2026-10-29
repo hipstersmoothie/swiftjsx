@@ -28,6 +28,8 @@ struct CanvasHost: View {
                 _ = version
                 guard let commands = runtime?.worklets.draw(node, size: size, time: time) else { return }
                 var replay = CanvasReplay(context: context)
+                // An image that wasn't loaded yet: draw again when it is.
+                replay.imageLoaded = { [node] in node.canvasVersion += 1 }
                 replay.run(commands)
             }
         }
@@ -38,7 +40,9 @@ struct CanvasHost: View {
 @MainActor
 struct CanvasReplay {
     var context: GraphicsContext
+    var imageLoaded: (@MainActor () -> Void)?
     private var saved: [GraphicsContext] = []
+    private static var loading: Set<URL> = []
 
     init(context: GraphicsContext) {
         self.context = context
@@ -50,13 +54,24 @@ struct CanvasReplay {
             let args = Array(command.dropFirst())
             func number(_ i: Int) -> CGFloat { i < args.count ? CGFloat((args[i] as? NSNumber)?.doubleValue ?? 0) : 0 }
             func string(_ i: Int) -> String? { i < args.count ? args[i] as? String : nil }
+            // Shadow and blend mode ride as the last element of drawing commands.
+            func effects() -> GraphicsContext {
+                var target = context
+                guard let fx = command.last as? [String: Any] else { return target }
+                if let blend = (fx["blend"] as? String).flatMap(Self.blendMode) { target.blendMode = blend }
+                if let shadow = fx["shadow"] as? [Any], shadow.count == 4, let c = color(shadow[0]) {
+                    func n(_ i: Int) -> CGFloat { CGFloat((shadow[i] as? NSNumber)?.doubleValue ?? 0) }
+                    target.addFilter(.shadow(color: c, radius: n(1) / 2, x: n(2), y: n(3)))
+                }
+                return target
+            }
             switch name {
             case "fill":
-                var target = context
+                var target = effects()
                 target.opacity *= Double(number(2))
                 target.fill(Self.path(args.first), with: shading(args[safe: 1]))
             case "stroke":
-                var target = context
+                var target = effects()
                 target.opacity *= Double(number(2))
                 let dash = (args[safe: 6] as? [Any] ?? []).compactMap { ($0 as? NSNumber).map { CGFloat($0.doubleValue) } }
                 let style = StrokeStyle(lineWidth: number(3), lineCap: lineCap(string(4)), lineJoin: lineJoin(string(5)), dash: dash)
@@ -68,14 +83,30 @@ struct CanvasReplay {
                 target.blendMode = .clear
                 target.fill(Path(CGRect(x: number(0), y: number(1), width: number(2), height: number(3))), with: .color(.black))
             case "text":
-                var target = context
+                var target = effects()
                 target.opacity *= Double(number(4))
                 let weight = fontWeight(string(6) ?? "regular") ?? .regular
                 let text = Text(string(0) ?? "").font(.system(size: number(5), weight: weight))
                 let resolved = target.resolve(text.foregroundStyle(color(args[safe: 3]) ?? .primary))
                 target.draw(resolved, at: CGPoint(x: number(1), y: number(2)), anchor: anchor(align: string(7), baseline: string(8)))
+            case "image":
+                guard let url = string(0).flatMap(URL.init(string:)) else { continue }
+                var target = effects()
+                target.opacity *= Double(number(5))
+                let rect = CGRect(x: number(1), y: number(2), width: number(3), height: number(4))
+                if let image = ImageLoader.shared.cached(url) {
+                    target.draw(platformImage(image).resizable(), in: rect)
+                } else if !Self.loading.contains(url) {
+                    Self.loading.insert(url)
+                    let loaded = imageLoaded
+                    Task { @MainActor in
+                        _ = try? await ImageLoader.shared.load(url)
+                        Self.loading.remove(url)
+                        loaded?()
+                    }
+                }
             case "symbol":
-                var target = context
+                var target = effects()
                 target.opacity *= Double(number(6))
                 let rect = CGRect(x: number(1), y: number(2), width: number(3), height: number(4))
                 let image = Image(systemName: string(0) ?? "questionmark").resizable()
@@ -92,6 +123,60 @@ struct CanvasReplay {
                 continue
             }
         }
+    }
+
+    /// Canvas `globalCompositeOperation` names.
+    static func blendMode(_ name: String) -> GraphicsContext.BlendMode? {
+        switch name {
+        case "multiply": .multiply
+        case "screen": .screen
+        case "overlay": .overlay
+        case "darken": .darken
+        case "lighten": .lighten
+        case "color-dodge": .colorDodge
+        case "color-burn": .colorBurn
+        case "hard-light": .hardLight
+        case "soft-light": .softLight
+        case "difference": .difference
+        case "exclusion": .exclusion
+        case "hue": .hue
+        case "saturation": .saturation
+        case "color": .color
+        case "luminosity": .luminosity
+        case "destination-out": .destinationOut
+        case "destination-in": .destinationIn
+        case "source-atop": .sourceAtop
+        case "destination-over": .destinationOver
+        case "xor": .xor
+        case "copy": .copy
+        case "lighter", "plus-lighter": .plusLighter
+        default: nil
+        }
+    }
+
+    /// One line of text in the system font (`ctx.measureText`).
+    nonisolated static func measure(_ text: String, size: Double, weight: String) -> CGSize {
+        #if canImport(UIKit)
+        typealias PlatformFont = UIFont
+        #else
+        typealias PlatformFont = NSFont
+        #endif
+        let w: PlatformFont.Weight = switch weight {
+        case "ultraLight", "100": .ultraLight
+        case "thin", "200": .thin
+        case "light", "300": .light
+        case "medium", "500": .medium
+        case "semibold", "600": .semibold
+        case "bold", "700": .bold
+        case "heavy", "800": .heavy
+        case "black", "900": .black
+        default: .regular
+        }
+        let font = PlatformFont.systemFont(ofSize: size, weight: w)
+        let bounds = NSAttributedString(string: text, attributes: [.font: font])
+            .boundingRect(with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude),
+                          options: [.usesLineFragmentOrigin], context: nil)
+        return CGSize(width: ceil(bounds.width), height: ceil(bounds.height))
     }
 
     /// Flat path data: "M" x y, "L" x y, "Q" cx cy x y, "C" …, "A" x y r a0 a1 ccw,

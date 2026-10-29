@@ -66,6 +66,15 @@ import Testing
         #expect(x(box) == 0)
     }
 
+    @Test func physicalSpringsOvershoot() async throws {
+        let (runtime, box) = try await setUp()
+        runtime.press("physical")
+        // Lightly damped (ζ ≈ 0.23): past 50 before it settles there.
+        #expect(await eventually { x(box) > 55 })
+        #expect(await eventually { log(runtime) == "log physical true" })
+        #expect(x(box) == 50)
+    }
+
     @Test func interruptedAnimationsReportUnfinished() async throws {
         let (runtime, box) = try await setUp()
         runtime.press("interrupt")
@@ -79,6 +88,22 @@ import Testing
         #expect(stopped > 5 && stopped < 300)
         try await Task.sleep(for: .milliseconds(200))
         #expect(x(box) == stopped, "cancelAnimation stops it where it is")
+    }
+
+    @Test func canvasShadowsBlendModesTextAndImages() async throws {
+        let (runtime, _) = try await setUp()
+        let canvas = try #require(runtime.find("Canvas") { $0.string("accessibilityIdentifier") == "fx-canvas" })
+        let commands = runtime.worklets.draw(canvas, size: CGSize(width: 100, height: 100), time: 0).compactMap { $0 as? [Any] }
+        let fill = try #require(commands.first)
+        let fx = try #require(fill.last as? [String: Any])
+        #expect(fx["blend"] as? String == "multiply")
+        #expect((fx["shadow"] as? [Any])?.count == 4)
+        // measureText measured "Hello" (about 30 points at 12pt).
+        let text = try #require(commands.first { $0.first as? String == "text" })
+        let width = Int((text[1] as? String ?? "").dropFirst()) ?? 0
+        #expect(width > 20 && width < 45)
+        #expect(commands.contains { $0.first as? String == "image" && $0[1] as? String == "https://example.invalid/a.png" })
+        #expect(commands.contains { $0.first as? String == "symbol" && $0[1] as? String == "star.fill" })
     }
 
     @Test func canvasesRecordCommandsAndRedrawOnChanges() async throws {

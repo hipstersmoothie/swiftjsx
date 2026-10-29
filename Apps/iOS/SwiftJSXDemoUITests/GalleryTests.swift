@@ -1093,6 +1093,7 @@ final class GalleryTests: XCTestCase {
     }
     func testVirtualListInitialScrollIndex() {
         open("Virtual list")
+        app.buttons["More"].tap()
         app.buttons["Thread"].tap()
         let focused = element("focused-row")
         XCTAssert(focused.waitForExistence(timeout: 5))
@@ -1106,5 +1107,24 @@ final class GalleryTests: XCTestCase {
         app.swipeDown()
         sleep(1)
         XCTAssert(app.staticTexts["Ancestor 7"].isHittable)
+    }
+    func testVirtualListKeepsPositionOnInsert() {
+        open("Virtual list")
+        app.buttons["More"].tap()
+        app.buttons["New posts"].tap()
+        XCTAssert(element("post-0").waitForExistence(timeout: 5))
+        // Read a few posts down.
+        app.swipeUp(velocity: .slow)
+        sleep(2)
+        let reading = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'post-'")).allElementsBoundByIndex
+            .first { $0.isHittable && $0.frame.minY > 200 }
+        guard let reading else { return XCTFail("no post on screen") }
+        let id = reading.identifier
+        let before = reading.frame.minY
+        app.buttons["Load newer"].tap()
+        sleep(2)
+        snapshot("new-posts-kept")
+        XCTAssertEqual(element(id).frame.minY, before, accuracy: 6, "\(id) stays where it was")
+        XCTAssertFalse(element("post--1").exists && element("post--1").isHittable, "the new posts are above, out of view")
     }
 }

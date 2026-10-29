@@ -387,6 +387,7 @@ struct VirtualListHost: View {
     @Environment(\.jsxRuntime) private var runtime
     @State private var visible = VisibleRange()
     @State private var heights = RowHeights()
+    @State private var tops = RowTops()
 
     var body: some View {
         let count = max(0, Int(node.double("count") ?? 0))
@@ -404,7 +405,7 @@ struct VirtualListHost: View {
         }
         #endif
         if node.string("listStyle") != "list" {
-            return AnyView(VirtualStack(node: node, count: count, layout: layout, heights: heights) { slots(count: count, layout: $0) })
+            return AnyView(VirtualStack(node: node, count: count, layout: layout, heights: heights, tops: tops) { slots(count: count, layout: $0) })
         }
         // listStyle="list" off iOS: SwiftUI's List.
         return AnyView(ScrollViewReader { proxy in
@@ -427,6 +428,7 @@ struct VirtualListHost: View {
             VirtualSlot(list: node, index: index, layout: layout)
                 .id(index)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { [heights] in heights.record(index, $0) }
+                .modifier(TrackTop(enabled: node.has("anchorKeys"), index: index, tops: tops))
                 .onAppear { visible.update(inserting: index, report: report) }
                 .onDisappear { visible.update(removing: index, report: report) }
         }
@@ -461,6 +463,7 @@ private struct VirtualStack<Slots: View>: View {
     let count: Int
     let layout: SlotLayout
     let heights: RowHeights
+    let tops: RowTops
     @ViewBuilder let slots: (SlotLayout) -> Slots
     @State private var position = ScrollPosition()
     @State private var viewport: CGFloat = 0
@@ -470,17 +473,25 @@ private struct VirtualStack<Slots: View>: View {
     @State private var initialApplied: Int?
     /// Keeps that row at the top while the rows above it render.
     @State private var pinning: Task<Void, Never>?
+    /// The content offset (for `maintainVisibleContentPosition`).
+    @State private var scrollY: CGFloat = 0
+    /// The top visible row's key and how far the view is scrolled into it,
+    /// as of the last scroll (not layout changes: rows inserted above move it).
+    @State private var anchor: (key: String, into: CGFloat)?
 
     var body: some View {
         let spacing = node.cgFloat("spacing") ?? 0
         ScrollView {
             // `stickyHeader` pins (the rows' section header); `header` scrolls away above it.
             let pinned: PinnedScrollableViews = sticky == nil ? [] : [.sectionHeaders]
-            if node.has("columns") {
-                LazyVGrid(columns: gridColumns(node), spacing: spacing, pinnedViews: pinned) { content }
-            } else {
-                LazyVStack(spacing: spacing, pinnedViews: pinned) { content }
+            Group {
+                if node.has("columns") {
+                    LazyVGrid(columns: gridColumns(node), spacing: spacing, pinnedViews: pinned) { content }
+                } else {
+                    LazyVStack(spacing: spacing, pinnedViews: pinned) { content }
+                }
             }
+            .coordinateSpace(.named(RowTops.space))
         }
         .modifier(ScrollOptions(node: node))
         .modifier(ScrollOffsetDriver(node: node))
@@ -513,10 +524,20 @@ private struct VirtualStack<Slots: View>: View {
                     transaction.disablesAnimations = true
                     withTransaction(transaction) { scroll(toIndex: index, anchor: nil, spacing: node.cgFloat("spacing") ?? 0) }
                 }
+                pinning = nil
             }
         }
         .onScrollPhaseChange { _, phase in
             if phase == .interacting { pinning?.cancel() }
+        }
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in
+            scrollY = y
+            if node.has("anchorKeys"), pinning == nil || pinning?.isCancelled == true { recordAnchor() }
+        }
+        // `maintainVisibleContentPosition`: rows inserted (or removed) above
+        // the top visible one don't move it.
+        .onChange(of: node.prop("anchorKeys") as? [String] ?? []) { old, new in
+            keepVisibleRow(old: old, new: new, spacing: spacing)
         }
     }
 
@@ -571,6 +592,37 @@ private struct VirtualStack<Slots: View>: View {
             scroll(toIndex: index, anchor: request.anchor, spacing: spacing)
         default:
             break
+        }
+    }
+
+    private func recordAnchor() {
+        let keys = node.prop("anchorKeys") as? [String] ?? []
+        guard scrollY > 1,
+              let (index, top) = tops.tops.filter({ $0.value + 1 >= scrollY && $0.key < keys.count }).min(by: { $0.value < $1.value })
+        else { anchor = nil; return }
+        anchor = (keys[index], scrollY - top)
+    }
+
+    /// The top visible row stays where it is on screen: the scroll follows
+    /// wherever the layout puts it (it's laid out, so measured), as the rows
+    /// inserted above it render and settle. At the very top, new rows show.
+    private func keepVisibleRow(old: [String], new: [String], spacing: CGFloat) {
+        guard !old.isEmpty, !new.isEmpty, old != new else { return }
+        heights.remap(from: old, to: new)
+        guard let anchor, let oldIndex = old.firstIndex(of: anchor.key), let moved = new.firstIndex(of: anchor.key), moved != oldIndex else { return }
+        pinning?.cancel()
+        pinning = Task { @MainActor in
+            for delay in [16, 16, 33, 50, 100, 200, 350, 600, 1000] {
+                try? await Task.sleep(for: .milliseconds(delay))
+                if Task.isCancelled { return }
+                guard let top = tops.tops[moved] else { continue }
+                let target = top + anchor.into
+                guard abs(target - scrollY) > 0.5 else { continue }
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { position.scrollTo(y: max(0, target)) }
+            }
+            pinning = nil
         }
     }
 
@@ -649,6 +701,48 @@ final class RowHeights {
         for i in 0..<index { y += (heights[i] ?? estimated) + spacing }
         return y
     }
+
+    /// The row at `y` (from the rows' top), and how far into it `y` is.
+    func row(at y: CGFloat, count: Int, estimated: CGFloat, spacing: CGFloat) -> (index: Int, into: CGFloat) {
+        var top: CGFloat = 0
+        for i in 0..<count {
+            let bottom = top + (heights[i] ?? estimated) + spacing
+            if bottom > y { return (i, y - top) }
+            top = bottom
+        }
+        return (max(0, count - 1), 0)
+    }
+
+    /// Rows moved (inserted or removed around them): heights follow their keys.
+    func remap(from old: [String], to new: [String]) {
+        var byKey: [String: CGFloat] = [:]
+        for (i, key) in old.enumerated() { if let h = heights[i] { byKey[key] = h } }
+        heights = [:]
+        for (i, key) in new.enumerated() { if let h = byKey[key] { heights[i] = h } }
+    }
+}
+
+/// Where a laid-out row is in the content, for `maintainVisibleContentPosition`
+/// (only then: it's a geometry callback per row).
+private struct TrackTop: ViewModifier {
+    let enabled: Bool
+    let index: Int
+    let tops: RowTops
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(RowTops.space)).minY } action: { [tops, index] in tops.tops[index] = $0 }
+                .onDisappear { [tops, index] in tops.tops[index] = nil }
+        } else {
+            content
+        }
+    }
+}
+
+/// Laid-out rows' tops in the list's content (a reference: no re-renders).
+final class RowTops {
+    static let space = "SwiftJSX.listContent"
+    var tops: [Int: CGFloat] = [:]
 }
 
 /// Tracks on-screen slots and reports the range at most once per runloop turn.

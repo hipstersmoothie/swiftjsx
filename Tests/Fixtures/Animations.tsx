@@ -33,11 +33,25 @@ function App() {
           ctx.fillText("hi", 1, 2);
         }}
       />
+      <Canvas
+        accessibilityIdentifier="fx-canvas"
+        draw={(ctx) => {
+          ctx.shadowColor = "black";
+          ctx.shadowBlur = 6;
+          ctx.globalCompositeOperation = "multiply";
+          ctx.fillRect(0, 0, 10, 10);
+          const size = ctx.measureText("Hello");
+          ctx.fillText(`w${Math.round(size.width)}`, 0, 0);
+          ctx.drawImage("https://example.invalid/a.png", 0, 0, 4, 4);
+          ctx.drawImage("star.fill", 0, 0, 4, 4);
+        }}
+      />
       <Button title="timing" onPress={() => x.set(withTiming(100, { duration: 0.4, easing: "linear" }, (done) => setLog(`timing ${done}`)))} />
       <Button title="sequence" onPress={() => x.set(withSequence(withTiming(60, { duration: 0.1 }), withTiming(10, { duration: 0.1 })))} />
       <Button title="repeat" onPress={() => x.set(withRepeat(withTiming(30, { duration: 0.05 }), 4, true, (done) => setLog(`repeat ${done}`)))} />
       <Button title="decay" onPress={() => x.set(withDecay({ velocity: 1000 }, (done) => setLog(`decay ${done}`)))} />
       <Button title="spring" onPress={() => x.set(withSpring(0, { duration: 0.3, velocity: -2000 }, (done) => setLog(`spring ${done}`)))} />
+      <Button title="physical" onPress={() => x.set(withSpring(50, { stiffness: 300, damping: 8, mass: 1 }, (done) => setLog(`physical ${done}`)))} />
       <Button title="delay" onPress={() => x.set(withDelay(0.2, withTiming(40, { duration: 0.1 })))} />
       <Button
         title="interrupt"
