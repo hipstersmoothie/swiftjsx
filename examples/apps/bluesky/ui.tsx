@@ -1,10 +1,9 @@
 // Shared pieces: layout constants, avatars, a ticking clock for relative
 // times, skeletons with a shimmer, error and empty states, buttons and the
 // toast. Colors come from the theme (light, dim or dark).
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   VStack, HStack, ZStack, Text, Image, Button, Circle, RoundedRectangle, Rectangle, Overlay, ProgressView, Path, useEnvironment,
-  type HostInstance,
 } from "swiftjsx";
 import { useUI } from "./store";
 import { T, ty, useTheme, type Palette } from "./theme";
@@ -26,30 +25,21 @@ export function useContentWidth(indent = 0) {
 
 export const useWindowWidth = () => useEnvironment().window.width;
 
-/** The navigation bar's height under the status bar (iOS 26, inline title). */
-export const NAV_BAR = 54;
-
 /**
- * How much of the status bar a full-height view that ignores the top safe
- * area sits under: the window's top inset, less how far down the window the
- * view starts (inside a sheet, it starts below the status bar). Put `ref` on
- * that view. (A transparent navigation bar doesn't inset the layout, and
- * there's no way to read its height or the safe area of a view directly.)
+ * A view's own top safe-area inset: the status bar (none inside a sheet) plus
+ * the navigation bar when there is one. Spread `onSafeAreaChange` on a view
+ * that doesn't ignore the safe area. `fallback` is used until it's measured.
  */
-export function useStatusInset() {
-  const { safeAreaInsets, window } = useEnvironment();
-  const ref = useRef<HostInstance>(null);
+export function useSafeTop(fallback = 0) {
   const [top, setTop] = useState<number | null>(null);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      ref.current?.measure().then(
-        (frame) => setTop(frame.y),
-        () => setTop(0),
-      );
-    }, 30);
-    return () => clearTimeout(timer);
-  }, [window.width, window.height]);
-  return { ref, inset: top === null ? 0 : Math.max(0, Math.round(safeAreaInsets.top - top)) };
+  return {
+    top: top ?? fallback,
+    measured: top !== null,
+    onSafeAreaChange: (insets: { top: number }) => {
+      const next = Math.round(insets.top);
+      if (next !== top) setTop(next);
+    },
+  };
 }
 
 // MARK: Clock

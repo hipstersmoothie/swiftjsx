@@ -1,23 +1,27 @@
 // Home: Bluesky's header (menu, butterfly, feeds) over a strip of feed tabs
-// with a sliding underline, and a pager of feeds you can swipe between.
-// Scrolling down tucks the header away (the "minimal shell"); scrolling up
-// brings it back. A "New posts" pill appears when the feed has moved on, and
-// the compose button floats bottom right when signed in.
-import { useRef, useState } from "react";
+// with a sliding underline, and a pager of feeds you can swipe between. No
+// navigation bar: the header is ours. It follows the finger away while you
+// drag the feed down and snaps shown or hidden when you let go (Bluesky's
+// "minimal shell"), all on the main thread from the list's scroll offset. A
+// "New posts" pill appears when the feed has moved on, and the compose button
+// floats bottom right when signed in.
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Screen, ScrollView, ZStack, VStack, HStack, Text, Image, Button, Rectangle, Overlay, Spacer,
-  useEnvironment, useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, haptic, hot, makeMutable, type HostInstance,
+  useEnvironment, useSharedValue, useAnimatedStyle, useAnimatedReaction, withSpring, runOnJS, haptic, hot, makeMutable,
+  type HostInstance, type SharedValue,
 } from "swiftjsx";
 import { DISCOVER, getFeed, getFeedGenerators, getPreferredFeeds, getTimeline } from "./api";
 import { FeedList } from "./FeedScreen";
 import { useSession, useSettings } from "./session";
 import { useUI } from "./store";
 import { useMyProfile } from "./Me";
-import { Avatar, Butterfly, T, ty, useTheme, useStatusInset } from "./ui";
+import { Avatar, Butterfly, T, ty, useTheme, useSafeTop } from "./ui";
 import type { FeedPage, ProfileViewBasic } from "./types";
 
 type FeedTab = { id: string; title: string; uri: string | null };
+type Offset = SharedValue<{ x: number; y: number }>;
 
 /** Public feeds shown as tabs while signed out (a signed-in account has its own pins). */
 const PUBLIC_TABS: FeedTab[] = [
@@ -33,6 +37,8 @@ export const drawerProgress: ReturnType<typeof makeMutable<number>> = (hot.data.
 
 const HEADER_ROW = 44;
 const TAB_STRIP = 44;
+const HEADER = HEADER_ROW + TAB_STRIP;
+const SNAP = { duration: 0.3, bounce: 0 } as const;
 
 export function HomeScreen() {
   const signedIn = useSession((s) => s.session !== null);
@@ -63,93 +69,94 @@ export function HomeScreen() {
     : PUBLIC_TABS;
   const current = Math.min(page, tabs.length - 1);
 
-  // The minimal shell: the header slides up while scrolling down.
-  const headerHeight = HEADER_ROW + TAB_STRIP;
-  const shift = useSharedValue(0);
-  const hidden = useRef(false);
-  const lastY = useRef(0);
-  const headerStyle = useAnimatedStyle(() => ({ offset: { x: 0, y: shift.get() } }));
-  const setHidden = (hide: boolean) => {
-    if (hidden.current === hide) return;
-    hidden.current = hide;
-    shift.set(withTiming(hide ? -headerHeight : 0, { duration: 0.22, easing: hide ? "easeIn" : "easeOut" }));
-  };
-  const onScroll = ({ y }: { y: number }) => {
-    const dy = y - lastY.current;
-    lastY.current = y;
-    if (y <= 4) setHidden(false);
-    else if (dy > 5) setHidden(true);
-    else if (dy < -8) setHidden(false);
-  };
+  // The minimal shell: 0 shown, 1 tucked away (and faded, like Bluesky's).
+  const shell = useSharedValue(0);
+  const headerStyle = useAnimatedStyle(() => {
+    const m = shell.get();
+    return { offset: { x: 0, y: -HEADER * m }, opacity: (1 - m) * (1 - m) };
+  });
+  const showHeader = () => shell.set(withSpring(0, SNAP));
 
-  // The underline follows the pager as it moves (page progress, from its scroll offset).
-  const progress = useSharedValue(0);
+  // The pager's offset: the underline follows it while you swipe between feeds.
+  const pagerOffset = useSharedValue({ x: 0, y: 0 });
   const select = (index: number) => {
     if (index === current) {
       // Tapping the current tab scrolls its feed to the top.
       lists.current[index]?.scrollTo("top");
-      setHidden(false);
+      showHeader();
       return;
     }
     haptic("selection");
     pager.current?.scrollTo(index);
   };
+  // The page the pager shows (set before React re-renders with it).
+  const shownPage = useRef(0);
   const onPage = (index: number) => {
+    shownPage.current = index;
     setPage(index);
-    setHidden(false);
+    showHeader();
   };
 
-  // The status bar above our header (none inside a sheet).
-  const { ref: screenRef, inset: topInset } = useStatusInset();
+  // The status bar above our header (none inside a sheet): our own top inset, with no navigation bar.
+  const safe = useSafeTop();
+  const topInset = safe.top;
 
   return (
-    <Screen title="" titleDisplayMode="inline" toolbarBackground="hidden">
-      <ZStack ref={screenRef} alignment="top" frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background={t.bg} ignoresSafeArea="top">
-        <ScrollView
-          ref={pager}
-          axis="horizontal"
-          paging
-          spacing={0}
-          showsIndicators={false}
-          onScrollIndexChange={onPage}
-          onScroll={({ x }) => progress.set(x / Math.max(1, window.width))}
-          frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-          ignoresSafeArea="top"
-          accessibilityIdentifier="feed-pager"
-        >
-          {tabs.map((tab, i) => (
-            <VStack key={tab.id} frame={{ width: window.width, maxHeight: "infinity" }} background={t.bg}>
-              {/* Every page is mounted (pages added later didn't draw inside the pager). */}
-              <FeedPage
-                tab={tab}
-                did={did}
-                contentTop={topInset + headerHeight}
-                onScroll={i === current ? onScroll : undefined}
-                listRef={(node) => {
-                  lists.current[i] = node;
-                }}
-                active={i === current}
-                onShowHeader={() => setHidden(false)}
-              />
-            </VStack>
-          ))}
-        </ScrollView>
-        {/* The header: the status bar's band stays; the rows slide up under it. */}
-        <VStack spacing={0} padding={{ top: topInset }} animatedStyle={headerStyle} background={t.bg} accessibilityIdentifier="home-header" accessibilityElement="contain">
-          <HeaderRow />
-          <FeedTabs tabs={tabs} selected={current} progress={progress} onSelect={select} />
-        </VStack>
-        <Rectangle fill={t.bg} frame={{ maxWidth: "infinity", height: topInset }} allowsHitTesting={false} />
-        {/* Swipe in from the leading edge for the drawer (on the first feed, like Bluesky). */}
-        {current === 0 ? <EdgeSwipe /> : null}
-        {signedIn ? (
-          <Overlay alignment="bottomTrailing">
-            <Button onPress={() => openCompose()} pressedScale={0.9} accessibilityLabel="New post" accessibilityIdentifier="compose-button" padding={{ trailing: 18, bottom: 18 }}>
-              <Image systemName="square.and.pencil" font={{ size: 22, weight: "semibold" }} foregroundStyle="white" frame={{ width: 58, height: 58 }} background={t.primary} cornerRadius="capsule" shadow={{ radius: 10, y: 4, color: "black/25" }} offset={{ y: 0 }} />
-            </Button>
-          </Overlay>
-        ) : null}
-      </ZStack>
+    <Screen title="Home" navigationBar="hidden">
+      {/* Measures the safe area (this one doesn't ignore it); the content draws under the status bar. */}
+      <VStack spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} onSafeAreaChange={safe.onSafeAreaChange}>
+        <ZStack alignment="top" frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background={t.bg} ignoresSafeArea="top">
+          <ScrollView
+            ref={pager}
+            axis="horizontal"
+            paging
+            spacing={0}
+            showsIndicators={false}
+            onScrollIndexChange={onPage}
+            // A scroll view replays its last scrollTo when it reappears (back from a thread):
+            // at rest, make that the page we're on, not the tab tapped a while ago.
+            onScrollPhaseChange={(phase) => {
+              if (phase === "idle") pager.current?.scrollTo(shownPage.current, { animated: false });
+            }}
+            scrollOffset={pagerOffset}
+            frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+            ignoresSafeArea="top"
+            accessibilityIdentifier="feed-pager"
+          >
+            {tabs.map((tab, i) => (
+              <VStack key={tab.id} frame={{ width: window.width, maxHeight: "infinity" }} background={t.bg}>
+                {/* Every page is mounted (pages added later didn't draw inside the pager). */}
+                <FeedPage
+                  tab={tab}
+                  did={did}
+                  contentTop={topInset + HEADER}
+                  shell={shell}
+                  listRef={(node) => {
+                    lists.current[i] = node;
+                  }}
+                  active={i === current}
+                  onShowHeader={showHeader}
+                />
+              </VStack>
+            ))}
+          </ScrollView>
+          {/* The header: the status bar's band stays; the rows slide up under it. */}
+          <VStack spacing={0} padding={{ top: topInset }} animatedStyle={headerStyle} background={t.bg} accessibilityIdentifier="home-header" accessibilityElement="contain">
+            <HeaderRow />
+            <FeedTabs tabs={tabs} selected={current} pager={pagerOffset} pageWidth={window.width} onSelect={select} />
+          </VStack>
+          <Rectangle fill={t.bg} frame={{ maxWidth: "infinity", height: topInset }} allowsHitTesting={false} />
+          {/* Swipe in from the leading edge for the drawer (on the first feed, like Bluesky). */}
+          {current === 0 ? <EdgeSwipe /> : null}
+          {signedIn ? (
+            <Overlay alignment="bottomTrailing">
+              <Button onPress={() => openCompose()} pressedScale={0.9} accessibilityLabel="New post" accessibilityIdentifier="compose-button" padding={{ trailing: 18, bottom: 18 }}>
+                <Image systemName="square.and.pencil" font={{ size: 22, weight: "semibold" }} foregroundStyle="white" frame={{ width: 58, height: 58 }} background={t.primary} cornerRadius="capsule" shadow={{ radius: 10, y: 4, color: "black/25" }} />
+              </Button>
+            </Overlay>
+          ) : null}
+        </ZStack>
+      </VStack>
     </Screen>
   );
 }
@@ -195,21 +202,24 @@ function HeaderRow() {
   );
 }
 
-function FeedTabs({ tabs, selected, progress, onSelect }: { tabs: FeedTab[]; selected: number; progress: ReturnType<typeof useSharedValue<number>>; onSelect(index: number): void }) {
+function FeedTabs({ tabs, selected, pager, pageWidth, onSelect }: { tabs: FeedTab[]; selected: number; pager: Offset; pageWidth: number; onSelect(index: number): void }) {
   const t = useTheme();
+  const strip = useRef<HostInstance>(null);
   // Each tab's width, to place the underline under it (and between two while swiping).
   const [widths, setWidths] = useState<number[]>([]);
-  const GAP = 0;
   const PAD = 12;
+  const MARGIN = 4;
   const lefts: number[] = [];
   let x = 0;
   for (let i = 0; i < tabs.length; i++) {
     lefts.push(x);
-    x += (widths[i] ?? 0) + GAP;
+    x += widths[i] ?? 0;
   }
+  const total = x;
   const ready = widths.length === tabs.length && widths.every((w) => w > 0);
+  // Page progress from the pager's offset, on the main thread: the underline slides and stretches between two tabs.
   const underline = useAnimatedStyle(() => {
-    const p = Math.max(0, Math.min(lefts.length - 1, progress.get()));
+    const p = Math.max(0, Math.min(lefts.length - 1, pager.get().x / Math.max(1, pageWidth)));
     const i = Math.floor(p);
     const f = p - i;
     const j = Math.min(lefts.length - 1, i + 1);
@@ -220,10 +230,15 @@ function FeedTabs({ tabs, selected, progress, onSelect }: { tabs: FeedTab[]; sel
       frame: { width: Math.max(0, w0 + (w1 - w0) * f), height: 3 },
     };
   });
+  // Keeps the selected tab in view (centered when the strip is wider than the screen).
+  const target = ready ? Math.max(0, Math.min(total + MARGIN * 2 - pageWidth, lefts[selected] + widths[selected] / 2 - pageWidth / 2)) : 0;
+  useEffect(() => {
+    if (ready) strip.current?.scrollTo({ x: target });
+  }, [ready, target]);
   return (
     <VStack spacing={0} frame={{ height: TAB_STRIP }}>
-      <ScrollView axis="horizontal" showsIndicators={false} contentMargins={{ horizontal: 4 }} frame={{ maxHeight: "infinity" }}>
-        <HStack spacing={GAP} frame={{ maxHeight: "infinity" }}>
+      <ScrollView ref={strip} axis="horizontal" showsIndicators={false} contentMargins={{ horizontal: MARGIN }} frame={{ maxHeight: "infinity" }}>
+        <HStack spacing={0} frame={{ maxHeight: "infinity" }}>
           {tabs.map((tab, i) => {
             const on = i === selected;
             return (
@@ -270,12 +285,12 @@ function FeedTabs({ tabs, selected, progress, onSelect }: { tabs: FeedTab[]; sel
 const NEW_POSTS_POLL = 30_000;
 
 function FeedPage({
-  tab, did, contentTop, onScroll, listRef, active, onShowHeader,
+  tab, did, contentTop, shell, listRef, active, onShowHeader,
 }: {
   tab: FeedTab;
   did: string | null;
   contentTop: number;
-  onScroll?: (e: { y: number }) => void;
+  shell: SharedValue<number>;
   listRef: (node: HostInstance | null) => void;
   active: boolean;
   onShowHeader(): void;
@@ -300,6 +315,39 @@ function FeedPage({
   if (top && seenTop === null) setSeenTop(top);
   const fresh = top && seenTop && top !== seenTop ? (latest.data?.feed ?? []).slice(0, 3).map((i) => i.post.author) : [];
 
+  // The minimal shell, like Bluesky's MainScrollProvider: while the finger drags the
+  // feed, the header follows it (a header's height of scroll hides it all); letting
+  // go snaps it shown or hidden. Near the top it always shows. Only the visible page drives it.
+  const scroll = useSharedValue({ x: 0, y: 0 });
+  const dragging = useSharedValue(0);
+  const dragStart = useSharedValue({ y: 0, mode: 0 });
+  useAnimatedReaction(
+    () => dragging.get(),
+    (now, before) => {
+      if (!active) return;
+      if (now && !before) {
+        dragStart.set({ y: scroll.get().y, mode: shell.get() });
+      } else if (!now && before) {
+        const m = shell.get();
+        shell.set(withSpring(scroll.get().y < HEADER / 2 ? 0 : Math.round(m), SNAP));
+      }
+    },
+  );
+  useAnimatedReaction(
+    () => scroll.get().y,
+    (y) => {
+      if (!active) return;
+      if (dragging.get()) {
+        const s = dragStart.get();
+        shell.set(Math.max(0, Math.min(1, s.mode + (y - s.y) / HEADER)));
+      } else if (y < HEADER / 2 && shell.get() > 0.001) {
+        shell.set(withSpring(0, SNAP));
+      }
+    },
+  );
+  // The pill rides with the header.
+  const pillStyle = useAnimatedStyle(() => ({ offset: { x: 0, y: -HEADER * shell.get() } }));
+
   return (
     <ZStack alignment="top" frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background={t.bg}>
       <FeedList
@@ -307,7 +355,8 @@ function FeedPage({
         queryKey={queryKey}
         fetchPage={fetchPage}
         contentTop={contentTop}
-        onScroll={onScroll}
+        scrollOffset={scroll}
+        onScrollPhaseChange={(phase) => dragging.set(phase === "tracking" || phase === "interacting" ? 1 : 0)}
         ignoresTop
         listRef={(node) => {
           list.current = node;
@@ -317,16 +366,18 @@ function FeedPage({
         empty={tab.uri ? undefined : { icon: "person.2", title: "Your timeline is empty", message: "Follow some people and their posts show up here." }}
       />
       {fresh.length ? (
-        <NewPostsPill
-          authors={fresh}
-          top={contentTop + 10}
-          onPress={() => {
-            setSeenTop(top);
-            onShowHeader();
-            list.current?.scrollTo("top");
-            latest.refetch();
-          }}
-        />
+        <VStack animatedStyle={pillStyle}>
+          <NewPostsPill
+            authors={fresh}
+            top={contentTop + 10}
+            onPress={() => {
+              setSeenTop(top);
+              onShowHeader();
+              list.current?.scrollTo("top");
+              latest.refetch();
+            }}
+          />
+        </VStack>
       ) : null}
     </ZStack>
   );

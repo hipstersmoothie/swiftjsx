@@ -1,8 +1,10 @@
 // Bluesky's lightbox: the tapped thumbnail zooms out into a black, full-screen
 // viewer (and back into the thumbnail when it closes). Swipe between images,
 // pinch or double tap to zoom (drag to pan while zoomed), swipe down to
-// dismiss. It draws in a Portal (above the tab bar, like a cover), and the
-// gestures are worklets so the image follows the finger on the main thread.
+// dismiss: the image follows the finger, shrinking as it goes, and the black
+// fades. It draws in a full-screen Portal (above the tab bar, like a cover),
+// and the gestures are worklets so the image follows the finger on the main
+// thread.
 import { useEffect, useRef, useState } from "react";
 import {
   Portal, AbsoluteStack, ScrollView, ZStack, VStack, HStack, Text, Image, Button, Spacer, ShareLink, useEnvironment,
@@ -17,13 +19,22 @@ export function ImageViewer() {
   const close = useUI((s) => s.closeImages);
   if (!viewer) return null;
   return (
-    <Portal interactive alignment="center">
+    <Portal interactive fullScreen>
       <Gallery key={viewer.id} images={viewer.images} start={viewer.index} origin={viewer.origin} radius={viewer.radius} onClose={close} />
     </Portal>
   );
 }
 
 const MAX_ZOOM = 4;
+/** How far a swipe-down drag shrinks the image (at most), and over how many points the black fades out. */
+const SHRINK = 0.35;
+const FADE = 320;
+
+/** The image's scale for a dismiss drag of `dy` points. */
+function shrink(dy: number) {
+  "worklet";
+  return 1 - Math.min(Math.abs(dy) / 900, SHRINK);
+}
 const ZOOM = { type: "smooth", duration: 0.36 } as const;
 
 /** Where an image of this aspect ratio sits when fitted to the screen. */
@@ -50,14 +61,12 @@ function Gallery({ images, start, origin, radius, onClose }: { images: ImageView
     origin ? { frame: origin, radius, dim: 0 } : null,
   );
   const pager = useRef<HostInstance>(null);
-  // The Portal centers its child in the safe area: this height puts its top at the top of the screen.
-  const height = window.height + safeAreaInsets.top - safeAreaInsets.bottom;
   const screen = { width: window.width, height: window.height };
-  // Vertical drag (to dismiss) and how dim the backdrop is.
-  const drag = useSharedValue(0);
-  const backdrop = useAnimatedStyle(() => ({ opacity: 1 - Math.min(Math.abs(drag.get()) / 400, 0.8) }));
-  const follow = useAnimatedStyle(() => ({ offset: { x: 0, y: drag.get() }, scale: 1 - Math.min(Math.abs(drag.get()) / 2000, 0.1) }));
-  const chrome = useAnimatedStyle(() => ({ opacity: 1 - Math.min(Math.abs(drag.get()) / 120, 1) }));
+  // The dismiss drag: the image follows the finger and shrinks; the black fades.
+  const drag = useSharedValue({ x: 0, y: 0 });
+  const backdrop = useAnimatedStyle(() => ({ opacity: 1 - Math.min(Math.abs(drag.get().y) / FADE, 1) }));
+  const follow = useAnimatedStyle(() => ({ offset: drag.get(), scale: shrink(drag.get().y) }));
+  const chrome = useAnimatedStyle(() => ({ opacity: 1 - Math.min(Math.abs(drag.get().y) / 100, 1) }));
   const image = images[Math.min(page, images.length - 1)];
 
   useEffect(() => {
@@ -81,12 +90,15 @@ function Gallery({ images, start, origin, radius, onClose }: { images: ImageView
     // Once, when the viewer opens.
   }, []);
 
-  /** Back into the thumbnail when we're still on it; otherwise fade away. `dy` is where a swipe left the image. */
-  const dismiss = (dy = 0) => {
+  /** Back into the thumbnail when we're still on it; otherwise fade away. `dx`, `dy` are where a swipe left the image. */
+  const dismiss = (dx = 0, dy = 0) => {
     haptic("light");
     if (origin && page === start) {
-      const from = fitted(images[start], screen.width, screen.height);
-      setFlight({ frame: { ...from, y: from.y + dy }, radius: 0, dim: Math.max(0.2, 1 - Math.abs(dy) / 400) });
+      // Where the dragged image is now: fitted, shrunk around its center, moved by the finger.
+      const fit = fitted(images[start], screen.width, screen.height);
+      const s = shrink(dy);
+      const from = { x: fit.x + (fit.width * (1 - s)) / 2 + dx, y: fit.y + (fit.height * (1 - s)) / 2 + dy, width: fit.width * s, height: fit.height * s };
+      setFlight({ frame: from, radius: 0, dim: 1 - Math.min(Math.abs(dy) / FADE, 1) });
       setPhase("closing");
       setTimeout(() => withAnimation(ZOOM, () => setFlight({ frame: origin, radius, dim: 0 }), onClose), 16);
     } else {
@@ -98,7 +110,7 @@ function Gallery({ images, start, origin, radius, onClose }: { images: ImageView
   const dim = flight ? flight.dim : open ? 1 : 0;
 
   return (
-    <ZStack alignment="top" frame={{ width: window.width, height }} accessibilityIdentifier="image-viewer" accessibilityElement="contain">
+    <ZStack alignment="top" frame={{ maxWidth: "infinity", maxHeight: "infinity" }} accessibilityIdentifier="image-viewer" accessibilityElement="contain">
       <VStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background="black" opacity={dim} animatedStyle={open ? backdrop : undefined} />
       <VStack frame={{ width: window.width, height: window.height }} opacity={open ? 1 : 0}>
         <ScrollView
@@ -177,8 +189,8 @@ type ZoomProps = {
   active: boolean;
   zoomed: boolean;
   onZoomChange(zoomed: boolean): void;
-  drag: ReturnType<typeof useSharedValue<number>>;
-  onDismiss(dy: number): void;
+  drag: ReturnType<typeof useSharedValue<{ x: number; y: number }>>;
+  onDismiss(dx: number, dy: number): void;
 };
 
 function ZoomableImage({ image, width, active, zoomed, onZoomChange, drag, onDismiss }: ZoomProps) {
@@ -211,20 +223,20 @@ function ZoomableImage({ image, width, active, zoomed, onZoomChange, drag, onDis
           const s = panStart.get();
           pan.set({ x: s.x + e.translation.x, y: s.y + e.translation.y });
         } else {
-          drag.set(e.translation.y);
+          drag.set({ x: e.translation.x, y: e.translation.y });
         }
       }}
       onDragEnd={(e) => {
         "worklet";
         panStart.set({ x: 0, y: 0, active: 0 });
         if (zoom.get() > 1.01) return;
-        const y = e.translation.y;
+        const { x, y } = e.translation;
         if (Math.abs(y) > 110 || Math.abs(e.predictedEndTranslation.y) > 420) {
           // The flying image takes over from where the finger left it.
-          runOnJS(onDismiss)(y);
-          drag.set(withTiming(0, { duration: 0.01 }));
+          runOnJS(onDismiss)(x, y);
+          drag.set(withTiming({ x: 0, y: 0 }, { duration: 0.01 }));
         } else {
-          drag.set(withSpring(0, { duration: 0.3, bounce: 0.25 }));
+          drag.set(withSpring({ x: 0, y: 0 }, { duration: 0.3, bounce: 0.2 }));
         }
       }}
       onMagnify={(e) => {

@@ -1,14 +1,13 @@
 // The Profile tab: your profile when signed in; signed out, a sign-in card
 // and the settings. Settings: color mode, dark theme (dim or dark), video
 // autoplay, about, account.
-import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Screen, ScrollView, VStack, HStack, Text, Image, Button, Toggle, Spacer, ToolbarItem, Rectangle, useNavigation, openURL,
 } from "swiftjsx";
 import { deleteSession, getProfile } from "./api";
 import { displayName } from "./format";
-import { ProfileBody } from "./Profile";
+import { PROFILE_BAR, ProfileBody } from "./Profile";
 import { useSession, useSettings } from "./session";
 import { toast, useUI } from "./store";
 import { Avatar, Butterfly, PillButton, Segmented, T, ty, useTheme } from "./ui";
@@ -22,23 +21,15 @@ export function MeScreen() {
   const did = useSession((s) => s.session?.did ?? null);
   const nav = useNavigation();
   const me = useMyProfile();
-  const t = useTheme();
-  const [stage, setStage] = useState(0);
   if (!did) return <SettingsScreen root />;
   return (
-    <Screen
-      title={stage > 1 && me.data ? displayName(me.data) : ""}
-      titleDisplayMode="inline"
-      // Always a fill: switching to "hidden" (or dropping the subtitle) rebuilds the screen and loses the scroll position.
-      toolbarBackground={stage > 0 ? t.bg : "clear"}
-      toolbarColorScheme={stage > 0 ? t.scheme : "dark"}
-    >
+    <Screen {...PROFILE_BAR}>
       <ToolbarItem placement="primaryAction">
         <Button onPress={() => nav.push(<SettingsScreen />)} accessibilityLabel="Settings">
           <Image systemName="gearshape" />
         </Button>
       </ToolbarItem>
-      <ProfileBody actor={did} profile={me.data} loading={me.isPending} onCollapse={setStage} />
+      <ProfileBody actor={did} profile={me.data} loading={me.isPending} />
     </Screen>
   );
 }

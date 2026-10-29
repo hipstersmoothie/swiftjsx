@@ -3,7 +3,7 @@
 // generator (Discover, a trending topic, a pinned feed).
 import type { ReactNode, Ref } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Screen, VirtualList, VStack, ToolbarItem, Button, Image, useEnvironment, type HostInstance } from "swiftjsx";
+import { Screen, VirtualList, VStack, ToolbarItem, Button, Image, useEnvironment, type HostInstance, type SharedValue } from "swiftjsx";
 import { getFeed } from "./api";
 import { FeedItem } from "./PostCell";
 import { useSession, useSettings } from "./session";
@@ -23,7 +23,11 @@ type FeedListProps = {
   onRefresh?: () => void;
   /** Room above the first post, under a floating header. */
   contentTop?: number;
-  onScroll?: (event: { y: number }) => void;
+  /** Gets the scroll offset on the main thread every frame (for worklet styles). */
+  scrollOffset?: SharedValue<{ x: number; y: number }>;
+  onScrollPhaseChange?: (phase: "idle" | "tracking" | "interacting" | "decelerating" | "animating") => void;
+  /** Pinned under the bar while `header` scrolls away (a profile's tabs). */
+  stickyHeader?: ReactNode;
   listRef?: Ref<HostInstance>;
   /** Goes under the safe area (a header draws there instead). */
   ignoresTop?: boolean;
@@ -53,7 +57,7 @@ export function useFeed(queryKey: readonly unknown[], fetchPage: FeedListProps["
   return { query, items };
 }
 
-export function FeedList({ queryKey, fetchPage, header, empty, id = "feed", filter, onRefresh, contentTop = 0, onScroll, listRef, ignoresTop = false }: FeedListProps) {
+export function FeedList({ queryKey, fetchPage, header, empty, id = "feed", filter, onRefresh, contentTop = 0, scrollOffset, onScrollPhaseChange, stickyHeader, listRef, ignoresTop = false }: FeedListProps) {
   const { query, items: all } = useFeed(queryKey, fetchPage);
   const { window } = useEnvironment();
   const t = useTheme();
@@ -76,6 +80,7 @@ export function FeedList({ queryKey, fetchPage, header, empty, id = "feed", filt
       estimatedItemHeight={Math.round(window.width * 0.75)}
       renderItem={(item) => <FeedItem item={item} />}
       header={header}
+      stickyHeader={stickyHeader}
       footer={
         query.isPending ? (
           <FeedSkeleton count={header ? 3 : 7} />
@@ -98,7 +103,8 @@ export function FeedList({ queryKey, fetchPage, header, empty, id = "feed", filt
         return query.refetch();
       }}
       contentMargins={margins}
-      onScroll={onScroll}
+      scrollOffset={scrollOffset}
+      onScrollPhaseChange={onScrollPhaseChange}
       ignoresSafeArea={ignoresTop ? "top" : undefined}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
       background={t.bg}

@@ -446,9 +446,18 @@ final class GalleryTests: XCTestCase {
         }
         openApp("Bluesky")
         // The tab bar shows icons only: find its buttons by label, else by identifier.
+        // It minimizes to the selected tab while you scroll down (tabBarMinimizeBehavior);
+        // tapping the minimized bar expands it again.
         func tab(_ name: String) -> XCUIElement {
-            let byLabel = app.tabBars.buttons[name]
-            return byLabel.exists ? byLabel : app.tabBars.buttons["tab-\(name.lowercased())"]
+            func find() -> XCUIElement {
+                let byLabel = app.tabBars.buttons[name]
+                return byLabel.exists ? byLabel : app.tabBars.buttons["tab-\(name.lowercased())"]
+            }
+            for _ in 0..<2 where !find().exists {
+                app.tabBars.buttons.firstMatch.tap()
+                sleep(1)
+            }
+            return find()
         }
         // Discover (public AppView, signed out), after the splash.
         let post = element("feed-item")
@@ -473,13 +482,16 @@ final class GalleryTests: XCTestCase {
             let discover = element("feed-tab-0")
             if discover.exists && !discover.isSelected { discover.tap(); sleep(2) }
         }
-        // Scrolling down tucks the header away; scrolling up brings it back.
+        // Scrolling down tucks the header away (it follows the drag, then snaps);
+        // scrolling up brings it back.
         app.swipeUp(velocity: .slow)
         sleep(2)
         shot("bsky-feed-scrolled")
+        XCTAssertFalse(element("open-drawer").isHittable, "the header didn't tuck away")
         app.swipeDown(velocity: .slow)
         sleep(2)
         shot("bsky-feed-header-back")
+        XCTAssert(element("open-drawer").isHittable, "the header didn't come back")
 
         // The drawer, from the header's menu button, or a swipe in from the leading edge.
         let drawer = element("drawer-home")
@@ -501,9 +513,11 @@ final class GalleryTests: XCTestCase {
         let signIn = element("toolbar-sign-in")
         if signIn.exists {
             signIn.tap()
-            if app.buttons["Cancel"].waitForExistence(timeout: 3) {
+            let back = element("sign-in-cancel")
+            if back.waitForExistence(timeout: 3) {
+                sleep(1)
                 shot("bsky-sign-in")
-                app.buttons["Cancel"].tap()
+                back.tap()
                 sleep(1)
             } else {
                 shot("bsky-debug-sign-in-tap")
@@ -528,15 +542,19 @@ final class GalleryTests: XCTestCase {
         XCTAssert(element("profile-header").waitForExistence(timeout: 15), "profile didn't open")
         sleep(4)
         shot("bsky-profile")
-        // Scrolled: the banner collapses into the bar and the tabs pin under it.
+        // Scrolled: the banner collapses into the bar and the tabs (the list's
+        // sticky header) pin under it.
         app.swipeUp(velocity: .slow)
         sleep(2)
         shot("bsky-profile-collapsed")
-        let pinnedReplies = element("pinned-tab-replies")
-        if pinnedReplies.exists && pinnedReplies.isHittable { pinnedReplies.tap() } else {
-            for _ in 0..<6 where !element("profile-tab-replies").isHittable { app.swipeDown(velocity: .fast) }
-            element("profile-tab-replies").tap()
+        let repliesTab = element("profile-tab-replies")
+        XCTAssert(repliesTab.exists && repliesTab.isHittable, "the profile's tabs didn't stay on screen")
+        // Pinned below the bar's buttons, not under them.
+        let options = app.buttons["Profile options"].firstMatch
+        if options.exists {
+            XCTAssert(repliesTab.frame.minY >= options.frame.maxY - 2, "the pinned tabs are under the navigation bar")
         }
+        repliesTab.tap()
         sleep(4)
         shot("bsky-profile-replies")
         // A reply shown under its parent (joined by a thread line) opens a
@@ -559,20 +577,18 @@ final class GalleryTests: XCTestCase {
             app.navigationBars.buttons.element(boundBy: 0).tap()
             sleep(1)
         }
-        // The Media tab: pinned while scrolled, else in the header.
-        let pinnedMedia = element("pinned-tab-media")
-        if pinnedMedia.exists && pinnedMedia.isHittable { pinnedMedia.tap() } else {
-            let media = element("profile-tab-media")
-            for _ in 0..<8 where !(media.exists && media.isHittable) { app.swipeDown(velocity: .fast) }
-            media.tap()
-        }
+        // The Media tab, from the pinned tabs.
+        let media = element("profile-tab-media")
+        XCTAssert(media.waitForExistence(timeout: 5) && media.isHittable, "the profile's tabs aren't pinned")
+        media.tap()
         sleep(4)
         shot("bsky-profile-media")
-        // Back to Home's root (the feed).
+        // Back to Home's root (the feed), still on the feed we left (Discover).
         for _ in 0..<4 where !(element("open-drawer").exists && element("open-drawer").isHittable) {
             app.navigationBars.buttons.element(boundBy: 0).tap()
             sleep(1)
         }
+        XCTAssert(element("feed-tab-0").isSelected, "Home came back on another feed")
 
         // Explore: trending topics, suggested accounts and feeds; then people as you type.
         tab("Search").tap()
@@ -636,6 +652,11 @@ final class GalleryTests: XCTestCase {
             XCTAssert(element("image-viewer").waitForExistence(timeout: 5), "viewer didn't open")
             sleep(3)
             shot("bsky-image-viewer")
+            // A short, slow drag follows the finger and springs back.
+            let middle = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            middle.press(forDuration: 0.1, thenDragTo: middle.withOffset(CGVector(dx: 0, dy: 60)), withVelocity: .slow, thenHoldForDuration: 0.3)
+            sleep(1)
+            XCTAssert(element("close-viewer").exists, "a short drag dismissed the viewer")
             app.swipeDown(velocity: .fast)
             XCTAssert(element("image-viewer").waitForNonExistence(timeout: 5), "swipe down didn't dismiss")
         }

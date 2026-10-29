@@ -1,9 +1,11 @@
-// The composer: a new post, a reply (with the parent shown above), or a
-// quote. Mentions, links and #tags are highlighted as you type and become
-// facets; a ring counts down the 300-character (grapheme) limit.
+// The composer, laid out like Bluesky's: Cancel and a Post pill on top (no
+// navigation bar), the parent post when replying, your avatar beside a large
+// text field, the quoted post, and a toolbar over the keyboard (media buttons,
+// the language, and a ring counting down the 300-character grapheme limit).
+// Mentions, links and #tags are highlighted as you type and become facets.
 import { useState } from "react";
 import {
-  Sheet, Screen, Navigator, ScrollView, VStack, HStack, Text, Image, Button, Spacer, Circle, TextField, ToolbarItem, ProgressView,
+  Sheet, Screen, Navigator, ScrollView, VStack, HStack, Text, Image, Button, Spacer, Circle, TextField, ProgressView,
   ConfirmationDialog, haptic,
 } from "swiftjsx";
 import { createPost, resolveHandle } from "./api";
@@ -12,14 +14,14 @@ import { MAX_GRAPHEMES, detect, facetsFor, graphemeLength } from "./richtext";
 import { toast, useUI, type ComposeTarget } from "./store";
 import { useSession } from "./session";
 import { useMyProfile } from "./Me";
-import { Avatar, T, ty, useTheme } from "./ui";
+import { Avatar, Separator, T, ty, useTheme } from "./ui";
 import type { PostView, StrongRef } from "./types";
 
 export function ComposeSheet() {
   const target = useUI((s) => s.compose);
   const close = useUI((s) => s.closeCompose);
   return (
-    <Sheet isPresented={target !== undefined} onDismiss={close} detents={["large"]}>
+    <Sheet isPresented={target !== undefined} onDismiss={close} detents={["large"]} dragIndicator="hidden">
       <Navigator>
         <Composer target={target ?? null} onClose={close} />
       </Navigator>
@@ -85,53 +87,77 @@ function Composer({ target, onClose }: { target: ComposeTarget; onClose(): void 
     }
   };
 
+  const cancel = () => (text.trim() ? setConfirmDiscard(true) : onClose());
+  const unsupported = () => toast("Attachments aren't available in this example", "paperclip");
+
   return (
-    <Screen title={replyTo ? "Reply" : quote ? "Quote" : "New post"} titleDisplayMode="inline" interactiveDismissDisabled={!!text.trim()}>
-      <ToolbarItem placement="cancellationAction">
-        <Button onPress={() => (text.trim() ? setConfirmDiscard(true) : onClose())} title="Cancel">
-          <ConfirmationDialog isPresented={confirmDiscard} onDismiss={() => setConfirmDiscard(false)} title="Discard draft?">
-            <Button role="destructive" title="Discard" onPress={onClose} />
-          </ConfirmationDialog>
-        </Button>
-      </ToolbarItem>
-      <ToolbarItem placement="confirmationAction">
-        {posting ? (
-          <ProgressView />
-        ) : (
-          <Button onPress={submit} disabled={!canPost} buttonStyle="borderedProminent" tint={t.primary} accessibilityIdentifier="post-button">
-            <Text fontWeight="bold">{replyTo ? "Reply" : "Post"}</Text>
+    <Screen title={replyTo ? "Reply" : quote ? "Quote" : "New post"} navigationBar="hidden" interactiveDismissDisabled={!!text.trim()}>
+      <VStack spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} background={t.bg}>
+        {/* Bluesky's top bar: Cancel, then the Post pill. */}
+        <HStack padding={{ leading: 6, trailing: 12, top: 10, bottom: 8 }}>
+          <Button onPress={cancel} pressedOpacity={0.6} accessibilityIdentifier="compose-cancel">
+            <Text font={ty(T.md + 1)} foregroundStyle={t.primary} padding={{ horizontal: 10, vertical: 8 }}>Cancel</Text>
+            <ConfirmationDialog isPresented={confirmDiscard} onDismiss={() => setConfirmDiscard(false)} title="Discard draft?">
+              <Button role="destructive" title="Discard" onPress={onClose} />
+            </ConfirmationDialog>
           </Button>
-        )}
-      </ToolbarItem>
-      <ToolbarItem placement="keyboard">
-        <HStack>
           <Spacer />
+          {posting ? (
+            <ProgressView tint={t.primary} frame={{ width: 64, height: 34 }} />
+          ) : (
+            <Button onPress={submit} disabled={!canPost} pressedScale={0.95} accessibilityLabel={replyTo ? "Reply" : "Post"} accessibilityIdentifier="post-button">
+              <Text font={ty(T.md, "bold")} foregroundStyle="white" padding={{ horizontal: 16, vertical: 8 }} background={t.primary} cornerRadius="capsule" opacity={canPost ? 1 : 0.5}>
+                {replyTo ? "Reply" : "Post"}
+              </Text>
+            </Button>
+          )}
+        </HStack>
+        <ScrollView frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
+          <VStack alignment="leading" spacing={0}>
+            {replyTo ? <ParentPreview post={replyTo} /> : null}
+            <HStack alignment="top" spacing={10} padding={{ horizontal: 16, top: replyTo ? 14 : 6 }}>
+              <Avatar uri={me.data?.avatar} size={42} label={session ? `@${session.handle}` : undefined} />
+              <VStack alignment="leading" spacing={8} padding={{ top: 8 }}>
+                <TextField
+                  value={text}
+                  onChange={setText}
+                  placeholder={replyTo ? "Write your reply" : "What's up?"}
+                  axis="vertical"
+                  minLines={4}
+                  textFieldStyle="plain"
+                  autoFocus
+                  font={ty(T.xl)}
+                  tint={t.primary}
+                  accessibilityIdentifier="compose-text"
+                />
+                <Highlights text={text} />
+              </VStack>
+            </HStack>
+            {quote ? (
+              <VStack padding={{ leading: 16 + 42 + 10, trailing: 16, top: 12 }}>
+                <QuotePreview post={quote} />
+              </VStack>
+            ) : null}
+          </VStack>
+        </ScrollView>
+        {/* Over the keyboard: media buttons, the language, and the counter. */}
+        <Separator />
+        <HStack spacing={4} padding={{ horizontal: 10, vertical: 6 }}>
+          {[
+            { icon: "photo", label: "Add images" },
+            { icon: "camera", label: "Camera" },
+            { icon: "film", label: "Add video" },
+            { icon: "face.smiling", label: "Emoji" },
+          ].map((b) => (
+            <Button key={b.icon} onPress={unsupported} pressedOpacity={0.5} accessibilityLabel={b.label}>
+              <Image systemName={b.icon} font={{ size: 20 }} foregroundStyle={t.primary} frame={{ width: 38, height: 38 }} contentShape="rectangle" />
+            </Button>
+          ))}
+          <Spacer />
+          <Text font={ty(T.sm, "semibold")} foregroundStyle={t.primary} padding={{ trailing: 8 }}>English</Text>
           <CharacterRing length={length} />
         </HStack>
-      </ToolbarItem>
-      <ScrollView frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-        <VStack alignment="leading" spacing={12} padding={16}>
-          {replyTo ? <ParentPreview post={replyTo} /> : null}
-          <HStack alignment="top" spacing={12}>
-            <Avatar uri={me.data?.avatar} size={40} label={session ? `@${session.handle}` : undefined} />
-            <VStack alignment="leading" spacing={6}>
-              <TextField
-                value={text}
-                onChange={setText}
-                placeholder={replyTo ? "Write your reply" : "What's up?"}
-                axis="vertical"
-                minLines={4}
-                textFieldStyle="plain"
-                autoFocus
-                font="body"
-                accessibilityIdentifier="compose-text"
-              />
-              <Highlights text={text} />
-            </VStack>
-          </HStack>
-          {quote ? <QuotePreview post={quote} /> : null}
-        </VStack>
-      </ScrollView>
+      </VStack>
     </Screen>
   );
 }
@@ -175,13 +201,16 @@ function CharacterRing({ length }: { length: number }) {
 function ParentPreview({ post }: { post: PostView }) {
   const t = useTheme();
   return (
-    <HStack alignment="top" spacing={12} padding={{ bottom: 4 }}>
-      <Avatar uri={post.author.avatar} size={40} />
-      <VStack alignment="leading" spacing={3}>
-        <Text font="subheadline" fontWeight="bold" lineLimit={1}>{displayName(post.author)}</Text>
-        <Text font="subheadline" lineLimit={5} foregroundStyle={t.textMedium}>{post.record.text}</Text>
-      </VStack>
-    </HStack>
+    <VStack spacing={0}>
+      <HStack alignment="top" spacing={10} padding={{ horizontal: 16, top: 6, bottom: 14 }} frame={{ maxWidth: "infinity", alignment: "leading" }}>
+        <Avatar uri={post.author.avatar} size={42} />
+        <VStack alignment="leading" spacing={3}>
+          <Text font={ty(T.md, "bold")} foregroundStyle={t.text} lineLimit={1}>{displayName(post.author)}</Text>
+          <Text font={ty(T.md)} foregroundStyle={t.text} lineLimit={6} lineSpacing={2}>{post.record.text}</Text>
+        </VStack>
+      </HStack>
+      <Separator />
+    </VStack>
   );
 }
 
@@ -191,10 +220,10 @@ function QuotePreview({ post }: { post: PostView }) {
     <VStack alignment="leading" spacing={4} padding={12} frame={{ maxWidth: "infinity", alignment: "leading" }} border={{ color: t.border, width: 1 }} cornerRadius={12}>
       <HStack spacing={6}>
         <Avatar uri={post.author.avatar} size={18} />
-        <Text font="subheadline" fontWeight="semibold" lineLimit={1}>{displayName(post.author)}</Text>
-        <Text font="subheadline" foregroundStyle={t.textMedium} lineLimit={1}>@{post.author.handle}</Text>
+        <Text font={ty(T.sm, "bold")} foregroundStyle={t.text} lineLimit={1}>{displayName(post.author)}</Text>
+        <Text font={ty(T.sm)} foregroundStyle={t.textMedium} lineLimit={1}>@{post.author.handle}</Text>
       </HStack>
-      <Text font="subheadline" lineLimit={4}>{post.record.text}</Text>
+      <Text font={ty(T.sm)} foregroundStyle={t.text} lineLimit={4}>{post.record.text}</Text>
     </VStack>
   );
 }

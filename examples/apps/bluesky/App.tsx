@@ -4,7 +4,7 @@
 // reposts and follows (optimistic). Light, dim and dark themes, on Inter.
 import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { TabView, Tab, Navigator, Overlay, VStack, hot, createNavigationRef, type NavigationRef } from "swiftjsx";
+import { TabView, Tab, Navigator, Overlay, VStack, hot, createNavigationRef, useAnimatedStyle, type NavigationRef } from "swiftjsx";
 import { getUnreadCount } from "./api";
 import { HomeScreen } from "./Home";
 import { SearchScreen } from "./Search";
@@ -13,7 +13,8 @@ import { MeScreen } from "./Me";
 import { ImageViewer } from "./ImageViewer";
 import { ComposeSheet } from "./Compose";
 import { SignInSheet } from "./SignIn";
-import { Drawer } from "./Drawer";
+import { Drawer, DRAWER_WIDTH } from "./Drawer";
+import { drawerProgress } from "./Home";
 import { useSession, useSettings } from "./session";
 import { useUI, type TabName } from "./store";
 import { fontsReady, loadInter, useTheme } from "./theme";
@@ -63,6 +64,8 @@ function Tabs() {
     queryFn: ({ signal }) => getUnreadCount(signal),
     refetchInterval: 60_000,
   });
+  // Bluesky's iOS drawer slides the app over with it.
+  const slide = useAnimatedStyle(() => ({ offset: { x: drawerProgress.get() * DRAWER_WIDTH, y: 0 } }));
 
   return (
     <TabView
@@ -71,6 +74,9 @@ function Tabs() {
       // Bluesky's bar: icons only, the selected one filled in the text color.
       tint={t.text}
       background={t.bg}
+      // iOS 26: the tab bar shrinks out of the way while you scroll down a feed.
+      tabBarMinimizeBehavior="onScrollDown"
+      animatedStyle={slide}
       preferredColorScheme={appearance === "system" ? undefined : t.scheme}
     >
       <Tab value="home" systemImage="house" accessibilityLabel="Home" accessibilityIdentifier="tab-home">
@@ -96,11 +102,9 @@ function Tabs() {
       {/* Presented from the root so any screen can open them (they're in the UI store). */}
       <ComposeSheet />
       <SignInSheet />
-      {/* Portals only mount inside an attachment (a TabView's children are its tabs). */}
-      <Overlay>
-        <Drawer />
-        <ImageViewer />
-      </Overlay>
+      {/* Over everything (their own window), from anywhere: they're in the UI store. */}
+      <Drawer />
+      <ImageViewer />
       <Overlay alignment="bottom">
         <ToastView />
       </Overlay>

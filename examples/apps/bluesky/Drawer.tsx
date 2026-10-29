@@ -16,14 +16,17 @@ import { useSession, useSettings } from "./session";
 import { useUI, type TabName } from "./store";
 import { Avatar, Butterfly, PillButton, T, ty, useTheme } from "./ui";
 
-const WIDTH = 300;
+export const DRAWER_WIDTH = 300;
+const WIDTH = DRAWER_WIDTH;
 const SPRING = { duration: 0.35, bounce: 0 } as const;
+/** Bluesky's overlay over the app while the drawer is out: a faint blue tint in light and dark, near black in dim. */
+const SCRIM = { light: "#003975/10", dim: "#0A0D10/80", dark: "#0152A8/10" } as const;
 
 export function Drawer() {
   const open = useUI((s) => s.drawerOpen);
   const peek = useUI((s) => s.drawerPeek);
   const setOpen = useUI((s) => s.setDrawerOpen);
-  const { window, safeAreaInsets } = useEnvironment();
+  const { safeAreaInsets } = useEnvironment();
   const t = useTheme();
   const backdrop = useAnimatedStyle(() => ({ opacity: drawerProgress.get() }));
   const panel = useAnimatedStyle(() => ({ offset: { x: (drawerProgress.get() - 1) * (WIDTH + 20), y: 0 } }));
@@ -38,15 +41,12 @@ export function Drawer() {
     return () => clearTimeout(timer);
   }, [open]);
 
-  // Mounted only while it shows: an interactive Portal takes every touch in its children's frames
-  // (and keeps a removed child's frame until it's unmounted).
+  // Mounted only while it shows (nothing to lay out or update while closed).
   if (!open && !peek && !closing) return null;
-  // The Portal centers its child in the safe area: this height puts its top at the top of the screen.
-  const height = window.height + safeAreaInsets.top - safeAreaInsets.bottom;
   return (
-    <Portal interactive alignment="center">
-      <ZStack key={open ? "open" : "closed"} alignment="topLeading" frame={{ width: window.width, height }}>
-        <Rectangle fill={t.scrim} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} opacity={0} animatedStyle={backdrop} allowsHitTesting={false} accessibilityHidden />
+    <Portal interactive fullScreen alignment="topLeading">
+      <ZStack alignment="topLeading" frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
+        <Rectangle fill={SCRIM[t.name]} frame={{ maxWidth: "infinity", maxHeight: "infinity" }} opacity={0} animatedStyle={backdrop} allowsHitTesting={false} accessibilityHidden />
         {open ? (
           <VStack
             frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
@@ -58,7 +58,7 @@ export function Drawer() {
         ) : null}
         <VStack
           spacing={0}
-          frame={{ width: WIDTH, height: window.height, alignment: "topLeading" }}
+          frame={{ width: WIDTH, maxHeight: "infinity", alignment: "topLeading" }}
           padding={{ top: safeAreaInsets.top, bottom: safeAreaInsets.bottom }}
           background={t.bg}
           border={{ color: t.border, width: 0.5 }}
