@@ -373,7 +373,8 @@ struct CompilerTests {
         // drives. The offset's timing curve steps here, frame by frame.
         #expect(runtime.worklets.lastSteps == ["spring"])
         #expect(card.double("scale") == 1)
-        #expect(await eventually { offset(card)[0] > 0 && offset(card)[0] < 100 })
+        // (Mid-animation values: AnimationEngineTests, with a longer curve that
+        // a loaded machine's late frames can't skip.)
         #expect(await eventually { offset(card) == [0, 0] })
         #expect(card.double("opacity") == 1)
         #expect(await eventually { runtime.texts().contains("drops 1") })

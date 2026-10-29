@@ -36,6 +36,7 @@ struct ScrollViewHost: View {
             .environment(\.inList, false)
             .modifier(ScrollOptions(node: node))
             .scrollDisabled(node.has("scrollEnabled") && !node.bool("scrollEnabled"))
+            .modifier(ScrollOffsetDriver(node: node))
             .modifier(Position(node: node, horizontal: horizontal, edges: edges))
             .scrollPosition($position)
             .onChange(of: node.scrollRequest) { _, request in
@@ -88,6 +89,27 @@ struct ScrollViewHost: View {
 final class ChildEdges {
     static let space = "SwiftJSX.scrollContent"
     var leading: [Int: CGFloat] = [:]
+}
+
+/// `scrollOffset={sharedValue}`: the content offset (`{ x, y }`, 0 at rest,
+/// negative when pulled past the top) written into a shared value on the main
+/// thread every frame, so animated styles and canvases follow the scroll in
+/// the same frame (a collapsing header, a stretching banner).
+struct ScrollOffsetDriver: ViewModifier {
+    let node: Node
+    @Environment(\.jsxRuntime) private var runtime
+
+    func body(content: Content) -> some View {
+        if let id = ((node.prop("scrollOffset") as? [String: Any])?["__shared"] as? NSNumber)?.intValue {
+            content.onScrollGeometryChange(for: CGPoint.self) { geo in
+                CGPoint(x: geo.contentOffset.x + geo.contentInsets.leading, y: geo.contentOffset.y + geo.contentInsets.top)
+            } action: { _, offset in
+                runtime?.worklets.scrolled(id, x: offset.x, y: offset.y)
+            }
+        } else {
+            content
+        }
+    }
 }
 
 /// A ScrollView's children, with explicit ids (the same as their ForEach
@@ -416,6 +438,7 @@ private struct VirtualStack<Slots: View>: View {
     @State private var position = ScrollPosition()
     @State private var viewport: CGFloat = 0
     @State private var headerHeight: CGFloat = 0
+    @State private var stickyHeight: CGFloat = 0
     /// The `initialScrollIndex` already scrolled to.
     @State private var initialApplied: Int?
     /// Keeps that row at the top while the rows above it render.
@@ -424,13 +447,16 @@ private struct VirtualStack<Slots: View>: View {
     var body: some View {
         let spacing = node.cgFloat("spacing") ?? 0
         ScrollView {
+            // `stickyHeader` pins (the rows' section header); `header` scrolls away above it.
+            let pinned: PinnedScrollableViews = sticky == nil ? [] : [.sectionHeaders]
             if node.has("columns") {
-                LazyVGrid(columns: gridColumns(node), spacing: spacing) { section }
+                LazyVGrid(columns: gridColumns(node), spacing: spacing, pinnedViews: pinned) { content }
             } else {
-                LazyVStack(spacing: spacing) { section }
+                LazyVStack(spacing: spacing, pinnedViews: pinned) { content }
             }
         }
         .modifier(ScrollOptions(node: node))
+        .modifier(ScrollOffsetDriver(node: node))
         .scrollPosition($position)
         .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height } action: { _, height in viewport = height }
         .onChange(of: node.scrollRequest) { _, request in
@@ -462,20 +488,40 @@ private struct VirtualStack<Slots: View>: View {
         }
     }
 
+    private var sticky: Node? { node.children.first { $0.type == "VirtualListStickyHeader" } }
+
     /// `header` / `footer` (VirtualListHeader / VirtualListFooter children):
-    /// full-width views above and below the rows that scroll with them.
-    private var section: some View {
+    /// full-width views above and below the rows that scroll with them. With a
+    /// `stickyHeader`, the header is a plain view above the rows' section and
+    /// the sticky one is the section's (pinned) header.
+    @ViewBuilder
+    private var content: some View {
         let header = node.children.first { $0.type == "VirtualListHeader" }
         let footer = node.children.first { $0.type == "VirtualListFooter" }
-        return Section {
-            slots(layout)
-        } header: {
+        if let sticky {
             if let header {
                 NodeView(node: header)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
             }
-        } footer: {
-            if let footer { NodeView(node: footer) }
+            Section {
+                slots(layout)
+            } header: {
+                NodeView(node: sticky)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { stickyHeight = $0 }
+            } footer: {
+                if let footer { NodeView(node: footer) }
+            }
+        } else {
+            Section {
+                slots(layout)
+            } header: {
+                if let header {
+                    NodeView(node: header)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+                }
+            } footer: {
+                if let footer { NodeView(node: footer) }
+            }
         }
     }
 
@@ -496,7 +542,8 @@ private struct VirtualStack<Slots: View>: View {
         let row = layout.fixed ?? layout.estimated
         // Grids: rows of `columns` (adaptive columns count as one per row: an estimate).
         let perRow = max(1, Int(node.double("columns") ?? 1))
-        let header = headerHeight > 0 ? headerHeight + spacing : 0
+        // A sticky header sits over the rows' tops: scroll that much less.
+        let header = (headerHeight > 0 ? headerHeight + spacing : 0) + (stickyHeight > 0 ? stickyHeight + spacing : 0) - stickyHeight
         let target = min(max(index, 0), max(count - 1, 0))
         // Rows of varying height: the ones measured so far, estimates for the rest.
         let top = perRow == 1 && layout.fixed == nil

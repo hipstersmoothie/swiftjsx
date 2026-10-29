@@ -324,6 +324,7 @@ extension WorkletRuntime {
         return { done: true, value: from, velocity: zero(from), step: () => from };
       }
 
+      const scrollSyncs = new Map(); // id -> when a scroll offset was last synced to JS
       const running = new Map();  // id -> animator
       const finished = [];        // callbacks to call after the frame's values are in
       function finish(anim, done) {
@@ -601,6 +602,17 @@ extension WorkletRuntime {
             case "cancel":
               cancel(m.id);
               break;
+            case "scroll": {
+              // Written every frame of a scroll: the JS thread hears it ~10 times a second.
+              cancel(m.id);
+              assign(m.id, m.value, null, false);
+              const now = Date.now();
+              if (now - (scrollSyncs.get(m.id) ?? 0) > 100) {
+                scrollSyncs.set(m.id, now);
+                toJS.set(m.id, m.value);
+              }
+              break;
+            }
             default:
               set(m.id, hydrate(m.value), false);
           }

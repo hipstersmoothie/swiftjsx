@@ -131,7 +131,8 @@ function serialize(inst: HostInstance, props: Props): Props {
     if (key === "children" || key === "key" || key === "ref") continue;
     const v = props[key];
     if (v === undefined || isWorkletProp(v)) continue;
-    out[key] = typeof v === "function" ? true : v;
+    // Shared values (`scrollOffset={offset}`) go by id: the main thread has them.
+    out[key] = typeof v === "function" ? true : v && typeof v === "object" && "__shared" in v ? { __shared: (v as { __shared: number }).__shared } : v;
   }
   Object.assign(out, serializeWorklets(inst, props));
   // Swift only tracks layout (for measure()) on nodes that have a ref.

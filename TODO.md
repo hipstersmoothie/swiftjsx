@@ -220,6 +220,18 @@ for the record.
       ancestors above); `Video` `playsWhenVisible` and `poster`; `ScrollView`
       `scrollEnabled`; `searchPlacement` documents that "automatic" can collapse the field
       into a button in an ordinary tab.
+- [x] From the high-fidelity pass: `<Screen navigationBar="hidden" tabBar="hidden"
+      scrollEdgeEffect>`, `<TabView tabBarMinimizeBehavior>`, `VirtualList stickyHeader`
+      (pinned under the bar while `header` scrolls away), `scrollOffset={sharedValue}` on
+      ScrollView / VirtualList (scroll-linked worklet styles in the same frame),
+      `<Sheet fullScreen zoomFrom>`, `<Portal fullScreen>`, `onSafeAreaChange`. Fixed:
+      switching `toolbarBackground` between a fill and "hidden", or setting `subtitle`,
+      reset the screen's scroll; an interactive Portal kept taking touches after its
+      child unmounted or `interactive` turned off; a Portal directly in a TabView was
+      dropped.
+- [ ] Bars: `toolbarBackground` can't be a view (a blurred banner); tab items can't be
+      custom views (an avatar); `keyframes` can't loop without settling back.
+- [ ] Children added later to a paging horizontal ScrollView may not draw (unconfirmed).
 - [ ] A container's `accessibilityIdentifier` disappears when it's nested inside another
       `accessibilityElement="contain"` container (XCUITest sees only the outer one).
 - [ ] `TextField` can't style ranges of its text (highlighting mentions and links while

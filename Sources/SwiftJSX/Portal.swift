@@ -63,8 +63,17 @@ final class PortalWindows {
     static let shared = PortalWindows()
 
     private(set) var nodes: [Node] = []
-    /// Frames (window coordinates) of interactive portals' children.
-    @ObservationIgnored var touchFrames: [Int: CGRect] = [:]
+    /// Frames (window coordinates) of portals' children. Whether they take
+    /// touches is decided when one arrives: the portal's `interactive` now,
+    /// and only children still mounted.
+    @ObservationIgnored var touchFrames: [Int: (portal: Node, child: Node, frame: CGRect)] = [:]
+
+    func takesTouch(at point: CGPoint) -> Bool {
+        touchFrames.values.contains { entry in
+            entry.portal.bool("interactive") && entry.portal.parent != nil && entry.child.parent === entry.portal
+                && entry.frame.contains(point)
+        }
+    }
     @ObservationIgnored private var windows: [ObjectIdentifier: PassthroughWindow] = [:]
 
     func add(_ node: Node, runtime: JSXRuntime, scene: UIWindowScene) {
@@ -88,7 +97,7 @@ final class PortalWindows {
     /// Drops portals React has unmounted; hides windows with nothing to show.
     func prune() {
         nodes.removeAll { $0.parent == nil }
-        touchFrames = touchFrames.filter { id, _ in nodes.contains { $0.children.contains { $0.id == id } } }
+        touchFrames = touchFrames.filter { _, entry in entry.child.parent === entry.portal && entry.portal.parent != nil }
         for window in windows.values { window.isHidden = nodes.isEmpty }
     }
 }
@@ -100,16 +109,20 @@ private struct PortalRoot: View {
         ZStack {
             ForEach(windows.nodes) { node in
                 let placement = alignment(node.string("alignment")) ?? .center
+                let full = node.bool("fullScreen")
                 ZStack(alignment: placement) {
                     ForEach(node.children.filter { !$0.isAttachment }) { child in
                         NodeView(node: child)
                             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
-                                if node.bool("interactive") { windows.touchFrames[child.id] = frame } else { windows.touchFrames[child.id] = nil }
+                                windows.touchFrames[child.id] = (node, child, frame)
                             }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: placement)
-                .padding()
+                // `fullScreen`: edge to edge (a drawer, an image viewer); otherwise
+                // inset from the screen's edges and safe area (a toast).
+                .padding(full ? 0 : 16)
+                .ignoresSafeArea(.all, edges: full ? .all : [])
                 .onDisappear { windows.prune() }
             }
         }
@@ -124,7 +137,7 @@ final class PassthroughWindow: UIWindow {
     weak var portals: PortalWindows?
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        let inside = MainActor.assumeIsolated { portals?.touchFrames.values.contains { $0.contains(point) } ?? false }
+        let inside = MainActor.assumeIsolated { portals?.takesTouch(at: point) ?? false }
         return inside ? super.hitTest(point, with: event) : nil
     }
 }

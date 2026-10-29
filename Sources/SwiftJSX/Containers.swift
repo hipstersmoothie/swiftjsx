@@ -37,7 +37,13 @@ struct TabViewHost: View {
             }
         }
         .modifier(TabViewStyleModifier(node: node))
+        .modifier(TabBarMinimize(behavior: node.string("tabBarMinimizeBehavior")))
         .modifier(BottomAccessory(node: node.children.first { $0.type == "TabAccessory" }))
+        // Other children (a <Portal>, an effect-only component's views) aren't
+        // tabs: kept mounted behind the tabs instead of dropped.
+        .background {
+            ForEach(node.children.filter { !["Tab", "TabAccessory"].contains($0.type) && !$0.isAttachment }) { NodeView(node: $0) }
+        }
         .onChange(of: node.string("selection")) { picked = nil }
     }
 
@@ -63,6 +69,29 @@ private struct TabContentView: View {
     var body: some View {
         VStack(spacing: 0) { Children(node: tab) }
             .background { Presenters(node: tab) }
+    }
+}
+
+/// `tabBarMinimizeBehavior` (iOS 26): "onScrollDown" shrinks the tab bar
+/// while scrolling down (back on scroll up), "onScrollUp", or "never".
+private struct TabBarMinimize: ViewModifier {
+    let behavior: String?
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if #available(iOS 26, *) {
+            let minimize: TabBarMinimizeBehavior = switch behavior {
+            case "onScrollDown": .onScrollDown
+            case "onScrollUp": .onScrollUp
+            case "never": .never
+            default: .automatic
+            }
+            content.tabBarMinimizeBehavior(minimize)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }
 

@@ -40,6 +40,8 @@ type SheetProps<T> = Presentable<T> & {
   detents?: ("medium" | "large" | number)[];
   /** iOS: cover the whole screen instead of a card. */
   fullScreen?: boolean;
+  /** iOS: zooms out of the view whose `transitionSource` is this id (a thumbnail), and back into it on dismiss. */
+  zoomFrom?: string;
   /** Refuse the swipe down (e.g. while there are unsaved changes; offer Cancel instead). */
   interactiveDismissDisabled?: boolean;
   dragIndicator?: "automatic" | "visible" | "hidden";
@@ -72,6 +74,7 @@ export function Sheet<T>(props: SheetProps<T>) {
       }}
       detents={props.detents}
       fullScreen={props.fullScreen}
+      zoomFrom={props.zoomFrom}
       interactiveDismissDisabled={props.interactiveDismissDisabled}
       dragIndicator={props.dragIndicator}
       cornerRadius={props.cornerRadius}

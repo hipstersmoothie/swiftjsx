@@ -35532,7 +35532,9 @@ Content-Type: ${value.type || "application/octet-stream"}\r
       if (key === "children" || key === "key" || key === "ref") continue;
       const v = props[key];
       if (v === void 0 || isWorkletProp(v)) continue;
-      out[key] = typeof v === "function" ? true : v;
+      out[key] = typeof v === "function" ? true : v && typeof v === "object" && "__shared" in v ? {
+        __shared: v.__shared
+      } : v;
     }
     Object.assign(out, serializeWorklets(inst, props));
     if (props.ref != null) out.__ref = true;
@@ -36652,15 +36654,16 @@ ${e.stack}` : String(e);
   var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
   var VirtualListHost = "VirtualList";
   var VirtualListHeader = "VirtualListHeader";
+  var VirtualListStickyHeader = "VirtualListStickyHeader";
   var VirtualListFooter = "VirtualListFooter";
   var VirtualRow = "VirtualRow";
   function VirtualList(t0) {
-    const $ = (0, import_compiler_runtime5.c)(39);
-    if ($[0] !== "eea62b5b3b869560c2892851ba59937b5922f2ed80728071717af0641fde7c22") {
-      for (let $i = 0; $i < 39; $i += 1) {
+    const $ = (0, import_compiler_runtime5.c)(43);
+    if ($[0] !== "5e3ecbaacfebb8c050123577d321672f925cc1da912941c0075e3b3e8fa10b62") {
+      for (let $i = 0; $i < 43; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "eea62b5b3b869560c2892851ba59937b5922f2ed80728071717af0641fde7c22";
+      $[0] = "5e3ecbaacfebb8c050123577d321672f925cc1da912941c0075e3b3e8fa10b62";
     }
     let children;
     let data;
@@ -36670,6 +36673,7 @@ ${e.stack}` : String(e);
     let onEndReached;
     let renderItem;
     let rest;
+    let stickyHeader;
     let t1;
     let t2;
     let t3;
@@ -36683,6 +36687,7 @@ ${e.stack}` : String(e);
         onEndReached,
         onEndReachedThreshold: t3,
         header,
+        stickyHeader,
         footer,
         children,
         ...rest
@@ -36696,9 +36701,10 @@ ${e.stack}` : String(e);
       $[7] = onEndReached;
       $[8] = renderItem;
       $[9] = rest;
-      $[10] = t1;
-      $[11] = t2;
-      $[12] = t3;
+      $[10] = stickyHeader;
+      $[11] = t1;
+      $[12] = t2;
+      $[13] = t3;
     } else {
       children = $[2];
       data = $[3];
@@ -36708,30 +36714,31 @@ ${e.stack}` : String(e);
       onEndReached = $[7];
       renderItem = $[8];
       rest = $[9];
-      t1 = $[10];
-      t2 = $[11];
-      t3 = $[12];
+      stickyHeader = $[10];
+      t1 = $[11];
+      t2 = $[12];
+      t3 = $[13];
     }
     const estimatedItemHeight = t1 === void 0 ? 44 : t1;
     const overscan = t2 === void 0 ? 10 : t2;
     const onEndReachedThreshold = t3 === void 0 ? 10 : t3;
     const t4 = Math.min(data.length, overscan * 4);
     let t5;
-    if ($[13] !== t4) {
+    if ($[14] !== t4) {
       t5 = {
         start: 0,
         end: t4
       };
-      $[13] = t4;
-      $[14] = t5;
+      $[14] = t4;
+      $[15] = t5;
     } else {
-      t5 = $[14];
+      t5 = $[15];
     }
     const [range, setRange] = (0, import_react6.useState)(t5);
     const previousFirst = (0, import_react6.useRef)(0);
     const endReachedAt = (0, import_react6.useRef)(-1);
     let t6;
-    if ($[15] !== data.length || $[16] !== onEndReached || $[17] !== onEndReachedThreshold || $[18] !== overscan) {
+    if ($[16] !== data.length || $[17] !== onEndReached || $[18] !== onEndReachedThreshold || $[19] !== overscan) {
       t6 = (t72) => {
         const {
           first,
@@ -36762,68 +36769,78 @@ ${e.stack}` : String(e);
           };
         });
       };
-      $[15] = data.length;
-      $[16] = onEndReached;
-      $[17] = onEndReachedThreshold;
-      $[18] = overscan;
-      $[19] = t6;
+      $[16] = data.length;
+      $[17] = onEndReached;
+      $[18] = onEndReachedThreshold;
+      $[19] = overscan;
+      $[20] = t6;
     } else {
-      t6 = $[19];
+      t6 = $[20];
     }
     const onRangeChange = t6;
     let rows;
-    if ($[20] !== data || $[21] !== keyExtractor || $[22] !== range.end || $[23] !== range.start || $[24] !== renderItem) {
+    if ($[21] !== data || $[22] !== keyExtractor || $[23] !== range.end || $[24] !== range.start || $[25] !== renderItem) {
       rows = [];
       const end = Math.min(range.end, data.length);
       for (let i = range.start; i < end; i++) {
         rows.push(/* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualRow, { index: i, children: renderItem(data[i], i) }, keyExtractor ? keyExtractor(data[i], i) : i));
       }
-      $[20] = data;
-      $[21] = keyExtractor;
-      $[22] = range.end;
-      $[23] = range.start;
-      $[24] = renderItem;
-      $[25] = rows;
+      $[21] = data;
+      $[22] = keyExtractor;
+      $[23] = range.end;
+      $[24] = range.start;
+      $[25] = renderItem;
+      $[26] = rows;
     } else {
-      rows = $[25];
+      rows = $[26];
     }
     let t7;
-    if ($[26] !== header) {
+    if ($[27] !== header) {
       t7 = header != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListHeader, { children: header }) : null;
-      $[26] = header;
-      $[27] = t7;
+      $[27] = header;
+      $[28] = t7;
     } else {
-      t7 = $[27];
+      t7 = $[28];
     }
     let t8;
-    if ($[28] !== footer) {
-      t8 = footer != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListFooter, { children: footer }) : null;
-      $[28] = footer;
-      $[29] = t8;
+    if ($[29] !== stickyHeader) {
+      t8 = stickyHeader != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListStickyHeader, { children: stickyHeader }) : null;
+      $[29] = stickyHeader;
+      $[30] = t8;
     } else {
-      t8 = $[29];
+      t8 = $[30];
     }
     let t9;
-    if ($[30] !== children || $[31] !== data.length || $[32] !== estimatedItemHeight || $[33] !== onRangeChange || $[34] !== rest || $[35] !== rows || $[36] !== t7 || $[37] !== t8) {
-      t9 = /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, children: [
+    if ($[31] !== footer) {
+      t9 = footer != null ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(VirtualListFooter, { children: footer }) : null;
+      $[31] = footer;
+      $[32] = t9;
+    } else {
+      t9 = $[32];
+    }
+    let t10;
+    if ($[33] !== children || $[34] !== data.length || $[35] !== estimatedItemHeight || $[36] !== onRangeChange || $[37] !== rest || $[38] !== rows || $[39] !== t7 || $[40] !== t8 || $[41] !== t9) {
+      t10 = /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(VirtualListHost, { ...rest, count: data.length, estimatedItemHeight, onRangeChange, children: [
         children,
         t7,
         t8,
+        t9,
         rows
       ] });
-      $[30] = children;
-      $[31] = data.length;
-      $[32] = estimatedItemHeight;
-      $[33] = onRangeChange;
-      $[34] = rest;
-      $[35] = rows;
-      $[36] = t7;
-      $[37] = t8;
-      $[38] = t9;
+      $[33] = children;
+      $[34] = data.length;
+      $[35] = estimatedItemHeight;
+      $[36] = onRangeChange;
+      $[37] = rest;
+      $[38] = rows;
+      $[39] = t7;
+      $[40] = t8;
+      $[41] = t9;
+      $[42] = t10;
     } else {
-      t9 = $[38];
+      t10 = $[42];
     }
-    return t9;
+    return t10;
   }
 
   // js/presentations.tsx
@@ -36832,11 +36849,11 @@ ${e.stack}` : String(e);
   var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
   function usePresentation(props) {
     const $ = (0, import_compiler_runtime6.c)(9);
-    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
+    if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 9; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
+      $[0] = "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510";
     }
     const presented = props.item !== void 0 ? props.item !== null : !!props.isPresented;
     const [shown, setShown] = (0, import_react7.useState)(props.item);
@@ -36883,12 +36900,12 @@ ${e.stack}` : String(e);
     return g3 + 1;
   }
   function Sheet(props) {
-    const $ = (0, import_compiler_runtime6.c)(21);
-    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
-      for (let $i = 0; $i < 21; $i += 1) {
+    const $ = (0, import_compiler_runtime6.c)(22);
+    if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
+      for (let $i = 0; $i < 22; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
+      $[0] = "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510";
     }
     const {
       presented,
@@ -36925,8 +36942,8 @@ ${e.stack}` : String(e);
       t1 = $[8];
     }
     let t2;
-    if ($[9] !== presented || $[10] !== props.background || $[11] !== props.cornerRadius || $[12] !== props.detents || $[13] !== props.dragIndicator || $[14] !== props.fullScreen || $[15] !== props.interactiveDismissDisabled || $[16] !== props.onDismiss || $[17] !== props.onDismissAttempt || $[18] !== t0 || $[19] !== t1) {
-      t2 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, onDismissAttempt: props.onDismissAttempt, onDismissed: t0, detents: props.detents, fullScreen: props.fullScreen, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
+    if ($[9] !== presented || $[10] !== props.background || $[11] !== props.cornerRadius || $[12] !== props.detents || $[13] !== props.dragIndicator || $[14] !== props.fullScreen || $[15] !== props.interactiveDismissDisabled || $[16] !== props.onDismiss || $[17] !== props.onDismissAttempt || $[18] !== props.zoomFrom || $[19] !== t0 || $[20] !== t1) {
+      t2 = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(SheetHost, { isPresented: presented, onDismiss: props.onDismiss, onDismissAttempt: props.onDismissAttempt, onDismissed: t0, detents: props.detents, fullScreen: props.fullScreen, zoomFrom: props.zoomFrom, interactiveDismissDisabled: props.interactiveDismissDisabled, dragIndicator: props.dragIndicator, cornerRadius: props.cornerRadius, background: props.background, children: t1 });
       $[9] = presented;
       $[10] = props.background;
       $[11] = props.cornerRadius;
@@ -36936,21 +36953,22 @@ ${e.stack}` : String(e);
       $[15] = props.interactiveDismissDisabled;
       $[16] = props.onDismiss;
       $[17] = props.onDismissAttempt;
-      $[18] = t0;
-      $[19] = t1;
-      $[20] = t2;
+      $[18] = props.zoomFrom;
+      $[19] = t0;
+      $[20] = t1;
+      $[21] = t2;
     } else {
-      t2 = $[20];
+      t2 = $[21];
     }
     return t2;
   }
   function useDialog(props) {
     const $ = (0, import_compiler_runtime6.c)(13);
-    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
+    if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 13; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
+      $[0] = "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510";
     }
     const presentation = usePresentation(props);
     let t0;
@@ -36998,11 +37016,11 @@ ${e.stack}` : String(e);
   }
   function Alert(props) {
     const $ = (0, import_compiler_runtime6.c)(7);
-    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
+    if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
+      $[0] = "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510";
     }
     const {
       presented,
@@ -37026,11 +37044,11 @@ ${e.stack}` : String(e);
   }
   function ConfirmationDialog(props) {
     const $ = (0, import_compiler_runtime6.c)(7);
-    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
+    if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 7; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
+      $[0] = "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510";
     }
     const {
       presented,
@@ -37054,11 +37072,11 @@ ${e.stack}` : String(e);
   }
   function Fresh(t0) {
     const $ = (0, import_compiler_runtime6.c)(3);
-    if ($[0] !== "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded") {
+    if ($[0] !== "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510") {
       for (let $i = 0; $i < 3; $i += 1) {
         $[$i] = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       }
-      $[0] = "4803ad295bcb1da32748d89c16d1a874f2961afbca50f0cb3d3d176bd718fded";
+      $[0] = "07e1e1dd0bd4aa1ec97c8ace668fcd0673356154cdbf1974207b40ad3f3e1510";
     }
     const {
       children

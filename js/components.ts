@@ -153,6 +153,12 @@ export interface Modifiers {
   contentShape?: "rectangle" | "capsule" | "circle";
   /** Called with the view's size after layout, and when it changes (like React Native's onLayout). */
   onLayout?: (size: { width: number; height: number }) => void;
+  /**
+   * This view's safe area insets (the navigation bar's height under a bar,
+   * the sheet's own edges in a sheet), when they change. `useEnvironment()`
+   * has the window's.
+   */
+  onSafeAreaChange?: (insets: { top: number; bottom: number; left: number; right: number }) => void;
   /** A fraction of the nearest container's width / height (the scroll view or screen), e.g. 0.8. */
   relativeWidth?: number;
   relativeHeight?: number;
@@ -396,7 +402,14 @@ export const ZStack = host<Modifiers & WithChildren & { alignment?: Alignment }>
  * placed in the screen by `alignment`. Touches pass through to the app unless
  * `interactive`, in which case the children themselves take them.
  */
-export const Portal = host<WithChildren & { alignment?: Alignment; interactive?: boolean }>("Portal");
+export const Portal = host<
+  WithChildren & {
+    alignment?: Alignment;
+    interactive?: boolean;
+    /** Edge to edge, under the status bar and home indicator (a drawer, an image viewer); otherwise inset like a toast. */
+    fullScreen?: boolean;
+  }
+>("Portal");
 /**
  * Children placed by their `position` prop (`{ x, y, width, height }` in
  * points or "25%" of the stack), as layout rather than an offset: a
@@ -407,6 +420,13 @@ export const AbsoluteStack = host<Modifiers & WithChildren>("AbsoluteStack");
 /** Children are stacked in a VStack (HStack when horizontal) with `spacing` between them (SwiftUI's default if unset). */
 /** Options shared by ScrollView and VirtualList. */
 export type ScrollProps = {
+  /**
+   * A shared value (`useSharedValue({ x: 0, y: 0 })`) that gets the scroll
+   * offset on the main thread every frame, for animated styles and canvases
+   * that follow the scroll (collapsing headers, stretching banners). Negative
+   * y when pulled past the top.
+   */
+  scrollOffset?: { readonly __shared: number };
   showsIndicators?: boolean;
   /**
    * true: snap to pages the size of the scroll view (carousels). "view"
@@ -899,6 +919,8 @@ export const TabView = host<
     tabViewStyle?: "automatic" | "sidebarAdaptable" | "page";
     /** Page dots (`tabViewStyle="page"`): "backed" puts them on a dimmed capsule, readable over light content. */
     pageIndicator?: "automatic" | "always" | "never" | "backed";
+    /** iOS 26: "onScrollDown" shrinks the tab bar while you scroll down (back on scroll up). */
+    tabBarMinimizeBehavior?: "automatic" | "onScrollDown" | "onScrollUp" | "never";
   }
 >("TabView");
 
@@ -975,6 +997,12 @@ export const Screen = host<
     toolbarBackground?: Fill | "hidden";
     /** Light or dark navigation bar items (e.g. "dark" for white items on a dark screen). */
     toolbarColorScheme?: "light" | "dark";
+    /** "hidden": no navigation bar (draw your own header); toggling it keeps the screen's scroll position. */
+    navigationBar?: "visible" | "hidden";
+    /** "hidden": no tab bar while this screen shows. */
+    tabBar?: "visible" | "hidden";
+    /** iOS 26: how scrolled content fades under the bars: "soft" (default), "hard", or "hidden" (for a header of your own). */
+    scrollEdgeEffect?: "soft" | "hard" | "hidden";
   }
 >("Screen");
 
@@ -1007,6 +1035,7 @@ export const SheetHost = host<
     detents?: ("medium" | "large" | number)[];
     /** iOS: cover the whole screen instead of a card. */
     fullScreen?: boolean;
+    zoomFrom?: string;
     interactiveDismissDisabled?: boolean;
     dragIndicator?: "automatic" | "visible" | "hidden";
     cornerRadius?: number;

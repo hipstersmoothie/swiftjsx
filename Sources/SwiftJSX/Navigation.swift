@@ -141,11 +141,36 @@ struct ToolbarStyle: ViewModifier {
         #endif
         let styled = content
             .toolbarColorScheme(colorScheme(node.string("toolbarColorScheme")), for: bar)
+            // `navigationBar="hidden"` / `tabBar="hidden"`: always applied (a
+            // value, not a branch), so toggling them keeps the screen's state.
+            .toolbarVisibility(node.string("navigationBar") == "hidden" ? .hidden : .automatic, for: bar)
+            #if os(iOS)
+            .toolbarVisibility(node.string("tabBar") == "hidden" ? .hidden : .automatic, for: .tabBar)
+            #endif
+            .modifier(ScrollEdgeEffect(style: node.string("scrollEdgeEffect")))
             .toolbarBackgroundVisibility(background == nil ? .automatic : (background as? String == "hidden" ? .hidden : .visible), for: bar)
-        if let fill = fill(background) {
-            styled.toolbarBackground(fill, for: bar)
+        // One branch whenever the prop is set (a fill or "hidden"), so switching
+        // between them mid-scroll doesn't make a new view (and reset the scroll).
+        if background != nil {
+            styled.toolbarBackground(fill(background) ?? AnyShapeStyle(Color.clear), for: bar)
         } else {
             styled
+        }
+    }
+}
+
+/// `scrollEdgeEffect` (iOS 26): how scroll views fade under the bars:
+/// "soft" (default), "hard" (a crisp edge), or "hidden" (none: for your own
+/// bar drawn over the content).
+private struct ScrollEdgeEffect: ViewModifier {
+    let style: String?
+    func body(content: Content) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            content
+                .scrollEdgeEffectStyle(style == "hard" ? .hard : .soft, for: .all)
+                .scrollEdgeEffectHidden(style == "hidden", for: .all)
+        } else {
+            content
         }
     }
 }
@@ -327,6 +352,9 @@ struct PresentationHost: View {
             .presentationDragIndicator(node.string("dragIndicator") == "visible" ? .visible : node.string("dragIndicator") == "hidden" ? .hidden : .automatic)
             .presentationCornerRadius(node.cgFloat("cornerRadius"))
             .modifier(SheetBackground(fill: fill(node.prop("background"))))
+            // `zoomFrom`: zooms out of the view with that `transitionSource`
+            // (a thumbnail to its full-screen viewer), and back into it.
+            .modifier(ZoomDestination(id: node.string("zoomFrom")))
             #if os(iOS)
             .background {
                 if node.has("onDismissAttempt") {
@@ -388,8 +416,10 @@ private func titleDisplayMode(_ name: String?) -> NavigationBarItem.TitleDisplay
 private struct Subtitle: ViewModifier {
     let text: String?
     func body(content: Content) -> some View {
-        if let text, #available(iOS 26, macOS 26, *) {
-            content.navigationSubtitle(text)
+        // Always applied (empty when unset): adding it later would make a new
+        // view and reset the screen's scroll position.
+        if #available(iOS 26, macOS 26, *) {
+            content.navigationSubtitle(text ?? "")
         } else {
             content
         }

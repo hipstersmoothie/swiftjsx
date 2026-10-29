@@ -126,7 +126,7 @@ public final class Node: Identifiable {
         ("onAccessibilityIncrement", .accessibility), ("onAccessibilityDecrement", .accessibility),
         ("accessibilityElement", .accessibility), ("accessibilityElement", .accessibilityElement),
         ("onRefresh", .refresh),
-        ("contentShape", .contentShape), ("onLayout", .layout),
+        ("contentShape", .contentShape), ("onLayout", .layout), ("onSafeAreaChange", .layout),
         ("relativeWidth", .relativeFrame), ("relativeHeight", .relativeFrame),
         ("listRowBackground", .listRow), ("listRowInsets", .listRow), ("listRowSeparator", .listRow), ("badge", .listRow),
         ("tint", .tint), ("aspectRatio", .aspectRatio), ("onKeyPress", .keyPress),

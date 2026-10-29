@@ -56,6 +56,11 @@ export type VirtualListProps<T> = Omit<Modifiers, "ref"> & ScrollProps & {
    */
   header?: ReactNode;
   footer?: ReactNode;
+  /**
+   * Content under `header` that pins to the top once it reaches it while the
+   * rows scroll under it: a profile's tab bar. Stack style only.
+   */
+  stickyHeader?: ReactNode;
   /** Attachments (`<Overlay>`, `<SafeAreaInset>`, `<Sheet>`…); rows come from `data`. */
   children?: ReactNode;
 };
@@ -64,6 +69,7 @@ type Range = { start: number; end: number };
 
 const VirtualListHost = "VirtualList" as unknown as (props: any) => ReactNode;
 const VirtualListHeader = "VirtualListHeader" as unknown as (props: { children: ReactNode }) => ReactNode;
+const VirtualListStickyHeader = "VirtualListStickyHeader" as unknown as (props: { children: ReactNode }) => ReactNode;
 const VirtualListFooter = "VirtualListFooter" as unknown as (props: { children: ReactNode }) => ReactNode;
 const VirtualRow = "VirtualRow" as unknown as (props: { index: number; children: ReactNode }) => ReactNode;
 
@@ -81,6 +87,7 @@ export function VirtualList<T>({
   onEndReached,
   onEndReachedThreshold = 10,
   header,
+  stickyHeader,
   footer,
   children,
   ...rest
@@ -129,6 +136,7 @@ export function VirtualList<T>({
     <VirtualListHost {...rest} count={data.length} estimatedItemHeight={estimatedItemHeight} onRangeChange={onRangeChange}>
       {children}
       {header != null ? <VirtualListHeader>{header}</VirtualListHeader> : null}
+      {stickyHeader != null ? <VirtualListStickyHeader>{stickyHeader}</VirtualListStickyHeader> : null}
       {footer != null ? <VirtualListFooter>{footer}</VirtualListFooter> : null}
       {rows}
     </VirtualListHost>

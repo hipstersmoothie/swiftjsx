@@ -120,6 +120,12 @@ final class WorkletRuntime {
         flush()
     }
 
+    /// A scroll view's offset into its `scrollOffset` shared value, every frame.
+    func scrolled(_ id: Int, x: Double, y: Double) {
+        api.invokeMethod("message", withArguments: [["type": "scroll", "id": id, "value": ["x": x, "y": y]]])
+        flush()
+    }
+
     // MARK: Canvas
 
     /// The drawing commands of a `<Canvas draw>` worklet at this size (see

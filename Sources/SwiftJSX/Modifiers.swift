@@ -359,9 +359,18 @@ struct LayoutExtras: ViewModifier {
         let runtime: JSXRuntime?
         func body(content: Content) -> some View {
             if node.features.contains(.layout) {
-                content.onGeometryChange(for: CGSize.self) { $0.size } action: { size in
-                    if node.has("onLayout") { runtime?.dispatch(node.id, "onLayout", ["width": size.width, "height": size.height]) }
-                }
+                content
+                    .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                        if node.has("onLayout") { runtime?.dispatch(node.id, "onLayout", ["width": size.width, "height": size.height]) }
+                    }
+                    // `onSafeAreaChange`: this view's own insets (under bars,
+                    // inside a sheet), not the window's.
+                    .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { insets in
+                        guard node.has("onSafeAreaChange") else { return }
+                        runtime?.dispatch(node.id, "onSafeAreaChange", [
+                            "top": insets.top, "bottom": insets.bottom, "left": insets.leading, "right": insets.trailing,
+                        ])
+                    }
             } else {
                 content
             }
